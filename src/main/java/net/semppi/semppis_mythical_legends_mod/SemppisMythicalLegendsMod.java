@@ -1,62 +1,115 @@
 package net.semppi.semppis_mythical_legends_mod;
 
-import com.mojang.logging.LogUtils;
+import net.minecraft.client.renderer.blockentity.BlockEntityRenderers;
+import net.minecraft.client.renderer.entity.EntityRenderers;
+import net.minecraft.world.entity.SpawnPlacements;
+import net.minecraft.world.entity.animal.Animal;
+import net.minecraft.world.level.levelgen.Heightmap;
 import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.event.BuildCreativeModeTabContentsEvent;
+import net.minecraftforge.event.RegisterCommandsEvent;
+import net.semppi.semppis_mythical_legends_mod.block.ModBlocks;
+import net.semppi.semppis_mythical_legends_mod.block.client.WendigoSkullRenderer;
+import net.semppi.semppis_mythical_legends_mod.block.entity.ModBlockEntities;
+import net.semppi.semppis_mythical_legends_mod.commands.CancelTransformCommand;
+import net.semppi.semppis_mythical_legends_mod.commands.TransformCommand;
+import net.semppi.semppis_mythical_legends_mod.entity.EntitySpawnHandler;
+import net.semppi.semppis_mythical_legends_mod.entity.client.*;
 import net.minecraftforge.event.server.ServerStartingEvent;
 import net.minecraftforge.eventbus.api.IEventBus;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
-import net.minecraftforge.fml.ModLoadingContext;
 import net.minecraftforge.fml.common.Mod;
-import net.minecraftforge.fml.config.ModConfig;
 import net.minecraftforge.fml.event.lifecycle.FMLClientSetupEvent;
 import net.minecraftforge.fml.event.lifecycle.FMLCommonSetupEvent;
 import net.minecraftforge.fml.javafmlmod.FMLJavaModLoadingContext;
-import org.slf4j.Logger;
+import net.semppi.semppis_mythical_legends_mod.entity.ModEntities;
+import net.semppi.semppis_mythical_legends_mod.entity.custom.ColossalLobsterEntity;
+import net.semppi.semppis_mythical_legends_mod.event.DismountEventHandler;
+import net.semppi.semppis_mythical_legends_mod.event.PlayerRenderHandler;
+import net.semppi.semppis_mythical_legends_mod.event.TransformationEventHandler;
+import net.semppi.semppis_mythical_legends_mod.item.ModCreativeModeTabs;
+import net.semppi.semppis_mythical_legends_mod.item.ModItems;
+import net.semppi.semppis_mythical_legends_mod.sound.ModSounds;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+import software.bernie.geckolib.GeckoLib;
 
-// The value here should match an entry in the META-INF/mods.toml file
 @Mod(SemppisMythicalLegendsMod.MOD_ID)
-public class SemppisMythicalLegendsMod
-{
-    // Define mod id in a common place for everything to reference
+public class SemppisMythicalLegendsMod {
     public static final String MOD_ID = "semppis_mythical_legends_mod";
-    // Directly reference a slf4j logger
-    private static final Logger LOGGER = LogUtils.getLogger();
+    private static final Logger LOGGER = LogManager.getLogger();
 
     public SemppisMythicalLegendsMod() {
         IEventBus modEventBus = FMLJavaModLoadingContext.get().getModEventBus();
 
+        MinecraftForge.EVENT_BUS.register(new DismountEventHandler());
+        ModCreativeModeTabs.register(modEventBus);
+        ModItems.register(modEventBus);
+        ModBlocks.register(modEventBus);
+        ModBlockEntities.register(modEventBus);
+        ModEntities.register(modEventBus);
+        ModSounds.register(modEventBus);
+
+        MinecraftForge.EVENT_BUS.addListener(this::onRegisterCommands);
+        MinecraftForge.EVENT_BUS.register(new TransformationEventHandler());
+        MinecraftForge.EVENT_BUS.register(new PlayerRenderHandler());
+
         modEventBus.addListener(this::commonSetup);
-
         MinecraftForge.EVENT_BUS.register(this);
+        MinecraftForge.EVENT_BUS.register(EntitySpawnHandler.class);
         modEventBus.addListener(this::addCreative);
-
-        ///ModLoadingContext.get().registerConfig(ModConfig.Type.COMMON, Config.SPEC);
     }
 
     private void commonSetup(final FMLCommonSetupEvent event) {
-
+        GeckoLib.initialize();
+        SpawnPlacements.register(ModEntities.SATYR.get(),
+                SpawnPlacements.Type.ON_GROUND, Heightmap.Types.MOTION_BLOCKING_NO_LEAVES,
+                Animal::checkAnimalSpawnRules);
+        SpawnPlacements.register(ModEntities.BEHEMOTH.get(),
+                SpawnPlacements.Type.ON_GROUND, Heightmap.Types.MOTION_BLOCKING_NO_LEAVES,
+                Animal::checkAnimalSpawnRules);
+        SpawnPlacements.register(ModEntities.PUKIS.get(),
+                SpawnPlacements.Type.ON_GROUND, Heightmap.Types.MOTION_BLOCKING_NO_LEAVES,
+                Animal::checkAnimalSpawnRules);
+        SpawnPlacements.register(ModEntities.WENDIGO.get(),
+                SpawnPlacements.Type.ON_GROUND, Heightmap.Types.MOTION_BLOCKING_NO_LEAVES,
+                Animal::checkAnimalSpawnRules);
+        SpawnPlacements.register(ModEntities.LOVELAND_FROGMAN.get(),
+                SpawnPlacements.Type.ON_GROUND, Heightmap.Types.MOTION_BLOCKING_NO_LEAVES,
+                Animal::checkAnimalSpawnRules);
+        SpawnPlacements.register(ModEntities.COLOSSAL_LOBSTER.get(),
+                SpawnPlacements.Type.IN_WATER, Heightmap.Types.OCEAN_FLOOR,
+                ColossalLobsterEntity::checkWaterMobSpawnRules);
     }
 
-    // Add the example block item to the building blocks tab
-    private void addCreative(BuildCreativeModeTabContentsEvent event) {
-
+    private void addCreative(final BuildCreativeModeTabContentsEvent event) {
+        // Creative tab contents code here
     }
 
-    // You can use SubscribeEvent and let the Event Bus discover methods to call
-    @SubscribeEvent
-    public void onServerStarting(ServerStartingEvent event) {
-
+    // Use RegisterCommandsEvent instead of FMLServerStartingEvent
+    private void onRegisterCommands(RegisterCommandsEvent event) {
+        TransformCommand.register(event.getDispatcher());
+        CancelTransformCommand.register(event.getDispatcher());
     }
 
-    // You can use EventBusSubscriber to automatically register all static methods in the class annotated with @SubscribeEvent
     @Mod.EventBusSubscriber(modid = MOD_ID, bus = Mod.EventBusSubscriber.Bus.MOD, value = Dist.CLIENT)
-    public static class ClientModEvents
-    {
+    public static class ClientModEvents {
         @SubscribeEvent
         public static void onClientSetup(FMLClientSetupEvent event) {
+            EntityRenderers.register(ModEntities.BEHEMOTH.get(), BehemothRenderer::new);
+            EntityRenderers.register(ModEntities.COLOSSAL_LOBSTER.get(), ColossalLobsterRenderer::new);
+            EntityRenderers.register(ModEntities.KRAKEN.get(), KrakenRenderer::new);
+            EntityRenderers.register(ModEntities.LOVELAND_FROGMAN.get(), LovelandFrogmanRenderer::new);
+            EntityRenderers.register(ModEntities.MALPHAS.get(), MalphasRenderer::new);
+            EntityRenderers.register(ModEntities.MANDRAKE.get(), MandrakeRenderer::new);
+            EntityRenderers.register(ModEntities.PUKIS.get(), PukisRenderer::new);
+            EntityRenderers.register(ModEntities.SATYR.get(), SatyrRenderer::new);
+            EntityRenderers.register(ModEntities.WENDIGO.get(), WendigoRenderer::new);
 
+            event.enqueueWork(() -> {
+                BlockEntityRenderers.register(ModBlockEntities.WENDIGO_SKULL_BLOCK_ENTITY.get(), WendigoSkullRenderer::new);
+            });
         }
     }
 }

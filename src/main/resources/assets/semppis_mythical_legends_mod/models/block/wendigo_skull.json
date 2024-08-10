@@ -1,0 +1,7 @@
+{
+  "parent": "block/block",
+  "textures": {
+    "all": "semppis_mythical_legends_mod:block/wendigo_skull",
+    "particle": "minecraft:block/soul_sand"
+  }
+}

@@ -1,0 +1,15 @@
+{
+  "large_crow": {
+    "subtitle": "sounds.semppis_mythical_legends_mod.large_crow",
+    "sounds": [
+      "semppis_mythical_legends_mod:large_crow"
+    ]
+  },
+
+  "large_crow_hurt": {
+    "subtitle": "sounds.semppis_mythical_legends_mod.large_crow_hurt",
+    "sounds": [
+      "semppis_mythical_legends_mod:large_crow_hurt"
+    ]
+  }
+}

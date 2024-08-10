@@ -1,0 +1,15 @@
+{
+  "type": "forge:add_spawns",
+  "biomes": [
+    "minecraft:snowy_taiga",
+    "minecraft:ice_spikes",
+    "minecraft:frozen_river",
+    "minecraft:grove"
+  ],
+  "spawners": {
+    "type": "semppis_mythical_legends_mod:wendigo",
+    "weight": 1,
+    "minCount": 1,
+    "maxCount": 1
+  }
+}
