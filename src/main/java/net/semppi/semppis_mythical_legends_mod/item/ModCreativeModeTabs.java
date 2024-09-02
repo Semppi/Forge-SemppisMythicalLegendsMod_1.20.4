@@ -41,6 +41,12 @@ public class ModCreativeModeTabs {
                         pOutput.accept(ModItems.COOKED_VEGGIE_KELP_TREAT.get());
                         pOutput.accept(ModItems.RAW_PORKCHOP_PIECE.get());
                         pOutput.accept(ModItems.COOKED_PORKCHOP_PIECE.get());
+                        pOutput.accept(ModItems.RAW_PORKCHOP_CHUNK.get());
+                        pOutput.accept(ModItems.COOKED_PORKCHOP_CHUNK.get());
+                        pOutput.accept(ModItems.RAW_AVIAN_PIECE.get());
+                        pOutput.accept(ModItems.COOKED_AVIAN_PIECE.get());
+                        pOutput.accept(ModItems.RAW_AVIAN_MEAT.get());
+                        pOutput.accept(ModItems.COOKED_AVIAN_MEAT.get());
                         pOutput.accept(ModItems.HUMANOID_FLESH_PIECE.get());
                         pOutput.accept(ModItems.HUMANOID_STEAK_PIECE.get());
                         pOutput.accept(ModItems.HUMANOID_FLESH.get());
@@ -77,6 +83,7 @@ public class ModCreativeModeTabs {
                         pOutput.accept(ModItems.WENDIGO_SPAWN_EGG.get());
                         pOutput.accept(ModItems.STAMP.get());
                         pOutput.accept(ModItems.WRAPPED_PUKIS_ITEM.get());
+                        pOutput.accept(ModBlocks.PUKIS_EGG.get());
                         pOutput.accept(ModBlocks.WENDIGO_SKULL.get());
                     })
                     .build());

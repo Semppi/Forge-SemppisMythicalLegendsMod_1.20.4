@@ -49,6 +49,10 @@ public class ModEntities {
             ENTITY_TYPES.register("kraken", () -> EntityType.Builder.of(KrakenEntity::new, MobCategory.CREATURE)
                     .sized(3.2f, 3.0f).build("kraken"));
 
+    public static final RegistryObject<EntityType<AlicantoEntity>> ALICANTO =
+            ENTITY_TYPES.register("alicanto", () -> EntityType.Builder.of(AlicantoEntity::new, MobCategory.CREATURE)
+                    .sized(0.5f, 1.8f).build("alicanto"));
+
 
     public static void register(IEventBus eventBus) {
         ENTITY_TYPES.register(eventBus);

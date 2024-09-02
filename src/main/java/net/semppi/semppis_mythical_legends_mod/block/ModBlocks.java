@@ -11,6 +11,7 @@ import net.minecraftforge.registries.DeferredRegister;
 import net.minecraftforge.registries.ForgeRegistries;
 import net.minecraftforge.registries.RegistryObject;
 import net.semppi.semppis_mythical_legends_mod.SemppisMythicalLegendsMod;
+import net.semppi.semppis_mythical_legends_mod.block.custom.PukisEgg;
 import net.semppi.semppis_mythical_legends_mod.block.custom.WendigoSkull;
 import net.semppi.semppis_mythical_legends_mod.item.ModItems;
 
@@ -24,6 +25,13 @@ public class ModBlocks {
             () -> new WendigoSkull(BlockBehaviour.Properties.of()
                     .mapColor(MapColor.STONE)
                     .strength(1.0F, 4.0F)
+                    .sound(SoundType.STONE)
+                    .noOcclusion()));
+
+    public static final RegistryObject<Block> PUKIS_EGG = BLOCKS.register("pukis_egg",
+            () -> new PukisEgg(BlockBehaviour.Properties.of()
+                    .mapColor(MapColor.STONE)
+                    .strength(0.6F, 2.5F)
                     .sound(SoundType.STONE)
                     .noOcclusion()));
 

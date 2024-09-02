@@ -16,6 +16,10 @@ public class ModBlockEntities {
             BLOCK_ENTITIES.register("wendigo_skull_block_entity",
                     () -> BlockEntityType.Builder.of(WendigoSkullBlockEntity::new, ModBlocks.WENDIGO_SKULL.get()).build(null));
 
+    public static final RegistryObject<BlockEntityType<PukisEggBlockEntity>> PUKIS_EGG_BLOCK_ENTITY =
+            BLOCK_ENTITIES.register("pukis_egg_block_entity",
+                    () -> BlockEntityType.Builder.of(PukisEggBlockEntity::new, ModBlocks.PUKIS_EGG.get()).build(null));
+
     public static void register(IEventBus eventBus) {
         BLOCK_ENTITIES.register(eventBus);
     }

@@ -4,12 +4,14 @@ import net.minecraft.client.renderer.blockentity.BlockEntityRenderers;
 import net.minecraft.client.renderer.entity.EntityRenderers;
 import net.minecraft.world.entity.SpawnPlacements;
 import net.minecraft.world.entity.animal.Animal;
+import net.minecraft.world.entity.animal.WaterAnimal;
 import net.minecraft.world.level.levelgen.Heightmap;
 import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.event.BuildCreativeModeTabContentsEvent;
 import net.minecraftforge.event.RegisterCommandsEvent;
 import net.semppi.semppis_mythical_legends_mod.block.ModBlocks;
+import net.semppi.semppis_mythical_legends_mod.block.client.PukisEggRenderer;
 import net.semppi.semppis_mythical_legends_mod.block.client.WendigoSkullRenderer;
 import net.semppi.semppis_mythical_legends_mod.block.entity.ModBlockEntities;
 import net.semppi.semppis_mythical_legends_mod.commands.CancelTransformCommand;
@@ -24,6 +26,7 @@ import net.minecraftforge.fml.event.lifecycle.FMLClientSetupEvent;
 import net.minecraftforge.fml.event.lifecycle.FMLCommonSetupEvent;
 import net.minecraftforge.fml.javafmlmod.FMLJavaModLoadingContext;
 import net.semppi.semppis_mythical_legends_mod.entity.ModEntities;
+import net.semppi.semppis_mythical_legends_mod.entity.custom.AlicantoEntity;
 import net.semppi.semppis_mythical_legends_mod.entity.custom.ColossalLobsterEntity;
 import net.semppi.semppis_mythical_legends_mod.event.DismountEventHandler;
 import net.semppi.semppis_mythical_legends_mod.event.PlayerRenderHandler;
@@ -79,8 +82,11 @@ public class SemppisMythicalLegendsMod {
                 SpawnPlacements.Type.ON_GROUND, Heightmap.Types.MOTION_BLOCKING_NO_LEAVES,
                 Animal::checkAnimalSpawnRules);
         SpawnPlacements.register(ModEntities.COLOSSAL_LOBSTER.get(),
-                SpawnPlacements.Type.IN_WATER, Heightmap.Types.OCEAN_FLOOR,
-                ColossalLobsterEntity::checkWaterMobSpawnRules);
+                SpawnPlacements.Type.IN_WATER, Heightmap.Types.MOTION_BLOCKING_NO_LEAVES,
+                WaterAnimal::checkSurfaceWaterAnimalSpawnRules);
+        SpawnPlacements.register(ModEntities.ALICANTO.get(),
+                SpawnPlacements.Type.ON_GROUND, Heightmap.Types.MOTION_BLOCKING_NO_LEAVES,
+                AlicantoEntity::canAlicantoSpawn);
     }
 
     private void addCreative(final BuildCreativeModeTabContentsEvent event) {
@@ -97,6 +103,7 @@ public class SemppisMythicalLegendsMod {
     public static class ClientModEvents {
         @SubscribeEvent
         public static void onClientSetup(FMLClientSetupEvent event) {
+            EntityRenderers.register(ModEntities.ALICANTO.get(), AlicantoRenderer::new);
             EntityRenderers.register(ModEntities.BEHEMOTH.get(), BehemothRenderer::new);
             EntityRenderers.register(ModEntities.COLOSSAL_LOBSTER.get(), ColossalLobsterRenderer::new);
             EntityRenderers.register(ModEntities.KRAKEN.get(), KrakenRenderer::new);
@@ -109,6 +116,7 @@ public class SemppisMythicalLegendsMod {
 
             event.enqueueWork(() -> {
                 BlockEntityRenderers.register(ModBlockEntities.WENDIGO_SKULL_BLOCK_ENTITY.get(), WendigoSkullRenderer::new);
+                BlockEntityRenderers.register(ModBlockEntities.PUKIS_EGG_BLOCK_ENTITY.get(), PukisEggRenderer::new);
             });
         }
     }

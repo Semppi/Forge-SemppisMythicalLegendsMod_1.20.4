@@ -6,6 +6,7 @@ import net.minecraft.client.renderer.entity.EntityRendererProvider;
 import net.minecraft.resources.ResourceLocation;
 import net.semppi.semppis_mythical_legends_mod.SemppisMythicalLegendsMod;
 import net.semppi.semppis_mythical_legends_mod.entity.custom.WendigoEntity;
+import net.semppi.semppis_mythical_legends_mod.entity.variant.WendigoVariant;
 import software.bernie.geckolib.renderer.GeoEntityRenderer;
 
 public class WendigoRenderer extends GeoEntityRenderer<WendigoEntity> {
@@ -16,7 +17,18 @@ public class WendigoRenderer extends GeoEntityRenderer<WendigoEntity> {
 
     @Override
     public ResourceLocation getTextureLocation(WendigoEntity animatable) {
-        return new ResourceLocation(SemppisMythicalLegendsMod.MOD_ID, "textures/entity/wendigo_brown.png");
+        WendigoVariant variant = animatable.getVariant();
+        if (variant == WendigoVariant.BROWN) {
+            return new ResourceLocation(SemppisMythicalLegendsMod.MOD_ID, "textures/entity/wendigo_brown.png");
+        } else if (variant == WendigoVariant.GRAY) {
+            return new ResourceLocation(SemppisMythicalLegendsMod.MOD_ID, "textures/entity/wendigo_gray.png");
+        } else if (variant == WendigoVariant.WHITE) {
+            return new ResourceLocation(SemppisMythicalLegendsMod.MOD_ID, "textures/entity/wendigo_white.png");
+        } else if (variant == WendigoVariant.SOUL) {
+            return new ResourceLocation(SemppisMythicalLegendsMod.MOD_ID, "textures/entity/wendigo_gray.png");
+        }else {
+            return new ResourceLocation(SemppisMythicalLegendsMod.MOD_ID, "textures/entity/wendigo_gray.png");
+        }
     }
 
     @Override

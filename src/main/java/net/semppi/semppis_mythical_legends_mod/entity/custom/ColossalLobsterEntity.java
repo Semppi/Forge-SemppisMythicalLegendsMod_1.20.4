@@ -1,6 +1,7 @@
 package net.semppi.semppis_mythical_legends_mod.entity.custom;
 
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.Direction;
 import net.minecraft.network.syncher.EntityDataAccessor;
 import net.minecraft.network.syncher.EntityDataSerializers;
 import net.minecraft.network.syncher.SynchedEntityData;
@@ -40,17 +41,18 @@ import software.bernie.geckolib.core.animation.AnimationController;
 import software.bernie.geckolib.core.animation.AnimationState;
 import software.bernie.geckolib.core.animation.RawAnimation;
 
-public class ColossalLobsterEntity extends Animal implements GeoEntity {
+public class ColossalLobsterEntity extends WaterAnimal implements GeoEntity {
     private AnimatableInstanceCache cache = new SingletonAnimatableInstanceCache(this);
 
-    public ColossalLobsterEntity(EntityType<? extends Animal> entityType, Level level) {
+    public ColossalLobsterEntity(EntityType<? extends WaterAnimal> entityType, Level level) {
         super(entityType, level);
         this.setMaxUpStep(2.0F);
         this.addEffect(new MobEffectInstance(MobEffects.WATER_BREATHING, Integer.MAX_VALUE, 0, false, false));
     }
 
     public static boolean checkWaterMobSpawnRules(EntityType<ColossalLobsterEntity> entityType, LevelAccessor levelAccessor, MobSpawnType spawnType, BlockPos pos, RandomSource randomSource) {
-        return levelAccessor.getBlockState(pos).is(Blocks.WATER) && levelAccessor.getBlockState(pos.below()).is(Blocks.WATER);
+        return levelAccessor.getBlockState(pos).is(Blocks.WATER) &&
+                levelAccessor.getBlockState(pos.below()).isFaceSturdy(levelAccessor, pos.below(), Direction.UP);
     }
 
     public static AttributeSupplier setAttributes() {
@@ -71,23 +73,23 @@ public class ColossalLobsterEntity extends Animal implements GeoEntity {
 
         this.goalSelector.addGoal(2, new MeleeAttackGoal(this, 1.2D, false));
         this.goalSelector.addGoal(3, new RandomStrollGoal(this, 1.0D));
-        this.goalSelector.addGoal(5, new RandomLookAroundGoal(this));
+        this.goalSelector.addGoal(4, new RandomLookAroundGoal(this));
 
         this.targetSelector.addGoal(1, (new HurtByTargetGoal(this)));
         this.targetSelector.addGoal(2, new NearestAttackableTargetGoal<>(this, Player.class, true));
         this.targetSelector.addGoal(2, new NearestAttackableTargetGoal<>(this, AbstractVillager.class, false));
         this.targetSelector.addGoal(3, new NearestAttackableTargetGoal<>(this, AbstractFish.class, true));
         this.targetSelector.addGoal(3, new NearestAttackableTargetGoal<>(this, Squid.class, true));
-        this.targetSelector.addGoal(4, new NearestAttackableTargetGoal<>(this, Dolphin.class, true));
+        this.targetSelector.addGoal(4, new NearestAttackableTargetGoal<>(this, Drowned.class, true));
         this.targetSelector.addGoal(5, new NearestAttackableTargetGoal<>(this, Turtle.class, true));
-        this.targetSelector.addGoal(6, new NearestAttackableTargetGoal<>(this, Drowned.class, true));
+        this.targetSelector.addGoal(6, new NearestAttackableTargetGoal<>(this, Dolphin.class, true));
     }
 
-    @Nullable
-    @Override
-    public AgeableMob getBreedOffspring(ServerLevel level, AgeableMob ageableMob) {
-        return ModEntities.COLOSSAL_LOBSTER.get().create(level);
-    }
+//    @Nullable
+//    @Override
+//    public AgeableMob getBreedOffspring(ServerLevel level, AgeableMob ageableMob) {
+//        return ModEntities.COLOSSAL_LOBSTER.get().create(level);
+//    }
 
     @Override
     public void registerControllers(AnimatableManager.ControllerRegistrar controllerRegistrar) {

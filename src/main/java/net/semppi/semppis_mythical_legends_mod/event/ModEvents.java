@@ -11,6 +11,7 @@ import net.semppi.semppis_mythical_legends_mod.entity.custom.*;
 public class ModEvents {
     @SubscribeEvent
     public static void entityAttributeEvent(EntityAttributeCreationEvent event) {
+        event.put(ModEntities.ALICANTO.get(), AlicantoEntity.setAttributes());
         event.put(ModEntities.BEHEMOTH.get(), BehemothEntity.setAttributes());
         event.put(ModEntities.COLOSSAL_LOBSTER.get(), ColossalLobsterEntity.setAttributes());
         event.put(ModEntities.KRAKEN.get(), KrakenEntity.setAttributes());

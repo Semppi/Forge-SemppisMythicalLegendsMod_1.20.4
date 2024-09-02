@@ -28,6 +28,9 @@ public class ModRecipeProvider extends RecipeProvider implements IConditionBuild
 
         // Cooking recipes
         createCookingRecipe(recipeOutput, ModItems.RAW_PORKCHOP_PIECE.get(), ModItems.COOKED_PORKCHOP_PIECE.get(), 0.1f, 200, "cooked_porkchop_piece");
+        createCookingRecipe(recipeOutput, ModItems.RAW_PORKCHOP_CHUNK.get(), ModItems.COOKED_PORKCHOP_CHUNK.get(), 0.25f, 200, "cooked_porkchop_chunk");
+        createCookingRecipe(recipeOutput, ModItems.RAW_AVIAN_PIECE.get(), ModItems.COOKED_AVIAN_PIECE.get(), 0.1f, 200, "cooked_avian_piece");
+        createCookingRecipe(recipeOutput, ModItems.RAW_AVIAN_MEAT.get(), ModItems.COOKED_AVIAN_MEAT.get(), 0.25f, 200, "cooked_avian_meat");
         createCookingRecipe(recipeOutput, ModItems.HUMANOID_FLESH.get(), ModItems.HUMANOID_STEAK.get(), 0.25f, 200, "humanoid_steak");
         createCookingRecipe(recipeOutput, ModItems.HUMANOID_FLESH_PIECE.get(), ModItems.HUMANOID_STEAK_PIECE.get(), 0.1f, 200, "humanoid_steak_piece");
         createCookingRecipe(recipeOutput, ModItems.HUMANOID_FLESH_CHUNK.get(), ModItems.HUMANOID_STEAK_CHUNK.get(), 0.25f, 200, "humanoid_steak_chunk");
@@ -236,62 +239,138 @@ public class ModRecipeProvider extends RecipeProvider implements IConditionBuild
                 .unlockedBy("has_dried_kelp", has(Items.DRIED_KELP))
                 .save(recipeOutput, new ResourceLocation(SemppisMythicalLegendsMod.MOD_ID, "cooked_veggie_kelp_treat"));
 
-        // Shapeless recipes
+
+        // Shapeless recipe crafting a Raw Porkchop to 4 Raw Porkchop Piece
         ShapelessRecipeBuilder.shapeless(RecipeCategory.FOOD, ModItems.RAW_PORKCHOP_PIECE.get(), 4)
                 .requires(Items.PORKCHOP)
                 .unlockedBy(getHasName(Items.PORKCHOP), has(Items.PORKCHOP))
                 .save(recipeOutput, new ResourceLocation(SemppisMythicalLegendsMod.MOD_ID, "raw_porkchop_piece"));
 
+        // Shapeless recipe crafting a Cooked Porkchop to 4 Cooked Porkchop Piece
         ShapelessRecipeBuilder.shapeless(RecipeCategory.FOOD, ModItems.COOKED_PORKCHOP_PIECE.get(), 4)
                 .requires(Items.COOKED_PORKCHOP)
                 .unlockedBy(getHasName(Items.COOKED_PORKCHOP), has(Items.COOKED_PORKCHOP))
                 .save(recipeOutput, new ResourceLocation(SemppisMythicalLegendsMod.MOD_ID, "cooked_porkchop_piece"));
 
+        // Shapeless recipe crafting 4 Raw Porkchop Piece to a Raw Porkchop
         ShapelessRecipeBuilder.shapeless(RecipeCategory.FOOD, Items.PORKCHOP)
                 .requires(ModItems.RAW_PORKCHOP_PIECE.get(), 4)
                 .unlockedBy(getHasName(ModItems.RAW_PORKCHOP_PIECE.get()), has(ModItems.RAW_PORKCHOP_PIECE.get()))
                 .save(recipeOutput, new ResourceLocation("semppis_mythical_legends_mod", "porkchop"));
 
+        // Shapeless recipe crafting 4 Cooked Porkchop Piece to a Cooked Porkchop
         ShapelessRecipeBuilder.shapeless(RecipeCategory.FOOD, Items.COOKED_PORKCHOP)
                 .requires(ModItems.COOKED_PORKCHOP_PIECE.get(), 4)
                 .unlockedBy(getHasName(ModItems.COOKED_PORKCHOP_PIECE.get()), has(ModItems.COOKED_PORKCHOP_PIECE.get()))
                 .save(recipeOutput, new ResourceLocation("semppis_mythical_legends_mod", "cooked_porkchop"));
 
+        // Shapeless recipe crafting 4 Raw Porkchop to a Raw Porkchop Chunk
+        ShapelessRecipeBuilder.shapeless(RecipeCategory.FOOD, ModItems.RAW_PORKCHOP_CHUNK.get())
+                .requires(Items.PORKCHOP, 4)
+                .unlockedBy(getHasName(Items.PORKCHOP), has(Items.PORKCHOP))
+                .save(recipeOutput, new ResourceLocation(SemppisMythicalLegendsMod.MOD_ID, "raw_porkchop_to_chunk"));
+
+        // Shapeless recipe crafting 4 Cooked Porkchop to a Cooked Porkchop Chunk
+        ShapelessRecipeBuilder.shapeless(RecipeCategory.FOOD, ModItems.COOKED_PORKCHOP_CHUNK.get())
+                .requires(Items.COOKED_PORKCHOP, 4)
+                .unlockedBy(getHasName(Items.COOKED_PORKCHOP), has(Items.COOKED_PORKCHOP))
+                .save(recipeOutput, new ResourceLocation(SemppisMythicalLegendsMod.MOD_ID, "cooked_porkchop_to_chunk"));
+
+        // Shapeless recipe crafting a Raw Porkchop Chunk to 4 Raw Porkchop
+        ShapelessRecipeBuilder.shapeless(RecipeCategory.FOOD, Items.PORKCHOP, 4)
+                .requires(ModItems.RAW_PORKCHOP_CHUNK.get())
+                .unlockedBy(getHasName(ModItems.RAW_PORKCHOP_CHUNK.get()), has(ModItems.RAW_PORKCHOP_CHUNK.get()))
+                .save(recipeOutput, new ResourceLocation(SemppisMythicalLegendsMod.MOD_ID, "raw_porkchop_chunk_to_porkchop"));
+
+        // Shapeless recipe crafting a Cooked Porkchop Chunk to 4 Cooked Porkchop
+        ShapelessRecipeBuilder.shapeless(RecipeCategory.FOOD, Items.COOKED_PORKCHOP, 4)
+                .requires(ModItems.COOKED_PORKCHOP_CHUNK.get())
+                .unlockedBy(getHasName(ModItems.COOKED_PORKCHOP_CHUNK.get()), has(ModItems.COOKED_PORKCHOP_CHUNK.get()))
+                .save(recipeOutput, new ResourceLocation(SemppisMythicalLegendsMod.MOD_ID, "cooked_porkchop_chunk_to_cooked_porkchop"));
+
+        /////////////////////////////////////////////////////////////////////////////////
+
+        // Shapeless recipe crafting a Raw Chicken to 4 Raw Avian Piece
+        ShapelessRecipeBuilder.shapeless(RecipeCategory.FOOD, ModItems.RAW_AVIAN_PIECE.get(), 4)
+                .requires(Items.CHICKEN)
+                .unlockedBy(getHasName(Items.CHICKEN), has(Items.CHICKEN))
+                .save(recipeOutput, new ResourceLocation(SemppisMythicalLegendsMod.MOD_ID, "raw_chicken_to_pieces"));
+
+        // Shapeless recipe crafting a Cooked Chicken to 4 Cooked Avian Piece
+        ShapelessRecipeBuilder.shapeless(RecipeCategory.FOOD, ModItems.COOKED_AVIAN_PIECE.get(), 4)
+                .requires(Items.COOKED_CHICKEN)
+                .unlockedBy(getHasName(Items.COOKED_CHICKEN), has(Items.COOKED_CHICKEN))
+                .save(recipeOutput, new ResourceLocation(SemppisMythicalLegendsMod.MOD_ID, "cooked_chicken_to_pieces"));
+
+        // Shapeless recipe crafting Raw Avian Meat to 4 Raw Avian Piece
+        ShapelessRecipeBuilder.shapeless(RecipeCategory.FOOD, ModItems.RAW_AVIAN_PIECE.get(), 4)
+                .requires(ModItems.RAW_AVIAN_MEAT.get())
+                .unlockedBy(getHasName(ModItems.RAW_AVIAN_MEAT.get()), has(ModItems.RAW_AVIAN_MEAT.get()))
+                .save(recipeOutput, new ResourceLocation(SemppisMythicalLegendsMod.MOD_ID, "raw_avian_to_pieces"));
+
+        // Shapeless recipe crafting Cooked Avian Meat to 4 Cooked Avian Piece
+        ShapelessRecipeBuilder.shapeless(RecipeCategory.FOOD, ModItems.COOKED_AVIAN_PIECE.get(), 4)
+                .requires(ModItems.COOKED_AVIAN_MEAT.get())
+                .unlockedBy(getHasName(ModItems.COOKED_AVIAN_MEAT.get()), has(ModItems.COOKED_AVIAN_MEAT.get()))
+                .save(recipeOutput, new ResourceLocation(SemppisMythicalLegendsMod.MOD_ID, "cooked_avian_to_pieces"));
+
+        // Shapeless recipe crafting 4 Raw Avian Piece to a Raw Avian Meat
+        ShapelessRecipeBuilder.shapeless(RecipeCategory.FOOD, ModItems.RAW_AVIAN_MEAT.get())
+                .requires(ModItems.RAW_AVIAN_PIECE.get(), 4)
+                .unlockedBy(getHasName(ModItems.RAW_AVIAN_PIECE.get()), has(ModItems.RAW_AVIAN_PIECE.get()))
+                .save(recipeOutput, new ResourceLocation(SemppisMythicalLegendsMod.MOD_ID, "pieces_to_raw_avian_meat"));
+
+        // Shapeless recipe crafting 4 Cooked Avian Piece to a Cooked Avian Meat
+        ShapelessRecipeBuilder.shapeless(RecipeCategory.FOOD, ModItems.COOKED_AVIAN_MEAT.get())
+                .requires(ModItems.COOKED_AVIAN_PIECE.get(), 4)
+                .unlockedBy(getHasName(ModItems.COOKED_AVIAN_PIECE.get()), has(ModItems.COOKED_AVIAN_PIECE.get()))
+                .save(recipeOutput, new ResourceLocation(SemppisMythicalLegendsMod.MOD_ID, "pieces_to_cooked_avian_meat"));
+
+        /////////////////////////////////////////////////////////////////////////////////
+
+        // Shapeless recipe crafting a Humanoid Flesh to 4 Humanoid Flesh Piece
         ShapelessRecipeBuilder.shapeless(RecipeCategory.FOOD, ModItems.HUMANOID_FLESH_PIECE.get(), 4)
                 .requires(ModItems.HUMANOID_FLESH.get())
                 .unlockedBy(getHasName(ModItems.HUMANOID_FLESH.get()), has(ModItems.HUMANOID_FLESH.get()))
                 .save(recipeOutput, new ResourceLocation(SemppisMythicalLegendsMod.MOD_ID, "humanoid_flesh_to_pieces"));
 
+        // Shapeless recipe crafting a Humanoid Steak to 4 Humanoid Steak Piece
         ShapelessRecipeBuilder.shapeless(RecipeCategory.FOOD, ModItems.HUMANOID_STEAK_PIECE.get(), 4)
                 .requires(ModItems.HUMANOID_STEAK.get())
                 .unlockedBy(getHasName(ModItems.HUMANOID_STEAK.get()), has(ModItems.HUMANOID_STEAK.get()))
                 .save(recipeOutput, new ResourceLocation(SemppisMythicalLegendsMod.MOD_ID, "humanoid_steak_to_pieces"));
 
+        // Shapeless recipe crafting 4 Humanoid Flesh Piece to a Humanoid Flesh
         ShapelessRecipeBuilder.shapeless(RecipeCategory.FOOD, ModItems.HUMANOID_FLESH.get())
                 .requires(ModItems.HUMANOID_FLESH_PIECE.get(), 4)
                 .unlockedBy(getHasName(ModItems.HUMANOID_FLESH_PIECE.get()), has(ModItems.HUMANOID_FLESH_PIECE.get()))
                 .save(recipeOutput, new ResourceLocation(SemppisMythicalLegendsMod.MOD_ID, "pieces_to_humanoid_flesh"));
 
+        // Shapeless recipe crafting 4 Humanoid Steak Piece to a Humanoid Steak
         ShapelessRecipeBuilder.shapeless(RecipeCategory.FOOD, ModItems.HUMANOID_STEAK.get())
                 .requires(ModItems.HUMANOID_STEAK_PIECE.get(), 4)
                 .unlockedBy(getHasName(ModItems.HUMANOID_STEAK_PIECE.get()), has(ModItems.HUMANOID_STEAK_PIECE.get()))
                 .save(recipeOutput, new ResourceLocation(SemppisMythicalLegendsMod.MOD_ID, "pieces_to_humanoid_steak"));
 
+        // Shapeless recipe crafting 4 Humanoid Flesh to a Humanoid Flesh Chunk
         ShapelessRecipeBuilder.shapeless(RecipeCategory.FOOD, ModItems.HUMANOID_FLESH_CHUNK.get())
                 .requires(ModItems.HUMANOID_FLESH.get(), 4)
                 .unlockedBy(getHasName(ModItems.HUMANOID_FLESH.get()), has(ModItems.HUMANOID_FLESH.get()))
                 .save(recipeOutput, new ResourceLocation(SemppisMythicalLegendsMod.MOD_ID, "humanoid_flesh_to_chunk"));
 
+        // Shapeless recipe crafting 4 Humanoid Steak to a Humanoid Steak Chunk
         ShapelessRecipeBuilder.shapeless(RecipeCategory.FOOD, ModItems.HUMANOID_STEAK_CHUNK.get())
                 .requires(ModItems.HUMANOID_STEAK.get(), 4)
                 .unlockedBy(getHasName(ModItems.HUMANOID_STEAK.get()), has(ModItems.HUMANOID_STEAK.get()))
                 .save(recipeOutput, new ResourceLocation(SemppisMythicalLegendsMod.MOD_ID, "humanoid_steak_to_chunk"));
 
+        // Shapeless recipe crafting a Humanoid Flesh Chunk to 4 Humanoid Flesh
         ShapelessRecipeBuilder.shapeless(RecipeCategory.FOOD, ModItems.HUMANOID_FLESH.get(), 4)
                 .requires(ModItems.HUMANOID_FLESH_CHUNK.get())
                 .unlockedBy(getHasName(ModItems.HUMANOID_FLESH_CHUNK.get()), has(ModItems.HUMANOID_FLESH_CHUNK.get()))
                 .save(recipeOutput, new ResourceLocation(SemppisMythicalLegendsMod.MOD_ID, "chunk_to_humanoid_flesh"));
 
+        // Shapeless recipe crafting a Humanoid Steak Chunk to 4 Humanoid Steak
         ShapelessRecipeBuilder.shapeless(RecipeCategory.FOOD, ModItems.HUMANOID_STEAK.get(), 4)
                 .requires(ModItems.HUMANOID_STEAK_CHUNK.get())
                 .unlockedBy(getHasName(ModItems.HUMANOID_STEAK_CHUNK.get()), has(ModItems.HUMANOID_STEAK_CHUNK.get()))

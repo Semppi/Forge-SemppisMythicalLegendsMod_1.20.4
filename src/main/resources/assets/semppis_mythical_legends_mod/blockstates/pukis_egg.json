@@ -1,0 +1,8 @@
+{
+  "variants": {
+    "facing=north": { "model": "semppis_mythical_legends_mod:block/pukis_egg" },
+    "facing=east": { "model": "semppis_mythical_legends_mod:block/pukis_egg", "y": 90 },
+    "facing=south": { "model": "semppis_mythical_legends_mod:block/pukis_egg", "y": 180 },
+    "facing=west": { "model": "semppis_mythical_legends_mod:block/pukis_egg", "y": 270 }
+  }
+}

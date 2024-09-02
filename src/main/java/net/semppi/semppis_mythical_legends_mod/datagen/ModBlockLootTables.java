@@ -21,7 +21,15 @@ public class ModBlockLootTables extends BlockLootSubProvider {
 
     @Override
     protected void generate() {
+        this.add(ModBlocks.PUKIS_EGG.get(), block -> createPukisEggDrop());
         this.add(ModBlocks.WENDIGO_SKULL.get(), block -> createWendigoSkullDrop());
+    }
+
+    private LootTable.Builder createPukisEggDrop() {
+        return LootTable.lootTable()
+                .withPool(LootPool.lootPool()
+                        .setRolls(ConstantValue.exactly(1))
+                        .add(LootItem.lootTableItem(ModItems.PUKIS_EGG_ITEM.get())));
     }
 
     private LootTable.Builder createWendigoSkullDrop() {

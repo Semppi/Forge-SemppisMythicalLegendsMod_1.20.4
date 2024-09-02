@@ -35,7 +35,7 @@ import net.minecraft.world.level.ServerLevelAccessor;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.scores.PlayerTeam;
 import net.minecraftforge.event.ForgeEventFactory;
-import net.semppi.semppis_mythical_legends_mod.entity.variant.PukisVariant;
+import net.semppi.semppis_mythical_legends_mod.entity.variant.WendigoVariant;
 import net.semppi.semppis_mythical_legends_mod.item.ModItems;
 import org.jetbrains.annotations.Nullable;
 import software.bernie.geckolib.animatable.GeoEntity;
@@ -63,7 +63,7 @@ public class WendigoEntity extends TamableAnimal implements GeoEntity, PlayerRid
     private boolean isJumping;
     private float playerJumpPendingScale;
     protected boolean allowStandSliding;
-    private boolean isTransformed = false; // Indicates if Wendigo is in transformation mode
+    private boolean isTransformed = false;
 
     public WendigoEntity(EntityType<? extends TamableAnimal> entityType, Level level) {
         super(entityType, level);
@@ -84,6 +84,7 @@ public class WendigoEntity extends TamableAnimal implements GeoEntity, PlayerRid
     @Override
     protected void registerGoals() {
         this.goalSelector.addGoal(1, new FloatGoal(this));
+        this.goalSelector.addGoal(1, new ClimbOnTopOfPowderSnowGoal(this, this.level()));
         this.goalSelector.addGoal(1, new SitWhenOrderedToGoal(this));
         this.goalSelector.addGoal(1, new MeleeAttackGoal(this, 1.2D, false));
         this.goalSelector.addGoal(2, new LookAtPlayerGoal(this, Player.class, 8.0F));
@@ -96,15 +97,15 @@ public class WendigoEntity extends TamableAnimal implements GeoEntity, PlayerRid
         this.targetSelector.addGoal(1, new OwnerHurtByTargetGoal(this));
         this.targetSelector.addGoal(1, new OwnerHurtTargetGoal(this));
         this.targetSelector.addGoal(1, (new HurtByTargetGoal(this)));
-        this.targetSelector.addGoal(1, new NearestAttackableTargetGoal<>(this, Player.class, true));
-        this.targetSelector.addGoal(1, new NearestAttackableTargetGoal<>(this, AbstractVillager.class, true));
-        this.targetSelector.addGoal(1, new NearestAttackableTargetGoal<>(this, AbstractIllager.class, true));
-        this.targetSelector.addGoal(2, new NearestAttackableTargetGoal<>(this, SatyrEntity.class, true));
-        this.targetSelector.addGoal(2, new NearestAttackableTargetGoal<>(this, Pig.class, true));
-        this.targetSelector.addGoal(2, new NearestAttackableTargetGoal<>(this, Cow.class, true));
-        this.targetSelector.addGoal(3, new NearestAttackableTargetGoal<>(this, Sheep.class, true));
-        this.targetSelector.addGoal(3, new NearestAttackableTargetGoal<>(this, Chicken.class, true));
-        this.targetSelector.addGoal(3, new NearestAttackableTargetGoal<>(this, Rabbit.class, true));
+        this.targetSelector.addGoal(2, new NearestAttackableTargetGoal<>(this, Player.class, true));
+        this.targetSelector.addGoal(2, new NearestAttackableTargetGoal<>(this, AbstractVillager.class, true));
+        this.targetSelector.addGoal(2, new NearestAttackableTargetGoal<>(this, AbstractIllager.class, true));
+        this.targetSelector.addGoal(3, new NearestAttackableTargetGoal<>(this, SatyrEntity.class, true));
+        this.targetSelector.addGoal(3, new NearestAttackableTargetGoal<>(this, Pig.class, true));
+        this.targetSelector.addGoal(3, new NearestAttackableTargetGoal<>(this, Cow.class, true));
+        this.targetSelector.addGoal(4, new NearestAttackableTargetGoal<>(this, Sheep.class, true));
+        this.targetSelector.addGoal(4, new NearestAttackableTargetGoal<>(this, Chicken.class, true));
+        this.targetSelector.addGoal(4, new NearestAttackableTargetGoal<>(this, Rabbit.class, true));
         this.targetSelector.addGoal(5, new NearestAttackableTargetGoal<>(this, Fox.class, true));
         this.targetSelector.addGoal(5, new NearestAttackableTargetGoal<>(this, Wolf.class, true));
         this.targetSelector.addGoal(5, new NearestAttackableTargetGoal<>(this, AbstractHorse.class, true));
@@ -185,6 +186,10 @@ public class WendigoEntity extends TamableAnimal implements GeoEntity, PlayerRid
     @Override
     protected SoundEvent getDeathSound() {
         return SoundEvents.HORSE_DEATH;
+    }
+
+    protected void playJumpSound() {
+        this.playSound(SoundEvents.HORSE_JUMP, 0.4F, 1.0F);
     }
 
     @Override
@@ -357,6 +362,13 @@ public class WendigoEntity extends TamableAnimal implements GeoEntity, PlayerRid
                 this.playerJumpPendingScale = 0.0F;
             }
         }
+
+        // Control fall speed if the entity is in the air
+        if (!this.onGround() && this.getDeltaMovement().y < 0) {
+            Vec3 velocity = this.getDeltaMovement();
+            double reducedFallSpeed = velocity.y * 0.8; // Adjust this factor as needed
+            this.setDeltaMovement(velocity.x, reducedFallSpeed, velocity.z);
+        }
     }
 
     protected Vec2 getRiddenRotation(LivingEntity entity) {
@@ -472,29 +484,25 @@ public class WendigoEntity extends TamableAnimal implements GeoEntity, PlayerRid
         }
     }
 
-    protected void playJumpSound() {
-        this.playSound(SoundEvents.HORSE_JUMP, 0.4F, 1.0F);
-    }
-
     /* VARIANTS */
     @Override
     public SpawnGroupData finalizeSpawn(ServerLevelAccessor serverLevelAccessor, DifficultyInstance difficultyInstance,
                                         MobSpawnType mobSpawnType, @Nullable SpawnGroupData spawnGroupData,
                                         @Nullable CompoundTag compoundTag) {
-        PukisVariant variant = PukisVariant.getRandomVariant();
+        WendigoVariant variant = WendigoVariant.getRandomVariant();
         setVariant(variant);
         return super.finalizeSpawn(serverLevelAccessor, difficultyInstance, mobSpawnType, spawnGroupData, compoundTag);
     }
 
-    public PukisVariant getVariant() {
-        return PukisVariant.byId(this.getTypeVariant() & 255);
+    public WendigoVariant getVariant() {
+        return WendigoVariant.byId(this.getTypeVariant() & 255);
     }
 
     private int getTypeVariant() {
         return this.entityData.get(DATA_ID_TYPE_VARIANT);
     }
 
-    private void setVariant(PukisVariant variant) {
+    private void setVariant(WendigoVariant variant) {
         this.entityData.set(DATA_ID_TYPE_VARIANT, variant.getId() & 255);
     }
 

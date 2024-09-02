@@ -9,7 +9,7 @@
   ],
   "spawners": {
     "type": "semppis_mythical_legends_mod:colossal_lobster",
-    "weight": 15,
+    "weight": 1,
     "minCount": 1,
     "maxCount": 1
   }

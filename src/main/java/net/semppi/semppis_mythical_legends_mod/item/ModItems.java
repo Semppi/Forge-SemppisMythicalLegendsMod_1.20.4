@@ -9,6 +9,7 @@ import net.minecraftforge.registries.RegistryObject;
 import net.semppi.semppis_mythical_legends_mod.SemppisMythicalLegendsMod;
 import net.semppi.semppis_mythical_legends_mod.block.ModBlocks;
 import net.semppi.semppis_mythical_legends_mod.entity.ModEntities;
+import net.semppi.semppis_mythical_legends_mod.item.custom.PukisEggItem;
 import net.semppi.semppis_mythical_legends_mod.item.custom.WendigoSkullItem;
 import net.semppi.semppis_mythical_legends_mod.item.custom.WrappedPukisItem;
 
@@ -42,7 +43,7 @@ public class ModItems {
 
 
     public static final RegistryObject<Item> ALICANTO_SPAWN_EGG = ITEMS.register("alicanto_spawn_egg",
-            () -> new ForgeSpawnEggItem(ModEntities.LOVELAND_FROGMAN, 0xF2AE3E, 0x51BC6D, new Item.Properties()));
+            () -> new ForgeSpawnEggItem(ModEntities.ALICANTO, 0xF2AE3E, 0x51BC6D, new Item.Properties()));
 
     public static final RegistryObject<Item> BEHEMOTH_SPAWN_EGG = ITEMS.register("behemoth_spawn_egg",
             () -> new ForgeSpawnEggItem(ModEntities.BEHEMOTH, 0x645137, 0x433420, new Item.Properties()));
@@ -85,6 +86,9 @@ public class ModItems {
 
     public static final RegistryObject<Item> WRAPPED_PUKIS_ITEM = ITEMS.register("wrapped_pukis",
             () -> new WrappedPukisItem(new Item.Properties()));
+
+    public static final RegistryObject<Item> PUKIS_EGG_ITEM = ITEMS.register("pukis_egg",
+            () -> new PukisEggItem(ModBlocks.PUKIS_EGG.get(), new Item.Properties()));
 
     public static final RegistryObject<Item> WENDIGO_SKULL_ITEM = ITEMS.register("wendigo_skull_item",
             () -> new WendigoSkullItem(ModBlocks.WENDIGO_SKULL.get(), new Item.Properties()));
@@ -158,6 +162,24 @@ public class ModItems {
 
     public static final RegistryObject<Item> COOKED_PORKCHOP_PIECE = ITEMS.register("cooked_porkchop_piece",
             () -> new Item(new Item.Properties().food(ModFoods.COOKED_PORKCHOP_PIECE)));
+
+    public static final RegistryObject<Item> RAW_PORKCHOP_CHUNK = ITEMS.register("raw_porkchop_chunk",
+            () -> new Item(new Item.Properties().food(ModFoods.RAW_PORKCHOP_CHUNK)));
+
+    public static final RegistryObject<Item> COOKED_PORKCHOP_CHUNK = ITEMS.register("cooked_porkchop_chunk",
+            () -> new Item(new Item.Properties().food(ModFoods.COOKED_PORKCHOP_CHUNK)));
+
+    public static final RegistryObject<Item> RAW_AVIAN_PIECE = ITEMS.register("raw_avian_piece",
+            () -> new Item(new Item.Properties().food(ModFoods.RAW_AVIAN_PIECE)));
+
+    public static final RegistryObject<Item> COOKED_AVIAN_PIECE = ITEMS.register("cooked_avian_piece",
+            () -> new Item(new Item.Properties().food(ModFoods.COOKED_AVIAN_PIECE)));
+
+    public static final RegistryObject<Item> RAW_AVIAN_MEAT = ITEMS.register("raw_avian_meat",
+            () -> new Item(new Item.Properties().food(ModFoods.RAW_AVIAN_MEAT)));
+
+    public static final RegistryObject<Item> COOKED_AVIAN_MEAT = ITEMS.register("cooked_avian_meat",
+            () -> new Item(new Item.Properties().food(ModFoods.COOKED_AVIAN_MEAT)));
 
     public static final RegistryObject<Item> HUMANOID_FLESH_PIECE = ITEMS.register("humanoid_flesh_piece",
             () -> new Item(new Item.Properties().food(ModFoods.HUMANOID_FLESH_PIECE)));

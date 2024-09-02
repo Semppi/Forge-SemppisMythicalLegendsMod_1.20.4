@@ -185,7 +185,7 @@ public class SatyrEntity extends TamableAnimal implements GeoEntity {
         return 0.2F;
     }
     /// ToDo: Add the looting enchantment effect to satyrs drop for humanoid flesh if killed with the looting enchant
-    /// ToDo: Add humanoid flesh to drop humanoid steak if entity is burning for drop
+    /// ToDo: Add humanoid flesh to drop humanoid steak if entity is burning for a drop
 
     @Override
     protected void dropFromLootTable(DamageSource source, boolean causedByPlayer) {

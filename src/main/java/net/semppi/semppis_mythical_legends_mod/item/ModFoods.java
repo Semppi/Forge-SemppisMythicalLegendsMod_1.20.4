@@ -52,6 +52,20 @@ public class ModFoods {
 
     public static final FoodProperties COOKED_PORKCHOP_PIECE = new FoodProperties.Builder().nutrition(2).saturationMod(3.2f).meat().build();
 
+    public static final FoodProperties RAW_PORKCHOP_CHUNK = new FoodProperties.Builder().meat().build();
+
+    public static final FoodProperties COOKED_PORKCHOP_CHUNK = new FoodProperties.Builder().meat().build();
+
+    public static final FoodProperties RAW_AVIAN_PIECE = new FoodProperties.Builder().nutrition(1).saturationMod(0.2f).meat()
+            .effect(() -> new MobEffectInstance(MobEffects.HUNGER, 160), 0.2f).build();
+
+    public static final FoodProperties COOKED_AVIAN_PIECE = new FoodProperties.Builder().nutrition(1).saturationMod(1.8f).meat().build();
+
+    public static final FoodProperties RAW_AVIAN_MEAT = new FoodProperties.Builder().nutrition(2).saturationMod(1.2f).meat()
+            .effect(() -> new MobEffectInstance(MobEffects.HUNGER, 600), 0.3f).build();
+
+    public static final FoodProperties COOKED_AVIAN_MEAT = new FoodProperties.Builder().nutrition(6).saturationMod(7.2f).meat().build();
+
     public static final FoodProperties HUMANOID_FLESH_PIECE = new FoodProperties.Builder().nutrition(1).saturationMod(0.7f).meat().build();
 
     public static final FoodProperties HUMANOID_STEAK_PIECE = new FoodProperties.Builder().nutrition(2).saturationMod(3.2f).meat().build();

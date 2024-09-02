@@ -3,7 +3,10 @@ package net.semppi.semppis_mythical_legends_mod.entity.client;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.util.Mth;
 import net.semppi.semppis_mythical_legends_mod.SemppisMythicalLegendsMod;
+import net.semppi.semppis_mythical_legends_mod.entity.custom.PukisEntity;
 import net.semppi.semppis_mythical_legends_mod.entity.custom.WendigoEntity;
+import net.semppi.semppis_mythical_legends_mod.entity.variant.PukisVariant;
+import net.semppi.semppis_mythical_legends_mod.entity.variant.WendigoVariant;
 import software.bernie.geckolib.constant.DataTickets;
 import software.bernie.geckolib.core.animatable.model.CoreGeoBone;
 import software.bernie.geckolib.core.animation.AnimationState;
@@ -17,8 +20,10 @@ public class WendigoModel extends GeoModel<WendigoEntity> {
     }
 
     @Override
-    public ResourceLocation getTextureResource(WendigoEntity animatable) {
-        return new ResourceLocation(SemppisMythicalLegendsMod.MOD_ID, "textures/entity/wendigo_brown.png");
+    public ResourceLocation getTextureResource(WendigoEntity entity) {
+        WendigoVariant variant = entity.getVariant();
+        String variantName = variant.name().toLowerCase();
+        return new ResourceLocation(SemppisMythicalLegendsMod.MOD_ID, "textures/entity/wendigo_" + variantName + ".png");
     }
 
     @Override
