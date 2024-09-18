@@ -21,9 +21,11 @@ import net.minecraft.world.entity.monster.Pillager;
 import net.minecraft.world.entity.monster.warden.Warden;
 import net.minecraft.world.entity.npc.AbstractVillager;
 import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.state.BlockState;
 import net.semppi.semppis_mythical_legends_mod.entity.ModEntities;
+import net.semppi.semppis_mythical_legends_mod.item.ModItems;
 import org.jetbrains.annotations.Nullable;
 import software.bernie.geckolib.animatable.GeoEntity;
 import software.bernie.geckolib.core.animatable.GeoAnimatable;
@@ -115,6 +117,17 @@ public class BehemothEntity extends Animal implements GeoEntity {
 
     protected float getSoundVolume() {
         return 5.2F;
+    }
+
+    @Override
+    protected void dropFromLootTable(DamageSource source, boolean causedByPlayer) {
+        // Drop raw beef chunk
+        int dropCount = this.random.nextInt(26) + 9; // Randomly generate a number
+        for (int i = 0; i < dropCount; i++) {
+            this.spawnAtLocation(new ItemStack(ModItems.RAW_BEEF_CHUNK.get()));
+        }
+
+        super.dropFromLootTable(source, causedByPlayer);
     }
 
 }

@@ -20,6 +20,10 @@ public class ModFoods {
 
     public static final FoodProperties RICOTTA_CHEESE = new FoodProperties.Builder().nutrition(2).saturationMod(1.0f).build();
 
+    public static final FoodProperties FRIED_EGG = new FoodProperties.Builder().nutrition(2).saturationMod(1.0f).build();
+
+    public static final FoodProperties BUTTER = new FoodProperties.Builder().nutrition(2).saturationMod(1.0f).build();
+
     public static final FoodProperties SWEET_BERRY_JAM = new FoodProperties.Builder().nutrition(6).saturationMod(1.7f).build();
 
     public static final FoodProperties CHOCOLATE_BUTTER = new FoodProperties.Builder().nutrition(2).saturationMod(2.4f).build();
@@ -48,6 +52,14 @@ public class ModFoods {
 
     public static final FoodProperties COOKED_VEGGIE_KELP_TREAT = new FoodProperties.Builder().nutrition(19).saturationMod(21.0f).build();
 
+    public static final FoodProperties RAW_BEEF_PIECE = new FoodProperties.Builder().nutrition(1).saturationMod(0.7f).meat().build();
+
+    public static final FoodProperties COOKED_STEAK_PIECE = new FoodProperties.Builder().nutrition(2).saturationMod(3.2f).meat().build();
+
+    public static final FoodProperties RAW_BEEF_CHUNK = new FoodProperties.Builder().meat().build();
+
+    public static final FoodProperties COOKED_STEAK_CHUNK = new FoodProperties.Builder().meat().build();
+
     public static final FoodProperties RAW_PORKCHOP_PIECE = new FoodProperties.Builder().nutrition(1).saturationMod(0.7f).meat().build();
 
     public static final FoodProperties COOKED_PORKCHOP_PIECE = new FoodProperties.Builder().nutrition(2).saturationMod(3.2f).meat().build();
@@ -55,6 +67,14 @@ public class ModFoods {
     public static final FoodProperties RAW_PORKCHOP_CHUNK = new FoodProperties.Builder().meat().build();
 
     public static final FoodProperties COOKED_PORKCHOP_CHUNK = new FoodProperties.Builder().meat().build();
+
+    public static final FoodProperties RAW_MUTTON_PIECE = new FoodProperties.Builder().nutrition(1).saturationMod(0.7f).meat().build();
+
+    public static final FoodProperties COOKED_MUTTON_PIECE = new FoodProperties.Builder().nutrition(2).saturationMod(3.2f).meat().build();
+
+    public static final FoodProperties RAW_MUTTON_CHUNK = new FoodProperties.Builder().meat().build();
+
+    public static final FoodProperties COOKED_MUTTON_CHUNK = new FoodProperties.Builder().meat().build();
 
     public static final FoodProperties RAW_AVIAN_PIECE = new FoodProperties.Builder().nutrition(1).saturationMod(0.2f).meat()
             .effect(() -> new MobEffectInstance(MobEffects.HUNGER, 160), 0.2f).build();
@@ -65,6 +85,11 @@ public class ModFoods {
             .effect(() -> new MobEffectInstance(MobEffects.HUNGER, 600), 0.3f).build();
 
     public static final FoodProperties COOKED_AVIAN_MEAT = new FoodProperties.Builder().nutrition(6).saturationMod(7.2f).meat().build();
+
+    public static final FoodProperties RAW_AVIAN_CHUNK = new FoodProperties.Builder().meat()
+            .effect(() -> new MobEffectInstance(MobEffects.HUNGER, 600), 0.3f).build();
+
+    public static final FoodProperties COOKED_AVIAN_CHUNK = new FoodProperties.Builder().meat().build();
 
     public static final FoodProperties HUMANOID_FLESH_PIECE = new FoodProperties.Builder().nutrition(1).saturationMod(0.7f).meat().build();
 

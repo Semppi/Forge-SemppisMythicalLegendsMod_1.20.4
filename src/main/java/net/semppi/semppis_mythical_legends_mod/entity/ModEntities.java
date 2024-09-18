@@ -51,7 +51,7 @@ public class ModEntities {
 
     public static final RegistryObject<EntityType<AlicantoEntity>> ALICANTO =
             ENTITY_TYPES.register("alicanto", () -> EntityType.Builder.of(AlicantoEntity::new, MobCategory.CREATURE)
-                    .sized(0.5f, 1.8f).build("alicanto"));
+                    .sized(0.6f, 1.4f).build("alicanto"));
 
 
     public static void register(IEventBus eventBus) {

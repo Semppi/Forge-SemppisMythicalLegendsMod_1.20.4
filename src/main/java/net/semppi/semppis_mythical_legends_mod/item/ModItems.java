@@ -115,6 +115,12 @@ public class ModItems {
     public static final RegistryObject<Item> RICOTTA_CHEESE = ITEMS.register("ricotta_cheese",
             () -> new Item(new Item.Properties().food(ModFoods.RICOTTA_CHEESE)));
 
+    public static final RegistryObject<Item> FRIED_EGG = ITEMS.register("fried_egg",
+            () -> new Item(new Item.Properties().food(ModFoods.FRIED_EGG)));
+
+    public static final RegistryObject<Item> BUTTER = ITEMS.register("butter",
+            () -> new Item(new Item.Properties().food(ModFoods.BUTTER)));
+
     public static final RegistryObject<Item> SWEET_BERRY_JAM = ITEMS.register("sweet_berry_jam",
             () -> new Item(new Item.Properties().food(ModFoods.SWEET_BERRY_JAM)));
 
@@ -157,6 +163,18 @@ public class ModItems {
     public static final RegistryObject<Item> COOKED_VEGGIE_KELP_TREAT = ITEMS.register("cooked_veggie_kelp_treat",
             () -> new Item(new Item.Properties().food(ModFoods.COOKED_VEGGIE_KELP_TREAT)));
 
+    public static final RegistryObject<Item> RAW_BEEF_PIECE = ITEMS.register("raw_beef_piece",
+            () -> new Item(new Item.Properties().food(ModFoods.RAW_BEEF_PIECE)));
+
+    public static final RegistryObject<Item> COOKED_STEAK_PIECE = ITEMS.register("cooked_steak_piece",
+            () -> new Item(new Item.Properties().food(ModFoods.COOKED_STEAK_PIECE)));
+
+    public static final RegistryObject<Item> RAW_BEEF_CHUNK = ITEMS.register("raw_beef_chunk",
+            () -> new Item(new Item.Properties().food(ModFoods.RAW_BEEF_CHUNK)));
+
+    public static final RegistryObject<Item> COOKED_STEAK_CHUNK = ITEMS.register("cooked_steak_chunk",
+            () -> new Item(new Item.Properties().food(ModFoods.COOKED_STEAK_CHUNK)));
+
     public static final RegistryObject<Item> RAW_PORKCHOP_PIECE = ITEMS.register("raw_porkchop_piece",
             () -> new Item(new Item.Properties().food(ModFoods.RAW_PORKCHOP_PIECE)));
 
@@ -169,6 +187,18 @@ public class ModItems {
     public static final RegistryObject<Item> COOKED_PORKCHOP_CHUNK = ITEMS.register("cooked_porkchop_chunk",
             () -> new Item(new Item.Properties().food(ModFoods.COOKED_PORKCHOP_CHUNK)));
 
+    public static final RegistryObject<Item> RAW_MUTTON_PIECE = ITEMS.register("raw_mutton_piece",
+            () -> new Item(new Item.Properties().food(ModFoods.RAW_MUTTON_PIECE)));
+
+    public static final RegistryObject<Item> COOKED_MUTTON_PIECE = ITEMS.register("cooked_mutton_piece",
+            () -> new Item(new Item.Properties().food(ModFoods.COOKED_MUTTON_PIECE)));
+
+    public static final RegistryObject<Item> RAW_MUTTON_CHUNK = ITEMS.register("raw_mutton_chunk",
+            () -> new Item(new Item.Properties().food(ModFoods.RAW_MUTTON_CHUNK)));
+
+    public static final RegistryObject<Item> COOKED_MUTTON_CHUNK = ITEMS.register("cooked_mutton_chunk",
+            () -> new Item(new Item.Properties().food(ModFoods.COOKED_MUTTON_CHUNK)));
+
     public static final RegistryObject<Item> RAW_AVIAN_PIECE = ITEMS.register("raw_avian_piece",
             () -> new Item(new Item.Properties().food(ModFoods.RAW_AVIAN_PIECE)));
 
@@ -180,6 +210,12 @@ public class ModItems {
 
     public static final RegistryObject<Item> COOKED_AVIAN_MEAT = ITEMS.register("cooked_avian_meat",
             () -> new Item(new Item.Properties().food(ModFoods.COOKED_AVIAN_MEAT)));
+
+    public static final RegistryObject<Item> RAW_AVIAN_CHUNK = ITEMS.register("raw_avian_chunk",
+            () -> new Item(new Item.Properties().food(ModFoods.RAW_AVIAN_CHUNK)));
+
+    public static final RegistryObject<Item> COOKED_AVIAN_CHUNK = ITEMS.register("cooked_avian_chunk",
+            () -> new Item(new Item.Properties().food(ModFoods.COOKED_AVIAN_CHUNK)));
 
     public static final RegistryObject<Item> HUMANOID_FLESH_PIECE = ITEMS.register("humanoid_flesh_piece",
             () -> new Item(new Item.Properties().food(ModFoods.HUMANOID_FLESH_PIECE)));
