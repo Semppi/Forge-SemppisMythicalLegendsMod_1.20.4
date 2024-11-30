@@ -10,7 +10,6 @@ import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
 import net.semppi.semppis_mythical_legends_mod.SemppisMythicalLegendsMod;
 import net.semppi.semppis_mythical_legends_mod.commands.TransformHelper;
-import net.semppi.semppis_mythical_legends_mod.entity.TransformPlayerMount;
 
 @Mod.EventBusSubscriber(modid = SemppisMythicalLegendsMod.MOD_ID, bus = Mod.EventBusSubscriber.Bus.FORGE)
 public class DismountEventHandler {

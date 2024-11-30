@@ -28,7 +28,9 @@ import net.minecraftforge.fml.javafmlmod.FMLJavaModLoadingContext;
 import net.semppi.semppis_mythical_legends_mod.entity.ModEntities;
 import net.semppi.semppis_mythical_legends_mod.entity.custom.AlicantoEntity;
 import net.semppi.semppis_mythical_legends_mod.entity.custom.ColossalLobsterEntity;
+import net.semppi.semppis_mythical_legends_mod.entity.custom.ProtoWendigoEntity;
 import net.semppi.semppis_mythical_legends_mod.event.DismountEventHandler;
+import net.semppi.semppis_mythical_legends_mod.event.ModLivingDropsEvents;
 import net.semppi.semppis_mythical_legends_mod.event.PlayerRenderHandler;
 import net.semppi.semppis_mythical_legends_mod.event.TransformationEventHandler;
 import net.semppi.semppis_mythical_legends_mod.item.ModCreativeModeTabs;
@@ -57,6 +59,7 @@ public class SemppisMythicalLegendsMod {
         MinecraftForge.EVENT_BUS.addListener(this::onRegisterCommands);
         MinecraftForge.EVENT_BUS.register(new TransformationEventHandler());
         MinecraftForge.EVENT_BUS.register(new PlayerRenderHandler());
+        MinecraftForge.EVENT_BUS.register(ModLivingDropsEvents.class);
 
         modEventBus.addListener(this::commonSetup);
         MinecraftForge.EVENT_BUS.register(this);
@@ -87,6 +90,9 @@ public class SemppisMythicalLegendsMod {
         SpawnPlacements.register(ModEntities.ALICANTO.get(),
                 SpawnPlacements.Type.ON_GROUND, Heightmap.Types.MOTION_BLOCKING_NO_LEAVES,
                 AlicantoEntity::canAlicantoSpawn);
+        SpawnPlacements.register(ModEntities.PROTO_WENDIGO.get(),
+                SpawnPlacements.Type.ON_GROUND, Heightmap.Types.MOTION_BLOCKING_NO_LEAVES,
+                Animal::checkAnimalSpawnRules);
     }
 
     private void addCreative(final BuildCreativeModeTabContentsEvent event) {
@@ -110,6 +116,7 @@ public class SemppisMythicalLegendsMod {
             EntityRenderers.register(ModEntities.LOVELAND_FROGMAN.get(), LovelandFrogmanRenderer::new);
             EntityRenderers.register(ModEntities.MALPHAS.get(), MalphasRenderer::new);
             EntityRenderers.register(ModEntities.MANDRAKE.get(), MandrakeRenderer::new);
+            EntityRenderers.register(ModEntities.PROTO_WENDIGO.get(), ProtoWendigoRenderer::new);
             EntityRenderers.register(ModEntities.PUKIS.get(), PukisRenderer::new);
             EntityRenderers.register(ModEntities.SATYR.get(), SatyrRenderer::new);
             EntityRenderers.register(ModEntities.WENDIGO.get(), WendigoRenderer::new);

@@ -26,6 +26,9 @@ public class ModItems {
     public static final RegistryObject<Item> SATYR_HORN = ITEMS.register("satyr_horn",
             () -> new Item(new Item.Properties()));
 
+    public static final RegistryObject<Item> GHASTLY_TEETH = ITEMS.register("ghastly_teeth",
+            () -> new Item(new Item.Properties()));
+
     public static final RegistryObject<Item> FROG_BUCKET = ITEMS.register("frog_bucket",
             () -> new Item(new Item.Properties()));
 
@@ -65,6 +68,9 @@ public class ModItems {
 
     public static final RegistryObject<Item> PEIKKO_SPAWN_EGG = ITEMS.register("peikko_spawn_egg",
             () -> new ForgeSpawnEggItem(ModEntities.LOVELAND_FROGMAN, 0x666666, 0x2b582a, new Item.Properties()));
+
+    public static final RegistryObject<Item> PROTO_WENDIGO_SPAWN_EGG = ITEMS.register("proto_wendigo_spawn_egg",
+            () -> new ForgeSpawnEggItem(ModEntities.PROTO_WENDIGO, 0xababab, 0xa99393, new Item.Properties()));
 
     public static final RegistryObject<Item> PUKIS_SPAWN_EGG = ITEMS.register("pukis_spawn_egg",
             () -> new ForgeSpawnEggItem(ModEntities.PUKIS, 0x3b3497, 0x2c1830, new Item.Properties()));

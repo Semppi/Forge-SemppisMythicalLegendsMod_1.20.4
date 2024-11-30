@@ -75,6 +75,7 @@ public class ModCreativeModeTabs {
                         pOutput.accept(ModItems.MANDRAKE_ROOT.get());
                         pOutput.accept(ModItems.MANDRAKE_LEAF.get());
                         pOutput.accept(ModItems.SATYR_HORN.get());
+                        pOutput.accept(ModItems.GHASTLY_TEETH.get());
                         pOutput.accept(ModItems.FROG_BUCKET.get());
                         pOutput.accept(ModItems.BABY_TURTLE_BUCKET.get());
                         pOutput.accept(ModItems.LOBSTER_CRICKET_BUCKET.get());
@@ -88,6 +89,7 @@ public class ModCreativeModeTabs {
                         pOutput.accept(ModItems.LOVELAND_FROGMAN_SPAWN_EGG.get());
                         pOutput.accept(ModItems.MANDRAKE_SPAWN_EGG.get());
                         pOutput.accept(ModItems.PEIKKO_SPAWN_EGG.get());
+                        pOutput.accept(ModItems.PROTO_WENDIGO_SPAWN_EGG.get());
                         pOutput.accept(ModItems.PUKIS_SPAWN_EGG.get());
                         pOutput.accept(ModItems.RAINBOW_SERPENT_SPAWN_EGG.get());
                         pOutput.accept(ModItems.SATYR_SPAWN_EGG.get());

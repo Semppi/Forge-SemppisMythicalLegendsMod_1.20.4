@@ -53,6 +53,10 @@ public class ModEntities {
             ENTITY_TYPES.register("alicanto", () -> EntityType.Builder.of(AlicantoEntity::new, MobCategory.CREATURE)
                     .sized(0.6f, 1.4f).build("alicanto"));
 
+    public static final RegistryObject<EntityType<ProtoWendigoEntity>> PROTO_WENDIGO =
+            ENTITY_TYPES.register("proto_wendigo", () -> EntityType.Builder.of(ProtoWendigoEntity::new, MobCategory.CREATURE)
+                    .sized(0.5f, 1.9f).build("proto_wendigo"));
+
 
     public static void register(IEventBus eventBus) {
         ENTITY_TYPES.register(eventBus);

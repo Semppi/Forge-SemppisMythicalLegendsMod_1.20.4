@@ -109,6 +109,7 @@ public class WendigoEntity extends TamableAnimal implements GeoEntity, PlayerRid
         this.targetSelector.addGoal(5, new NearestAttackableTargetGoal<>(this, Fox.class, true));
         this.targetSelector.addGoal(5, new NearestAttackableTargetGoal<>(this, Wolf.class, true));
         this.targetSelector.addGoal(5, new NearestAttackableTargetGoal<>(this, AbstractHorse.class, true));
+        this.targetSelector.addGoal(6, new NearestAttackableTargetGoal<>(this, ProtoWendigoEntity.class, true));
         this.targetSelector.addGoal(6, new NearestAttackableTargetGoal<>(this, Zombie.class, true));
         this.targetSelector.addGoal(7, new NearestAttackableTargetGoal<>(this, WendigoEntity.class, true));
     }
