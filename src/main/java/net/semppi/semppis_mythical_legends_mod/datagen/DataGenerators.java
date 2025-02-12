@@ -7,15 +7,12 @@ import net.minecraft.data.loot.LootTableProvider;
 import net.minecraft.world.level.storage.loot.parameters.LootContextParamSets;
 import net.minecraftforge.common.data.ExistingFileHelper;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
-import net.minecraftforge.fml.common.Mod;
 import net.minecraftforge.data.event.GatherDataEvent;
-import net.semppi.semppis_mythical_legends_mod.SemppisMythicalLegendsMod;
 
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 
-@Mod.EventBusSubscriber(modid = SemppisMythicalLegendsMod.MOD_ID, bus = Mod.EventBusSubscriber.Bus.MOD)
 public class DataGenerators {
     @SubscribeEvent
     public static void gatherData(GatherDataEvent event) {
@@ -35,5 +32,7 @@ public class DataGenerators {
         ModBlockTagGenerator blockTagGenerator = generator.addProvider(event.includeServer(),
                 new ModBlockTagGenerator(packOutput, lookupProvider, existingFileHelper));
         generator.addProvider(event.includeServer(), new ModItemTagGenerator(packOutput, lookupProvider, blockTagGenerator.contentsGetter(), existingFileHelper));
+
+        generator.addProvider(event.includeServer(), new ModGlobalLootModifiersProvider(packOutput));
     }
 }

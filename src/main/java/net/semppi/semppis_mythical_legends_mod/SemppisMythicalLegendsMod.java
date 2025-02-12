@@ -16,9 +16,9 @@ import net.semppi.semppis_mythical_legends_mod.block.client.WendigoSkullRenderer
 import net.semppi.semppis_mythical_legends_mod.block.entity.ModBlockEntities;
 import net.semppi.semppis_mythical_legends_mod.commands.CancelTransformCommand;
 import net.semppi.semppis_mythical_legends_mod.commands.TransformCommand;
+import net.semppi.semppis_mythical_legends_mod.datagen.DataGenerators;
 import net.semppi.semppis_mythical_legends_mod.entity.EntitySpawnHandler;
 import net.semppi.semppis_mythical_legends_mod.entity.client.*;
-import net.minecraftforge.event.server.ServerStartingEvent;
 import net.minecraftforge.eventbus.api.IEventBus;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
@@ -27,14 +27,10 @@ import net.minecraftforge.fml.event.lifecycle.FMLCommonSetupEvent;
 import net.minecraftforge.fml.javafmlmod.FMLJavaModLoadingContext;
 import net.semppi.semppis_mythical_legends_mod.entity.ModEntities;
 import net.semppi.semppis_mythical_legends_mod.entity.custom.AlicantoEntity;
-import net.semppi.semppis_mythical_legends_mod.entity.custom.ColossalLobsterEntity;
-import net.semppi.semppis_mythical_legends_mod.entity.custom.ProtoWendigoEntity;
-import net.semppi.semppis_mythical_legends_mod.event.DismountEventHandler;
-import net.semppi.semppis_mythical_legends_mod.event.ModLivingDropsEvents;
-import net.semppi.semppis_mythical_legends_mod.event.PlayerRenderHandler;
-import net.semppi.semppis_mythical_legends_mod.event.TransformationEventHandler;
+import net.semppi.semppis_mythical_legends_mod.event.*;
 import net.semppi.semppis_mythical_legends_mod.item.ModCreativeModeTabs;
 import net.semppi.semppis_mythical_legends_mod.item.ModItems;
+import net.semppi.semppis_mythical_legends_mod.loot.ModLootModifiers;
 import net.semppi.semppis_mythical_legends_mod.sound.ModSounds;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -52,14 +48,17 @@ public class SemppisMythicalLegendsMod {
         ModCreativeModeTabs.register(modEventBus);
         ModItems.register(modEventBus);
         ModBlocks.register(modEventBus);
+        ModLootModifiers.register(modEventBus);
         ModBlockEntities.register(modEventBus);
         ModEntities.register(modEventBus);
         ModSounds.register(modEventBus);
+        modEventBus.addListener(DataGenerators::gatherData);
 
         MinecraftForge.EVENT_BUS.addListener(this::onRegisterCommands);
         MinecraftForge.EVENT_BUS.register(new TransformationEventHandler());
+        MinecraftForge.EVENT_BUS.register(new PlayerTeleportHandler());
         MinecraftForge.EVENT_BUS.register(new PlayerRenderHandler());
-        MinecraftForge.EVENT_BUS.register(ModLivingDropsEvents.class);
+        MinecraftForge.EVENT_BUS.register(new PlayerInputEventHandler());
 
         modEventBus.addListener(this::commonSetup);
         MinecraftForge.EVENT_BUS.register(this);

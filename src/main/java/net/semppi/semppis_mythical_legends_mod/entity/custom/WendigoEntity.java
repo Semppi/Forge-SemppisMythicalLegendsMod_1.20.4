@@ -195,7 +195,7 @@ public class WendigoEntity extends TamableAnimal implements GeoEntity, PlayerRid
 
     @Override
     protected float getSoundVolume() {
-        return 1.0F;
+        return 1.8F;
     }
 
     @Override

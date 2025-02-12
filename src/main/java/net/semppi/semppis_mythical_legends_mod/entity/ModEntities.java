@@ -57,6 +57,11 @@ public class ModEntities {
             ENTITY_TYPES.register("proto_wendigo", () -> EntityType.Builder.of(ProtoWendigoEntity::new, MobCategory.CREATURE)
                     .sized(0.5f, 1.9f).build("proto_wendigo"));
 
+    public static final RegistryObject<EntityType<TransformMountEntity>> TRANSFORM_MOUNT =
+            ENTITY_TYPES.register("transform_mount", () -> EntityType.Builder.of(
+                    (EntityType.EntityFactory<TransformMountEntity>) TransformMountEntity::new,
+                    MobCategory.MISC).sized(0.5f, 2.0f).build("transform_mount"));
+
 
     public static void register(IEventBus eventBus) {
         ENTITY_TYPES.register(eventBus);

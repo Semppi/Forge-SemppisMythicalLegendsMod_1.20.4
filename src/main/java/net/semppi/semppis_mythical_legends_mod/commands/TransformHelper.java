@@ -7,9 +7,15 @@ import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.Mob;
 import net.minecraft.world.entity.TamableAnimal;
+import net.minecraft.world.entity.ai.attributes.Attributes;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.level.Level;
 import net.semppi.semppis_mythical_legends_mod.entity.ModEntities;
+import net.semppi.semppis_mythical_legends_mod.entity.TransformMountEntity;
 import net.semppi.semppis_mythical_legends_mod.entity.TransformPlayerMount;
+import net.semppi.semppis_mythical_legends_mod.entity.custom.ProtoWendigoEntity;
 import net.semppi.semppis_mythical_legends_mod.entity.custom.WendigoEntity;
+import net.semppi.semppis_mythical_legends_mod.util.EntityAttributesRegistry;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -24,6 +30,7 @@ public class TransformHelper {
     private static final String TRANSFORMATION_KEY = "IsTransformed";
     private static final String TRANSFORMED_ENTITY_KEY = "TransformedEntity";
     private static final Set<EntityType<? extends Mob>> allowedTransformations = new HashSet<>();
+    private static final Map<UUID, Boolean> aiControlledPlayers = new ConcurrentHashMap<>();
 
     static {
         addAllowedTransformations();
@@ -121,6 +128,10 @@ public class TransformHelper {
         allowedTransformations.add(EntityType.ZOMBIFIED_PIGLIN);
     }
 
+    public static void setAIControlled(ServerPlayer player, boolean aiControlled) {
+        aiControlledPlayers.put(player.getUUID(), aiControlled);
+    }
+
     public static Map<UUID, Entity> getTransformedEntities() {
         return new HashMap<>(transformedEntities);  // Return a copy to prevent external modification
     }
@@ -169,24 +180,75 @@ public class TransformHelper {
         addAllowedTransformations();  // Ensure it's called on mod setup if needed
     }
 
+    public static void attachCustomMount(Player player, EntityType<?> entityType) {
+        Level level = player.level();
+
+        TransformMountEntity mount = new TransformMountEntity(ModEntities.TRANSFORM_MOUNT.get(), level, player);
+        mount.moveTo(player.getX(), player.getY(), player.getZ());
+        level.addFreshEntity(mount);
+
+        // Fetch attributes for the entity and adjust player speed
+        EntityAttributesRegistry.Attributes attributes = EntityAttributesRegistry.getAttributes(entityType);
+        if (attributes != null) {
+            player.getAttribute(Attributes.MOVEMENT_SPEED).setBaseValue(attributes.movementSpeed);
+        }
+
+        // Make the player invisible and mount the entity
+        player.setInvisible(true);
+        player.startRiding(mount);
+    }
+
+    public static void revertTransformation(Player player) {
+        // Dismount and remove the mount entity
+        if (player.isPassenger()) {
+            Entity mount = player.getVehicle();
+            if (mount instanceof TransformMountEntity) {
+                mount.remove(Entity.RemovalReason.DISCARDED);
+            }
+            player.stopRiding();
+        }
+
+        // Restore player visibility
+        player.setInvisible(false);
+    }
+
     public static Entity transformPlayer(ServerPlayer player, String entityTypeName) {
         UUID playerId = player.getUUID();
+
+        // Check if the player is already transformed
         if (transformedPlayers.getOrDefault(playerId, false)) {
             revertTransformation(player);
             return null;
         }
 
+        // Parse the entity type from the input name
         EntityType<?> rawType = EntityType.byString(entityTypeName).orElse(null);
         if (rawType == null) {
             player.displayClientMessage(Component.literal("Invalid entity type for transformation."), false);
             return null;
         }
 
+        // Ensure the transformation is allowed
         if (!allowedTransformations.contains(rawType)) {
             player.displayClientMessage(Component.literal("This entity type cannot be transformed into."), false);
             return null;
         }
 
+        // Handle transformation into Proto Wendigo
+        if (ModEntities.PROTO_WENDIGO.get().toString().equals(entityTypeName)) {
+            ProtoWendigoEntity protoWendigo = new ProtoWendigoEntity(ModEntities.PROTO_WENDIGO.get(), player.level());
+            protoWendigo.setTransformed(true, false, player); // Simplified transformation setup
+            protoWendigo.moveTo(player.getX(), player.getY(), player.getZ());
+            player.level().addFreshEntity(protoWendigo);
+            player.startRiding(protoWendigo, true);
+
+            // Track the transformation
+            transformedPlayers.put(playerId, true);
+            transformedEntities.put(playerId, protoWendigo);
+            return protoWendigo;
+        }
+
+        // Handle transformation into Wendigo
         if (rawType == ModEntities.WENDIGO.get()) {
             WendigoEntity wendigoEntity = new WendigoEntity((EntityType<? extends TamableAnimal>) rawType, player.level());
             wendigoEntity.setTransformed(true);
@@ -201,6 +263,7 @@ public class TransformHelper {
             return wendigoEntity;
         }
 
+        // Handle transformation into other allowed entity types
         TransformPlayerMount entity = new TransformPlayerMount((EntityType<? extends Mob>) rawType, player.level());
         entity.moveTo(player.getX(), player.getY(), player.getZ(), player.getYRot(), player.getXRot());
         player.level().addFreshEntity(entity);
@@ -229,10 +292,13 @@ public class TransformHelper {
             player.setInvisible(false);
             player.setInvulnerable(false);
             player.displayClientMessage(Component.literal("Transformation reverted."), true);
+
+            // Cleanup the transformed entity
             Entity entity = transformedEntities.remove(playerId);
-            if (entity != null) {
+            if (entity != null && !entity.isRemoved()) {
                 entity.remove(Entity.RemovalReason.DISCARDED);
             }
+
             transformedPlayers.remove(playerId);
         } else {
             player.displayClientMessage(Component.literal("No transformation to revert."), false);

@@ -38,45 +38,37 @@ public class TransformationEventHandler {
     public static void onPlayerTick(LivingEvent.LivingTickEvent event) {
         if (event.getEntity() instanceof ServerPlayer player) {
             UUID playerUUID = player.getUUID();
-
-            // Check if player is transformed
             if (TransformHelper.isPlayerTransformed(playerUUID)) {
-                // Remove DIG_SLOWDOWN effect if present
-                if (player.hasEffect(MobEffects.DIG_SLOWDOWN)) {
-                    player.removeEffect(MobEffects.DIG_SLOWDOWN);
-                }
-
-                // Adjust mining speed to negate the mount penalty
-                AttributeInstance attackSpeed = player.getAttribute(Attributes.ATTACK_SPEED);
-                if (attackSpeed != null) {
-                    AttributeModifier existingModifier = attackSpeed.getModifier(MOUNT_MINING_MODIFIER_ID);
-
-                    // Remove existing modifier if present
-                    if (existingModifier != null) {
-                        attackSpeed.removeModifier(existingModifier.getId());
-                    }
-
-                    // Add a modifier to negate the 5x penalty
-                    attackSpeed.addTransientModifier(new AttributeModifier(
-                            MOUNT_MINING_MODIFIER_ID,
-                            "Negate Mount Mining Penalty",
-                            4.0, // Additive multiplier to offset the penalty
-                            AttributeModifier.Operation.MULTIPLY_BASE
-                    ));
-                }
+                handleTransformationEffects(player);
             }
+        }
+    }
+
+    private static void handleTransformationEffects(ServerPlayer player) {
+        // Remove DIG_SLOWDOWN effect if present
+        player.removeEffect(MobEffects.DIG_SLOWDOWN);
+
+        // Adjust mining speed
+        AttributeInstance attackSpeed = player.getAttribute(Attributes.ATTACK_SPEED);
+        if (attackSpeed != null) {
+            attackSpeed.removeModifier(MOUNT_MINING_MODIFIER_ID);
+            attackSpeed.addTransientModifier(new AttributeModifier(
+                    MOUNT_MINING_MODIFIER_ID, "Negate Mount Mining Penalty", 4.0,
+                    AttributeModifier.Operation.MULTIPLY_BASE
+            ));
         }
     }
 
     @SubscribeEvent
     public static void onPlayerBreakSpeed(PlayerEvent.BreakSpeed event) {
+
         Player player = event.getEntity();
 
         // Check if the player is transformed
         if (player instanceof ServerPlayer serverPlayer && TransformHelper.isPlayerTransformed(serverPlayer.getUUID())) {
             // Negate the mounting mining penalty
             if (serverPlayer.isPassenger()) {
-                float adjustedSpeed = event.getOriginalSpeed() * 5.0f; // Compensate for the penalty (ensure it's enough)
+                float adjustedSpeed = event.getOriginalSpeed() * 5.0f; // Make this configurable if needed
                 event.setNewSpeed(adjustedSpeed);
 
                 // Debugging: Log the updated speed for verification
@@ -157,9 +149,9 @@ public class TransformationEventHandler {
     public void onPlayerDismount(LivingEvent.LivingTickEvent event) {
         if (event.getEntity() instanceof ServerPlayer player) {
             UUID playerUUID = player.getUUID();
-            if (TransformHelper.isPlayerTransformed(playerUUID)) {
-                Entity transformedEntity = TransformHelper.getTransformedEntity(playerUUID);
-                if (transformedEntity != null && !player.isPassenger()) {
+            Entity transformedEntity = TransformHelper.getTransformedEntity(playerUUID); // Fetch the entity
+            if (transformedEntity != null && !player.isPassenger()) {
+                if (!player.level().isClientSide) {
                     LOGGER.info("Player dismounted from transformation entity, remounting...");
                     player.startRiding(transformedEntity, true);
                 }
