@@ -43,7 +43,7 @@ public class TransformHelper {
         allowedTransformations.add(ModEntities.KRAKEN.get());
         allowedTransformations.add(ModEntities.LOVELAND_FROGMAN.get());
         allowedTransformations.add(ModEntities.MALPHAS.get());
-        allowedTransformations.add(ModEntities.MANDRAKE.get());
+        allowedTransformations.add(ModEntities.MANDRAKE_SPROUTLING.get());
         allowedTransformations.add(ModEntities.PROTO_WENDIGO.get());
         allowedTransformations.add(ModEntities.PUKIS.get());
         allowedTransformations.add(ModEntities.SATYR.get());

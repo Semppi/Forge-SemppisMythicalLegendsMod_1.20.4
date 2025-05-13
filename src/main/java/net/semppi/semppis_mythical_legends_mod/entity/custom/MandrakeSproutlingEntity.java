@@ -11,8 +11,6 @@ import net.minecraft.world.entity.ai.attributes.AttributeSupplier;
 import net.minecraft.world.entity.ai.attributes.Attributes;
 import net.minecraft.world.entity.ai.goal.*;
 import net.minecraft.world.entity.ai.goal.target.HurtByTargetGoal;
-import net.minecraft.world.entity.ai.navigation.GroundPathNavigation;
-import net.minecraft.world.entity.ai.util.GoalUtils;
 import net.minecraft.world.entity.animal.Animal;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
@@ -28,10 +26,10 @@ import software.bernie.geckolib.core.animatable.instance.SingletonAnimatableInst
 import software.bernie.geckolib.core.animation.*;
 import software.bernie.geckolib.core.object.PlayState;
 
-public class MandrakeEntity extends Animal implements GeoEntity {
+public class MandrakeSproutlingEntity extends Animal implements GeoEntity {
     private AnimatableInstanceCache cache = new SingletonAnimatableInstanceCache(this);
 
-    public MandrakeEntity(EntityType<? extends Animal> entityType, Level level) {
+    public MandrakeSproutlingEntity(EntityType<? extends Animal> entityType, Level level) {
         super(entityType, level);
     }
 
@@ -55,7 +53,7 @@ public class MandrakeEntity extends Animal implements GeoEntity {
     @Nullable
     @Override
     public AgeableMob getBreedOffspring(ServerLevel level, AgeableMob ageableMob) {
-        return ModEntities.MANDRAKE.get().create(level);
+        return ModEntities.MANDRAKE_SPROUTLING.get().create(level);
     }
 
     @Override

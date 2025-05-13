@@ -56,7 +56,6 @@ public class WendigoEntity extends TamableAnimal implements GeoEntity, PlayerRid
 
     private static final EntityDataAccessor<Integer> DATA_ID_TYPE_VARIANT =
             SynchedEntityData.defineId(WendigoEntity.class, EntityDataSerializers.INT);
-
     private static final EntityDataAccessor<Boolean> SITTING =
             SynchedEntityData.defineId(WendigoEntity.class, EntityDataSerializers.BOOLEAN);
 
@@ -64,6 +63,25 @@ public class WendigoEntity extends TamableAnimal implements GeoEntity, PlayerRid
     private float playerJumpPendingScale;
     protected boolean allowStandSliding;
     private boolean isTransformed = false;
+    private boolean attackAnimationTrigger = false;
+
+    @Override
+    public boolean doHurtTarget(Entity target) {
+        boolean success = super.doHurtTarget(target);
+        if (success && !this.level().isClientSide) {
+            // Broadcast an entity event with a unique id (we use 5 here) so the client sets the flag.
+            this.level().broadcastEntityEvent(this, (byte) 5);
+        }
+        return success;
+    }
+
+    @Override
+    public void handleEntityEvent(byte id) {
+        super.handleEntityEvent(id);
+        if (id == 5) {
+            this.attackAnimationTrigger = true;
+        }
+    }
 
     public WendigoEntity(EntityType<? extends TamableAnimal> entityType, Level level) {
         super(entityType, level);
@@ -96,7 +114,7 @@ public class WendigoEntity extends TamableAnimal implements GeoEntity, PlayerRid
 
         this.targetSelector.addGoal(1, new OwnerHurtByTargetGoal(this));
         this.targetSelector.addGoal(1, new OwnerHurtTargetGoal(this));
-        this.targetSelector.addGoal(1, (new HurtByTargetGoal(this)));
+        this.targetSelector.addGoal(1, new HurtByTargetGoal(this));
         this.targetSelector.addGoal(2, new NearestAttackableTargetGoal<>(this, Player.class, true));
         this.targetSelector.addGoal(2, new NearestAttackableTargetGoal<>(this, AbstractVillager.class, true));
         this.targetSelector.addGoal(2, new NearestAttackableTargetGoal<>(this, AbstractIllager.class, true));
@@ -122,7 +140,6 @@ public class WendigoEntity extends TamableAnimal implements GeoEntity, PlayerRid
 
     @Override
     public boolean causeFallDamage(float fallDistance, float damageMultiplier, DamageSource source) {
-        // Prevent fall damage entirely
         return false;
     }
 
@@ -134,9 +151,9 @@ public class WendigoEntity extends TamableAnimal implements GeoEntity, PlayerRid
 
     @Override
     public void registerControllers(AnimatableManager.ControllerRegistrar controllerRegistrar) {
+        controllerRegistrar.add(new AnimationController<>(this, "attackController", 0, this::attackPredicate));
         controllerRegistrar.add(new AnimationController<>(this, "controller", 10, this::predicate));
         controllerRegistrar.add(new AnimationController<>(this, "sitController", 0, this::sitPredicate));
-        controllerRegistrar.add(new AnimationController<>(this, "attackController", 0, this::attackingPredicate));
     }
 
     private <T extends GeoAnimatable> PlayState predicate(AnimationState<T> tAnimationState) {
@@ -157,9 +174,13 @@ public class WendigoEntity extends TamableAnimal implements GeoEntity, PlayerRid
         return PlayState.STOP;
     }
 
-    private <T extends GeoAnimatable> PlayState attackingPredicate(AnimationState<T> tAnimationState) {
-        if (this.swinging) {
-            tAnimationState.getController().setAnimation(RawAnimation.begin().then("animation.wendigo.attack", Animation.LoopType.PLAY_ONCE));
+    private <T extends GeoAnimatable> PlayState attackPredicate(AnimationState<T> state) {
+        if (this.attackAnimationTrigger) {
+            state.getController().setAnimation(
+                    RawAnimation.begin().then("animation.wendigo.attack", Animation.LoopType.PLAY_ONCE)
+            );
+            // Clear the flag so the next attack can trigger it.
+            this.attackAnimationTrigger = false;
             return PlayState.CONTINUE;
         }
         return PlayState.STOP;
@@ -168,6 +189,32 @@ public class WendigoEntity extends TamableAnimal implements GeoEntity, PlayerRid
     @Override
     public AnimatableInstanceCache getAnimatableInstanceCache() {
         return cache;
+    }
+
+    @Override
+    public void tick() {
+        super.tick();
+
+        // Existing riding and fall control logic...
+        if (this.isVehicle() && this.getControllingPassenger() instanceof Player) {
+            Player player = (Player) this.getControllingPassenger();
+            this.setYRot(player.getYRot());
+            this.yRotO = this.getYRot();
+            this.setXRot(player.getXRot() * 0.5F);
+            this.setSpeed((float) this.getAttributeValue(Attributes.MOVEMENT_SPEED) * 0.225F);
+            if (this.onGround()) {
+                this.setIsJumping(false);
+                if (this.playerJumpPendingScale > 0.0F && !this.isJumping()) {
+                    this.executeRidersJump(this.playerJumpPendingScale, player.getDeltaMovement());
+                }
+                this.playerJumpPendingScale = 0.0F;
+            }
+        }
+        if (!this.onGround() && this.getDeltaMovement().y < 0) {
+            Vec3 velocity = this.getDeltaMovement();
+            double reducedFallSpeed = velocity.y * 0.8;
+            this.setDeltaMovement(velocity.x, reducedFallSpeed, velocity.z);
+        }
     }
 
     protected void playStepSound(BlockPos pos, BlockState blockIn) {
@@ -180,7 +227,7 @@ public class WendigoEntity extends TamableAnimal implements GeoEntity, PlayerRid
     }
 
     @Override
-    protected SoundEvent getHurtSound(DamageSource damageSourceIn) {
+    protected SoundEvent getHurtSound(DamageSource source) {
         return SoundEvents.DONKEY_HURT;
     }
 
@@ -266,163 +313,6 @@ public class WendigoEntity extends TamableAnimal implements GeoEntity, PlayerRid
         }
 
         return super.mobInteract(player, hand);
-    }
-
-    @Override
-    protected void tickRidden(Player rider, Vec3 travelVector) {
-        super.tickRidden(rider, travelVector);
-
-        // Head and body rotation handling
-        float headRotationLimit = 70.0F; // Max head rotation in degrees before body starts turning
-        float headRotationDifference = Mth.wrapDegrees(rider.getYRot() - this.yBodyRot);
-
-        // Smooth body rotation when the head exceeds the limit
-        if (Math.abs(headRotationDifference) > headRotationLimit) {
-            this.yBodyRot += headRotationDifference * 0.1F; // Gradually rotate the body
-            this.yBodyRot = Mth.wrapDegrees(this.yBodyRot); // Ensure the body rotation stays within bounds
-            this.setYRot(this.yBodyRot);
-        }
-
-        // Apply smooth head rotation to avoid snapping
-        this.yHeadRot = this.yBodyRot + Mth.clamp(headRotationDifference, -headRotationLimit, headRotationLimit);
-        this.setXRot(rider.getXRot() * 0.5F);
-
-        if (this.isControlledByLocalInstance()) {
-            float speed = this.getRiddenSpeed(rider) * 0.2F;
-            this.setSpeed(speed);
-            this.travel(travelVector);
-
-            if (this.onGround()) {
-                this.setIsJumping(false);
-                if (this.playerJumpPendingScale > 0.0F && !this.isJumping()) {
-                    this.executeRidersJump(this.playerJumpPendingScale, travelVector);
-                }
-                this.playerJumpPendingScale = 0.0F;
-            }
-
-            // Ensure the entity remains standing while being ridden
-            if (this.isSitting()) {
-                this.setSitting(false);
-            }
-        }
-    }
-
-    @Override
-    public void stopRiding() {
-        if (this.isTransformed()) {
-            return;
-        }
-        super.stopRiding();
-        this.setSitting(false);
-    }
-
-    @Override
-    public void travel(Vec3 travelVector) {
-        if (this.isVehicle() && this.getControllingPassenger() instanceof Player) {
-            Player player = (Player) this.getControllingPassenger();
-            this.setYRot(player.getYRot());
-            this.yRotO = this.getYRot();
-            this.setXRot(player.getXRot() * 0.5F);
-            this.setRot(player.getYRot(), player.getXRot());
-
-            this.setMaxUpStep(1.0F);
-
-            float forward = player.zza;
-            float strafe = player.xxa;
-
-            if (this.isControlledByLocalInstance()) {
-                float speedFactor = this.isTransformed() ? 0.5F : 0.3F;
-                this.setSpeed((float) this.getAttributeValue(Attributes.MOVEMENT_SPEED) * speedFactor);
-                super.travel(new Vec3(strafe, travelVector.y, forward));
-            } else {
-                this.setDeltaMovement(Vec3.ZERO);
-            }
-
-            this.calculateEntityAnimation(this.isSprinting());
-        } else {
-            super.travel(travelVector);
-        }
-    }
-
-    @Override
-    public void tick() {
-        super.tick();
-        if (this.isVehicle() && this.getControllingPassenger() instanceof Player) {
-            Player player = (Player) this.getControllingPassenger();
-            this.setYRot(player.getYRot());
-            this.yRotO = this.getYRot();
-            this.setXRot(player.getXRot() * 0.5F);
-            this.setSpeed((float) this.getAttributeValue(Attributes.MOVEMENT_SPEED) * 0.225F);
-
-            if (this.onGround()) {
-                this.setIsJumping(false);
-                if (this.playerJumpPendingScale > 0.0F && !this.isJumping()) {
-                    this.executeRidersJump(this.playerJumpPendingScale, player.getDeltaMovement());
-                }
-
-                this.playerJumpPendingScale = 0.0F;
-            }
-        }
-
-        // Control fall speed if the entity is in the air
-        if (!this.onGround() && this.getDeltaMovement().y < 0) {
-            Vec3 velocity = this.getDeltaMovement();
-            double reducedFallSpeed = velocity.y * 0.8; // Adjust this factor as needed
-            this.setDeltaMovement(velocity.x, reducedFallSpeed, velocity.z);
-        }
-    }
-
-    protected Vec2 getRiddenRotation(LivingEntity entity) {
-        return new Vec2(entity.getXRot() * 0.5F, entity.getYRot());
-    }
-
-    protected Vec3 getRiddenInput(Player player, Vec3 travelVector) {
-        if (this.onGround() && this.playerJumpPendingScale == 0.0F && !this.allowStandSliding) {
-            return Vec3.ZERO;
-        } else {
-            float strafe = player.xxa * 0.5F;
-            float forward = player.zza;
-            if (forward <= 0.0F) {
-                forward *= 0.25F;
-            }
-            return new Vec3(strafe, 0.0, forward);
-        }
-    }
-
-    protected float getRiddenSpeed(Player player) {
-        return (float) this.getAttributeValue(Attributes.MOVEMENT_SPEED);
-    }
-
-    @Nullable
-    @Override
-    public LivingEntity getControllingPassenger() {
-        return this.getFirstPassenger() instanceof Player ? (Player) this.getFirstPassenger() : null;
-    }
-
-    @Override
-    public void readAdditionalSaveData(CompoundTag tag) {
-        super.readAdditionalSaveData(tag);
-        setSitting(tag.getBoolean("isSitting"));
-        this.entityData.set(DATA_ID_TYPE_VARIANT, tag.getInt("Variant"));
-    }
-
-    @Override
-    public void addAdditionalSaveData(CompoundTag tag) {
-        super.addAdditionalSaveData(tag);
-        tag.putBoolean("isSitting", this.isSitting());
-        tag.putInt("Variant", this.getTypeVariant());
-    }
-
-    @Override
-    protected void defineSynchedData() {
-        super.defineSynchedData();
-        this.entityData.define(SITTING, false);
-        this.entityData.define(DATA_ID_TYPE_VARIANT, 0);
-    }
-
-    public void setSitting(boolean sitting) {
-        this.entityData.set(SITTING, sitting);
-        this.setOrderedToSit(sitting);
     }
 
     @Override
@@ -515,5 +405,31 @@ public class WendigoEntity extends TamableAnimal implements GeoEntity, PlayerRid
     @Nullable
     public PlayerTeam getTeam() {
         return (PlayerTeam) super.getTeam();
+    }
+
+    @Override
+    public void readAdditionalSaveData(CompoundTag tag) {
+        super.readAdditionalSaveData(tag);
+        setSitting(tag.getBoolean("isSitting"));
+        this.entityData.set(DATA_ID_TYPE_VARIANT, tag.getInt("Variant"));
+    }
+
+    @Override
+    public void addAdditionalSaveData(CompoundTag tag) {
+        super.addAdditionalSaveData(tag);
+        tag.putBoolean("isSitting", this.isSitting());
+        tag.putInt("Variant", this.getTypeVariant());
+    }
+
+    @Override
+    protected void defineSynchedData() {
+        super.defineSynchedData();
+        this.entityData.define(SITTING, false);
+        this.entityData.define(DATA_ID_TYPE_VARIANT, 0);
+    }
+
+    public void setSitting(boolean sitting) {
+        this.entityData.set(SITTING, sitting);
+        this.setOrderedToSit(sitting);
     }
 }

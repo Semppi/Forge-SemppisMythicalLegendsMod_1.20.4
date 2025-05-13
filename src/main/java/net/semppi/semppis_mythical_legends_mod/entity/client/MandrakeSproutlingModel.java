@@ -3,32 +3,31 @@ package net.semppi.semppis_mythical_legends_mod.entity.client;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.util.Mth;
 import net.semppi.semppis_mythical_legends_mod.SemppisMythicalLegendsMod;
-import net.semppi.semppis_mythical_legends_mod.entity.custom.LovelandFrogmanEntity;
-import net.semppi.semppis_mythical_legends_mod.entity.custom.MandrakeEntity;
+import net.semppi.semppis_mythical_legends_mod.entity.custom.MandrakeSproutlingEntity;
 import software.bernie.geckolib.constant.DataTickets;
 import software.bernie.geckolib.core.animatable.model.CoreGeoBone;
 import software.bernie.geckolib.core.animation.AnimationState;
 import software.bernie.geckolib.model.GeoModel;
 import software.bernie.geckolib.model.data.EntityModelData;
 
-public class MandrakeModel extends GeoModel<MandrakeEntity> {
+public class MandrakeSproutlingModel extends GeoModel<MandrakeSproutlingEntity> {
     @Override
-    public ResourceLocation getModelResource(MandrakeEntity animatable) {
-        return new ResourceLocation(SemppisMythicalLegendsMod.MOD_ID, "geo/mandrake.geo.json");
+    public ResourceLocation getModelResource(MandrakeSproutlingEntity animatable) {
+        return new ResourceLocation(SemppisMythicalLegendsMod.MOD_ID, "geo/mandrake_sproutling.geo.json");
     }
 
     @Override
-    public ResourceLocation getTextureResource(MandrakeEntity animatable) {
-        return new ResourceLocation(SemppisMythicalLegendsMod.MOD_ID, "textures/entity/mandrake_brown.png");
+    public ResourceLocation getTextureResource(MandrakeSproutlingEntity animatable) {
+        return new ResourceLocation(SemppisMythicalLegendsMod.MOD_ID, "textures/entity/mandrake_sproutling_brown.png");
     }
 
     @Override
-    public ResourceLocation getAnimationResource(MandrakeEntity animatable) {
-        return new ResourceLocation(SemppisMythicalLegendsMod.MOD_ID, "animations/mandrake.animation.json");
+    public ResourceLocation getAnimationResource(MandrakeSproutlingEntity animatable) {
+        return new ResourceLocation(SemppisMythicalLegendsMod.MOD_ID, "animations/mandrake_sproutling.animation.json");
     }
 
     @Override
-    public void setCustomAnimations(MandrakeEntity animatable, long instanceId, AnimationState<MandrakeEntity> animationState) {
+    public void setCustomAnimations(MandrakeSproutlingEntity animatable, long instanceId, AnimationState<MandrakeSproutlingEntity> animationState) {
         CoreGeoBone head = getAnimationProcessor().getBone("head");
 
         if (head != null) {

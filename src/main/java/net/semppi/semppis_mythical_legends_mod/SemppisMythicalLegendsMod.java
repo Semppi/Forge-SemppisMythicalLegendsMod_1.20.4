@@ -114,7 +114,7 @@ public class SemppisMythicalLegendsMod {
             EntityRenderers.register(ModEntities.KRAKEN.get(), KrakenRenderer::new);
             EntityRenderers.register(ModEntities.LOVELAND_FROGMAN.get(), LovelandFrogmanRenderer::new);
             EntityRenderers.register(ModEntities.MALPHAS.get(), MalphasRenderer::new);
-            EntityRenderers.register(ModEntities.MANDRAKE.get(), MandrakeRenderer::new);
+            EntityRenderers.register(ModEntities.MANDRAKE_SPROUTLING.get(), MandrakeSproutlingRenderer::new);
             EntityRenderers.register(ModEntities.PROTO_WENDIGO.get(), ProtoWendigoRenderer::new);
             EntityRenderers.register(ModEntities.PUKIS.get(), PukisRenderer::new);
             EntityRenderers.register(ModEntities.SATYR.get(), SatyrRenderer::new);

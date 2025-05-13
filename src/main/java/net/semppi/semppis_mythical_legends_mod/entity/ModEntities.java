@@ -29,9 +29,9 @@ public class ModEntities {
             ENTITY_TYPES.register("pukis", () -> EntityType.Builder.of(PukisEntity::new, MobCategory.CREATURE)
                     .sized(0.7f, 1.4f).build("pukis"));
 
-    public static final RegistryObject<EntityType<MandrakeEntity>> MANDRAKE =
-            ENTITY_TYPES.register("mandrake", () -> EntityType.Builder.of(MandrakeEntity::new, MobCategory.CREATURE)
-                    .sized(0.4f, 0.6f).build("mandrake"));
+    public static final RegistryObject<EntityType<MandrakeSproutlingEntity>> MANDRAKE_SPROUTLING =
+            ENTITY_TYPES.register("mandrake_sproutling", () -> EntityType.Builder.of(MandrakeSproutlingEntity::new, MobCategory.CREATURE)
+                    .sized(0.4f, 0.6f).build("mandrake_sproutling"));
 
     public static final RegistryObject<EntityType<WendigoEntity>> WENDIGO =
             ENTITY_TYPES.register("wendigo", () -> EntityType.Builder.of(WendigoEntity::new, MobCategory.CREATURE)

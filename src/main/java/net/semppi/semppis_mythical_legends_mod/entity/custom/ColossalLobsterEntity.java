@@ -20,12 +20,14 @@ import net.minecraft.world.entity.animal.*;
 import net.minecraft.world.entity.monster.Drowned;
 import net.minecraft.world.entity.npc.AbstractVillager;
 import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.LevelAccessor;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.pathfinder.BlockPathTypes;
 import net.semppi.semppis_mythical_legends_mod.entity.ModEntities;
+import net.semppi.semppis_mythical_legends_mod.item.ModItems;
 import org.jetbrains.annotations.Nullable;
 import software.bernie.geckolib.animatable.GeoEntity;
 import software.bernie.geckolib.core.animatable.GeoAnimatable;
@@ -138,6 +140,19 @@ public class ColossalLobsterEntity extends WaterAnimal implements GeoEntity {
 
     protected float getSoundVolume() {
         return 0.9F;
+    }
+    /// ToDo: Add the looting enchantment effect to lobster drop for crustacean meat if killed with the looting enchant
+    /// ToDo: Add crustacean meat to drop cooked crustacean meat if entity is burning for a drop
+
+    @Override
+    protected void dropFromLootTable(DamageSource source, boolean causedByPlayer) {
+        // Drop humanoid flesh
+        int dropCount = this.random.nextInt(9) + 4; // Randomly generate a number between 4 and 9
+        for (int i = 0; i < dropCount; i++) {
+            this.spawnAtLocation(new ItemStack(ModItems.RAW_CRUSTACEAN_MEAT.get()));
+        }
+
+        super.dropFromLootTable(source, causedByPlayer);
     }
 
     public MobType getMobType() {

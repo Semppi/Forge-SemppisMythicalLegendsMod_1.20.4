@@ -23,7 +23,7 @@ public class TransformCommand {
         ENTITY_NAME_MAP.put("kraken", "semppis_mythical_legends_mod:kraken");
         ENTITY_NAME_MAP.put("loveland_frogman", "semppis_mythical_legends_mod:loveland_frogman");
         ENTITY_NAME_MAP.put("malphas", "semppis_mythical_legends_mod:malphas");
-        ENTITY_NAME_MAP.put("mandrake", "semppis_mythical_legends_mod:mandrake");
+        ENTITY_NAME_MAP.put("mandrake_sproutling", "semppis_mythical_legends_mod:mandrake_sproutling");
         ENTITY_NAME_MAP.put("proto_wendigo", "semppis_mythical_legends_mod:proto_wendigo");
         ENTITY_NAME_MAP.put("pukis", "semppis_mythical_legends_mod:pukis");
         ENTITY_NAME_MAP.put("satyr", "semppis_mythical_legends_mod:satyr");

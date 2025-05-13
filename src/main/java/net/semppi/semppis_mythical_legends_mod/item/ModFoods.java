@@ -133,6 +133,30 @@ public class ModFoods {
 
     public static final FoodProperties COOKED_UNGULATE_CHUNK = new FoodProperties.Builder().meat().build();
 
+    public static final FoodProperties RAW_CRUSTACEAN_PIECE = new FoodProperties.Builder().nutrition(1).saturationMod(0.7f).meat().build();
+
+    public static final FoodProperties COOKED_CRUSTACEAN_PIECE = new FoodProperties.Builder().nutrition(2).saturationMod(3.2f).meat().build();
+
+    public static final FoodProperties RAW_CRUSTACEAN_MEAT = new FoodProperties.Builder().nutrition(3).saturationMod(1.6f).meat().build();
+
+    public static final FoodProperties COOKED_CRUSTACEAN_MEAT = new FoodProperties.Builder().nutrition(7).saturationMod(10.3f).meat().build();
+
+    public static final FoodProperties RAW_CRUSTACEAN_CHUNK = new FoodProperties.Builder().meat().build();
+
+    public static final FoodProperties COOKED_CRUSTACEAN_CHUNK = new FoodProperties.Builder().meat().build();
+
+    public static final FoodProperties RAW_MOLLUSC_PIECE = new FoodProperties.Builder().nutrition(1).saturationMod(0.7f).meat().build();
+
+    public static final FoodProperties COOKED_MOLLUSC_PIECE = new FoodProperties.Builder().nutrition(2).saturationMod(3.2f).meat().build();
+
+    public static final FoodProperties RAW_MOLLUSC_MEAT = new FoodProperties.Builder().nutrition(3).saturationMod(1.6f).meat().build();
+
+    public static final FoodProperties COOKED_MOLLUSC_MEAT = new FoodProperties.Builder().nutrition(7).saturationMod(10.3f).meat().build();
+
+    public static final FoodProperties RAW_MOLLUSC_CHUNK = new FoodProperties.Builder().meat().build();
+
+    public static final FoodProperties COOKED_MOLLUSC_CHUNK = new FoodProperties.Builder().meat().build();
+
     public static final FoodProperties RAW_AMPHIBIAN_PIECE = new FoodProperties.Builder().nutrition(1).saturationMod(0.2f).meat().build();
 
     public static final FoodProperties COOKED_AMPHIBIAN_PIECE = new FoodProperties.Builder().nutrition(1).saturationMod(1.2f).meat().build();
@@ -145,6 +169,30 @@ public class ModFoods {
 
     public static final FoodProperties COOKED_AMPHIBIAN_CHUNK = new FoodProperties.Builder().meat().build();
 
+    public static final FoodProperties RAW_REPTILIAN_PIECE = new FoodProperties.Builder().nutrition(1).saturationMod(0.2f).meat().build();
+
+    public static final FoodProperties COOKED_REPTILIAN_PIECE = new FoodProperties.Builder().nutrition(1).saturationMod(1.6f).meat().build();
+
+    public static final FoodProperties RAW_REPTILIAN_MEAT = new FoodProperties.Builder().nutrition(2).saturationMod(0.9f).meat().build();
+
+    public static final FoodProperties COOKED_REPTILIAN_MEAT = new FoodProperties.Builder().nutrition(6).saturationMod(6.0f).meat().build();
+
+    public static final FoodProperties RAW_REPTILIAN_CHUNK = new FoodProperties.Builder().meat().build();
+
+    public static final FoodProperties COOKED_REPTILIAN_CHUNK = new FoodProperties.Builder().meat().build();
+
+    public static final FoodProperties RAW_AQUATIC_PIECE = new FoodProperties.Builder().nutrition(1).saturationMod(0.2f).meat().build();
+
+    public static final FoodProperties COOKED_AQUATIC_PIECE = new FoodProperties.Builder().nutrition(1).saturationMod(1.6f).meat().build();
+
+    public static final FoodProperties RAW_AQUATIC_MEAT = new FoodProperties.Builder().nutrition(2).saturationMod(0.9f).meat().build();
+
+    public static final FoodProperties COOKED_AQUATIC_MEAT = new FoodProperties.Builder().nutrition(6).saturationMod(6.0f).meat().build();
+
+    public static final FoodProperties RAW_AQUATIC_CHUNK = new FoodProperties.Builder().meat().build();
+
+    public static final FoodProperties COOKED_AQUATIC_CHUNK = new FoodProperties.Builder().meat().build();
+
     public static final FoodProperties HUMANOID_FLESH_PIECE = new FoodProperties.Builder().nutrition(1).saturationMod(0.7f).meat().build();
 
     public static final FoodProperties HUMANOID_STEAK_PIECE = new FoodProperties.Builder().nutrition(2).saturationMod(3.2f).meat().build();
@@ -156,4 +204,23 @@ public class ModFoods {
     public static final FoodProperties HUMANOID_FLESH_CHUNK = new FoodProperties.Builder().meat().build();
 
     public static final FoodProperties HUMANOID_STEAK_CHUNK = new FoodProperties.Builder().meat().build();
+
+    public static final FoodProperties ROTTEN_FLESH_PIECE = new FoodProperties.Builder().nutrition(1).saturationMod(0.2f).meat()
+            .effect(() -> new MobEffectInstance(MobEffects.HUNGER, 160), 0.2f).build();
+
+    public static final FoodProperties ROTTEN_FLESH_CHUNK = new FoodProperties.Builder().meat()
+            .effect(() -> new MobEffectInstance(MobEffects.HUNGER, 600), 0.3f).build();
+
+    public static final FoodProperties RAW_SCUTTLE_PIECE = new FoodProperties.Builder().nutrition(1).saturationMod(0.2f).meat().build();
+
+    public static final FoodProperties COOKED_SCUTTLE_PIECE = new FoodProperties.Builder().nutrition(1).saturationMod(0.8f).meat().build();
+
+    public static final FoodProperties RAW_SCUTTLE_MEAT = new FoodProperties.Builder().nutrition(2).saturationMod(0.4f).meat().build();
+
+    public static final FoodProperties COOKED_SCUTTLE_MEAT = new FoodProperties.Builder().nutrition(3).saturationMod(3.7f).meat().build();
+
+    public static final FoodProperties RAW_SCUTTLE_CHUNK = new FoodProperties.Builder().meat().build();
+
+    public static final FoodProperties COOKED_SCUTTLE_CHUNK = new FoodProperties.Builder().meat().build();
+
 }
