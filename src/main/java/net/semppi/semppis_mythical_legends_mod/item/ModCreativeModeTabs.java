@@ -3,6 +3,7 @@ package net.semppi.semppis_mythical_legends_mod.item;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.item.CreativeModeTab;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.Items;
 import net.minecraftforge.eventbus.api.IEventBus;
 import net.minecraftforge.registries.DeferredRegister;
 import net.minecraftforge.registries.RegistryObject;
@@ -46,14 +47,20 @@ public class ModCreativeModeTabs {
                         pOutput.accept(ModItems.COOKED_VEGGIE_KELP_TREAT.get());
                         pOutput.accept(ModItems.RAW_BEEF_PIECE.get());
                         pOutput.accept(ModItems.COOKED_STEAK_PIECE.get());
+                        pOutput.accept(Items.BEEF);
+                        pOutput.accept(Items.COOKED_BEEF);
                         pOutput.accept(ModItems.RAW_BEEF_CHUNK.get());
                         pOutput.accept(ModItems.COOKED_STEAK_CHUNK.get());
                         pOutput.accept(ModItems.RAW_PORKCHOP_PIECE.get());
                         pOutput.accept(ModItems.COOKED_PORKCHOP_PIECE.get());
+                        pOutput.accept(Items.PORKCHOP);
+                        pOutput.accept(Items.COOKED_PORKCHOP);
                         pOutput.accept(ModItems.RAW_PORKCHOP_CHUNK.get());
                         pOutput.accept(ModItems.COOKED_PORKCHOP_CHUNK.get());
                         pOutput.accept(ModItems.RAW_MUTTON_PIECE.get());
                         pOutput.accept(ModItems.COOKED_MUTTON_PIECE.get());
+                        pOutput.accept(Items.MUTTON);
+                        pOutput.accept(Items.COOKED_MUTTON);
                         pOutput.accept(ModItems.RAW_MUTTON_CHUNK.get());
                         pOutput.accept(ModItems.COOKED_MUTTON_CHUNK.get());
                         pOutput.accept(ModItems.RAW_AVIAN_PIECE.get());
@@ -117,6 +124,7 @@ public class ModCreativeModeTabs {
                         pOutput.accept(ModItems.HUMANOID_FLESH_CHUNK.get());
                         pOutput.accept(ModItems.HUMANOID_STEAK_CHUNK.get());
                         pOutput.accept(ModItems.ROTTEN_FLESH_PIECE.get());
+                        pOutput.accept(Items.ROTTEN_FLESH);
                         pOutput.accept(ModItems.ROTTEN_FLESH_CHUNK.get());
                         pOutput.accept(ModItems.RAW_SCUTTLE_PIECE.get());
                         pOutput.accept(ModItems.COOKED_SCUTTLE_PIECE.get());
@@ -124,6 +132,12 @@ public class ModCreativeModeTabs {
                         pOutput.accept(ModItems.COOKED_SCUTTLE_MEAT.get());
                         pOutput.accept(ModItems.RAW_SCUTTLE_CHUNK.get());
                         pOutput.accept(ModItems.COOKED_SCUTTLE_CHUNK.get());
+                        pOutput.accept(ModItems.RAW_BEAST_PIECE.get());
+                        pOutput.accept(ModItems.COOKED_BEAST_PIECE.get());
+                        pOutput.accept(ModItems.RAW_BEAST_MEAT.get());
+                        pOutput.accept(ModItems.COOKED_BEAST_MEAT.get());
+                        pOutput.accept(ModItems.RAW_BEAST_CHUNK.get());
+                        pOutput.accept(ModItems.COOKED_BEAST_CHUNK.get());
                     })
                     .build());
 
@@ -141,7 +155,7 @@ public class ModCreativeModeTabs {
                         pOutput.accept(ModItems.FROGMAN_BUCKET.get());
                         pOutput.accept(ModItems.MEDIUM_TADPOLE_BUCKET.get());
                         pOutput.accept(ModItems.ALICANTO_SPAWN_EGG.get());
-                        pOutput.accept(ModItems.BEHEMOTH_SPAWN_EGG.get());
+                        pOutput.accept(ModItems.LESSER_BEHEMOTH_SPAWN_EGG.get());
                         pOutput.accept(ModItems.COLOSSAL_LOBSTER_SPAWN_EGG.get());
                         pOutput.accept(ModItems.GARGOYLE_SPAWN_EGG.get());
                         pOutput.accept(ModItems.KRAKEN_SPAWN_EGG.get());

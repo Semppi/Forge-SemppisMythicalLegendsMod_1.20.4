@@ -14,7 +14,7 @@ public class ModItemModelProvider extends ItemModelProvider {
     @Override
     protected void registerModels() {
         withExistingParent(ModItems.ALICANTO_SPAWN_EGG.getId().getPath(), mcLoc("item/template_spawn_egg"));
-        withExistingParent(ModItems.BEHEMOTH_SPAWN_EGG.getId().getPath(), mcLoc("item/template_spawn_egg"));
+        withExistingParent(ModItems.LESSER_BEHEMOTH_SPAWN_EGG.getId().getPath(), mcLoc("item/template_spawn_egg"));
         withExistingParent(ModItems.COLOSSAL_LOBSTER_SPAWN_EGG.getId().getPath(), mcLoc("item/template_spawn_egg"));
         withExistingParent(ModItems.GARGOYLE_SPAWN_EGG.getId().getPath(), mcLoc("item/template_spawn_egg"));
         withExistingParent(ModItems.KRAKEN_SPAWN_EGG.getId().getPath(), mcLoc("item/template_spawn_egg"));

@@ -71,7 +71,7 @@ public class SemppisMythicalLegendsMod {
         SpawnPlacements.register(ModEntities.SATYR.get(),
                 SpawnPlacements.Type.ON_GROUND, Heightmap.Types.MOTION_BLOCKING_NO_LEAVES,
                 Animal::checkAnimalSpawnRules);
-        SpawnPlacements.register(ModEntities.BEHEMOTH.get(),
+        SpawnPlacements.register(ModEntities.LESSER_BEHEMOTH.get(),
                 SpawnPlacements.Type.ON_GROUND, Heightmap.Types.MOTION_BLOCKING_NO_LEAVES,
                 Animal::checkAnimalSpawnRules);
         SpawnPlacements.register(ModEntities.PUKIS.get(),
@@ -109,7 +109,7 @@ public class SemppisMythicalLegendsMod {
         @SubscribeEvent
         public static void onClientSetup(FMLClientSetupEvent event) {
             EntityRenderers.register(ModEntities.ALICANTO.get(), AlicantoRenderer::new);
-            EntityRenderers.register(ModEntities.BEHEMOTH.get(), BehemothRenderer::new);
+            EntityRenderers.register(ModEntities.LESSER_BEHEMOTH.get(), LesserBehemothRenderer::new);
             EntityRenderers.register(ModEntities.COLOSSAL_LOBSTER.get(), ColossalLobsterRenderer::new);
             EntityRenderers.register(ModEntities.KRAKEN.get(), KrakenRenderer::new);
             EntityRenderers.register(ModEntities.LOVELAND_FROGMAN.get(), LovelandFrogmanRenderer::new);

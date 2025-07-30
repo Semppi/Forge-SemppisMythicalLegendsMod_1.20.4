@@ -15,10 +15,9 @@ import java.util.stream.Collectors;
 
 public class TransformCommand {
     private static final Map<String, String> ENTITY_NAME_MAP = new HashMap<>();
-
     static {
         ENTITY_NAME_MAP.put("alicanto", "semppis_mythical_legends_mod:alicanto");
-        ENTITY_NAME_MAP.put("behemoth", "semppis_mythical_legends_mod:behemoth");
+        ENTITY_NAME_MAP.put("lesser_behemoth", "semppis_mythical_legends_mod:lesser_behemoth");
         ENTITY_NAME_MAP.put("colossal_lobster", "semppis_mythical_legends_mod:colossal_lobster");
         ENTITY_NAME_MAP.put("kraken", "semppis_mythical_legends_mod:kraken");
         ENTITY_NAME_MAP.put("loveland_frogman", "semppis_mythical_legends_mod:loveland_frogman");
@@ -111,43 +110,61 @@ public class TransformCommand {
         ENTITY_NAME_MAP.put("zombified_piglin", "minecraft:zombified_piglin");
     }
 
-    public static void register(CommandDispatcher<CommandSourceStack> dispatcher) {
-        dispatcher.register(Commands.literal("transform")
-                .requires(source -> source.hasPermission(2))
+    public static void register(CommandDispatcher<CommandSourceStack> d) {
+        d.register(Commands.literal("transform")
+                .requires(src -> src.hasPermission(2))
                 .then(Commands.argument("player", StringArgumentType.word())
-                        .suggests((context, builder) -> SharedSuggestionProvider.suggest(context.getSource().getServer().getPlayerNames(), builder))
+                        .suggests((ctx, b) -> SharedSuggestionProvider
+                                .suggest(ctx.getSource().getServer().getPlayerNames(), b))
                         .then(Commands.argument("entity", StringArgumentType.word())
-                                .suggests((context, builder) -> {
-                                    String input = builder.getRemaining().toLowerCase();
+                                .suggests((ctx, b) -> {
+                                    String rem = b.getRemaining().toLowerCase();
                                     return SharedSuggestionProvider.suggest(
                                             ENTITY_NAME_MAP.keySet().stream()
-                                                    .filter(name -> name.startsWith(input))
+                                                    .filter(k -> k.startsWith(rem))
                                                     .collect(Collectors.toList()),
-                                            builder
+                                            b
                                     );
                                 })
-                                .executes(context -> {
-                                    String playerName = StringArgumentType.getString(context, "player");
-                                    String entityName = StringArgumentType.getString(context, "entity").toLowerCase();
+                                .executes(ctx -> {
+                                    String playerName = StringArgumentType.getString(ctx, "player");
+                                    String key        = StringArgumentType.getString(ctx, "entity").toLowerCase();
+                                    ServerPlayer target = ctx.getSource()
+                                            .getServer()
+                                            .getPlayerList()
+                                            .getPlayerByName(playerName);
 
-                                    ServerPlayer player = context.getSource().getServer().getPlayerList().getPlayerByName(playerName);
-                                    if (player == null) {
-                                        context.getSource().sendFailure(Component.literal("Player '" + playerName + "' not found."));
+                                    if (target == null) {
+                                        ctx.getSource().sendFailure(
+                                                Component.literal("Player '" + playerName + "' not found.")
+                                        );
                                         return 0;
                                     }
 
-                                    String fullEntityName = ENTITY_NAME_MAP.getOrDefault(entityName, entityName);
+                                    String fullName = ENTITY_NAME_MAP.getOrDefault(key, key);
+                                    Entity mount = TransformHelper.transformPlayer(target, fullName);
 
-                                    Entity transformedEntity = TransformHelper.transformPlayer(player, fullEntityName);
-                                    if (transformedEntity != null) {
-                                        return 1; // Success
+                                    if (mount != null) {
+                                        // first‐time transform succeeded
+                                        ctx.getSource().sendSuccess(
+                                                () -> Component.literal("Transformed " + playerName + " into " + key + "!"),
+                                                true
+                                        );
+                                        return 1;
+                                    } else if (TransformHelper.isPlayerTransformed(target)) {
+                                        // it was already transformed, so we reverted
+                                        ctx.getSource().sendSuccess(
+                                                () -> Component.literal("Reverted " + playerName + " back to normal."),
+                                                true
+                                        );
+                                        return 1;
                                     } else {
-                                        context.getSource().sendFailure(Component.literal("Failed to transform."));
-                                        return 0; // Failure
+                                        // real error (invalid key, etc.)
+                                        ctx.getSource().sendFailure(
+                                                Component.literal("Cannot transform into \"" + key + "\".")
+                                        );
+                                        return 0;
                                     }
-                                })
-                        )
-                )
-        );
+                                }))));
     }
 }

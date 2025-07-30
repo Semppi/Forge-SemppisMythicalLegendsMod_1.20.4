@@ -315,34 +315,32 @@ public class ProtoWendigoEntity extends Animal implements GeoEntity, PlayerRidea
     public void tick() {
         super.tick();
 
-        // Skip updates for non-transformed entities
-        if (!this.isTransformed) {
-            return;
+        // Skip non-transformed
+        if (!this.isTransformed) return;
+
+        // Keep the link—if they’re not already riding, force it
+        Player linked = this.getLinkedPlayer();
+        if (linked instanceof ServerPlayer sp && !sp.isPassenger()) {
+            sp.startRiding(this, true);
         }
 
-        // Ensure the player remains riding the entity
-        Player linkedPlayer = this.getLinkedPlayer();
-        if (linkedPlayer instanceof ServerPlayer serverPlayer) {
-            if (!serverPlayer.isPassenger()) {
-                // Ensure the player starts riding the entity
-                serverPlayer.startRiding(this, true);
-            }
-        }
-
-        // Handle movement control for the player
+        // Movement & sync
         if (this.getControllingPassenger() instanceof Player player) {
-            // Synchronize entity's rotation with the player's
+            // copy rotation
             this.setYRot(player.getYRot());
-            this.yRotO = this.getYRot();
+            this.yRotO    = this.getYRot();
             this.setXRot(player.getXRot() * 0.5F);
 
-            // Apply movement based on player input
-            float forward = player.zza;
-            float strafe = player.xxa;
-
-            float speedFactor = 0.5F; // Adjust speed for transformation
+            // travel
+            float forward = player.zza, strafe = player.xxa;
+            float speedFactor = 0.5F;
             this.setSpeed((float) this.getAttributeValue(Attributes.MOVEMENT_SPEED) * speedFactor);
             super.travel(new Vec3(strafe, this.getDeltaMovement().y, forward));
+
+            // **— GHOST FIX —**
+            if (player instanceof ServerPlayer serverPlayer) {
+                serverPlayer.teleportTo(this.getX(), this.getY(), this.getZ());
+            }
         }
     }
 

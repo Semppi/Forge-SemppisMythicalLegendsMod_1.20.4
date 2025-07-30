@@ -9,7 +9,7 @@
   "item.semppis_mythical_legends_mod.frogman_bucket": "Bucket of Frogman",
   "item.semppis_mythical_legends_mod.medium_tadpole_bucket": "Bucket of Medium Tadpole",
   "item.semppis_mythical_legends_mod.alicanto_spawn_egg": "Alicanto Spawn Egg",
-  "item.semppis_mythical_legends_mod.behemoth_spawn_egg": "Behemoth Spawn Egg",
+  "item.semppis_mythical_legends_mod.lesser_behemoth_spawn_egg": "Lesser Behemoth Spawn Egg",
   "item.semppis_mythical_legends_mod.colossal_lobster_spawn_egg": "Colossal Lobster Spawn Egg",
   "item.semppis_mythical_legends_mod.gargoyle_spawn_egg": "Gargoyle Spawn Egg",
   "item.semppis_mythical_legends_mod.kraken_spawn_egg": "Kraken Spawn Egg",
@@ -143,6 +143,13 @@
   "item.semppis_mythical_legends_mod.raw_scuttle_chunk": "Raw Scuttle Chunk",
   "item.semppis_mythical_legends_mod.cooked_scuttle_chunk": "Cooked Scuttle Chunk",
 
+  "item.semppis_mythical_legends_mod.raw_beast_piece": "Raw Beast Piece",
+  "item.semppis_mythical_legends_mod.cooked_beast_piece": "Cooked Beast Piece",
+  "item.semppis_mythical_legends_mod.raw_beast_meat": "Raw Beast Meat",
+  "item.semppis_mythical_legends_mod.cooked_beast_meat": "Cooked Beast Meat",
+  "item.semppis_mythical_legends_mod.raw_beast_chunk": "Raw Beast Chunk",
+  "item.semppis_mythical_legends_mod.cooked_beast_chunk": "Cooked Beast Chunk",
+
   "item.semppis_mythical_legends_mod.wrapped_pukis": "Wrapped Pūķis",
   "block.semppis_mythical_legends_mod.pukis_egg": "Pūķis Egg",
   "block.semppis_mythical_legends_mod.pukis_skull": "Pūķis Skull",
@@ -152,7 +159,7 @@
   "block.semppis_mythical_legends_mod.sigil": "Sigil",
 
   "entity.semppis_mythical_legends_mod.alicanto": "Alicanto",
-  "entity.semppis_mythical_legends_mod.behemoth": "Behemoth",
+  "entity.semppis_mythical_legends_mod.lesser_behemoth": "Lesser Behemoth",
   "entity.semppis_mythical_legends_mod.colossal_lobster": "Colossal Lobster",
   "entity.semppis_mythical_legends_mod.kraken": "Kraken",
   "entity.semppis_mythical_legends_mod.loveland_frogman": "Loveland Frogman",

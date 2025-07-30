@@ -223,4 +223,16 @@ public class ModFoods {
 
     public static final FoodProperties COOKED_SCUTTLE_CHUNK = new FoodProperties.Builder().meat().build();
 
+    public static final FoodProperties RAW_BEAST_PIECE = new FoodProperties.Builder().nutrition(1).saturationMod(0.2f).meat().build();
+
+    public static final FoodProperties COOKED_BEAST_PIECE = new FoodProperties.Builder().nutrition(1).saturationMod(0.8f).meat().build();
+
+    public static final FoodProperties RAW_BEAST_MEAT = new FoodProperties.Builder().nutrition(2).saturationMod(0.4f).meat().build();
+
+    public static final FoodProperties COOKED_BEAST_MEAT = new FoodProperties.Builder().nutrition(3).saturationMod(3.7f).meat().build();
+
+    public static final FoodProperties RAW_BEAST_CHUNK = new FoodProperties.Builder().meat().build();
+
+    public static final FoodProperties COOKED_BEAST_CHUNK = new FoodProperties.Builder().meat().build();
+
 }

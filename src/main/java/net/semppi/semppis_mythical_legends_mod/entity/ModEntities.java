@@ -21,9 +21,9 @@ public class ModEntities {
             ENTITY_TYPES.register("colossal_lobster", () -> EntityType.Builder.of(ColossalLobsterEntity::new, MobCategory.WATER_CREATURE)
                     .sized(1.7f, 2.3f).build("colossal_lobster"));
 
-    public static final RegistryObject<EntityType<BehemothEntity>> BEHEMOTH =
-            ENTITY_TYPES.register("behemoth", () -> EntityType.Builder.of(BehemothEntity::new, MobCategory.CREATURE)
-                    .sized(6.2f, 6.4f).build("behemoth"));
+    public static final RegistryObject<EntityType<LesserBehemothEntity>> LESSER_BEHEMOTH =
+            ENTITY_TYPES.register("lesser_behemoth", () -> EntityType.Builder.of(LesserBehemothEntity::new, MobCategory.CREATURE)
+                    .sized(6.2f, 6.4f).build("lesser_behemoth"));
 
     public static final RegistryObject<EntityType<PukisEntity>> PUKIS =
             ENTITY_TYPES.register("pukis", () -> EntityType.Builder.of(PukisEntity::new, MobCategory.CREATURE)

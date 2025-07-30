@@ -5,23 +5,22 @@ import net.minecraft.client.renderer.MultiBufferSource;
 import net.minecraft.client.renderer.entity.EntityRendererProvider;
 import net.minecraft.resources.ResourceLocation;
 import net.semppi.semppis_mythical_legends_mod.SemppisMythicalLegendsMod;
-import net.semppi.semppis_mythical_legends_mod.entity.custom.BehemothEntity;
-import net.semppi.semppis_mythical_legends_mod.entity.custom.LovelandFrogmanEntity;
+import net.semppi.semppis_mythical_legends_mod.entity.custom.LesserBehemothEntity;
 import software.bernie.geckolib.renderer.GeoEntityRenderer;
 
-public class BehemothRenderer extends GeoEntityRenderer<BehemothEntity> {
-    public BehemothRenderer(EntityRendererProvider.Context renderManager) {
-        super(renderManager, new BehemothModel());
+public class LesserBehemothRenderer extends GeoEntityRenderer<LesserBehemothEntity> {
+    public LesserBehemothRenderer(EntityRendererProvider.Context renderManager) {
+        super(renderManager, new LesserBehemothModel());
         this.shadowRadius = 5.0f;
     }
 
     @Override
-    public ResourceLocation getTextureLocation(BehemothEntity animatable) {
+    public ResourceLocation getTextureLocation(LesserBehemothEntity animatable) {
         return new ResourceLocation(SemppisMythicalLegendsMod.MOD_ID, "textures/entity/behemoth_brown.png");
     }
 
     @Override
-    public void render(BehemothEntity entity, float entityYaw, float partialTick, PoseStack poseStack,
+    public void render(LesserBehemothEntity entity, float entityYaw, float partialTick, PoseStack poseStack,
                        MultiBufferSource bufferSource, int packedLight) {
         poseStack.scale(1.5f, 1.5f, 1.5f);
         if(entity.isBaby()) {

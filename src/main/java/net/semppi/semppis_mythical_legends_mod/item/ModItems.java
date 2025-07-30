@@ -48,8 +48,8 @@ public class ModItems {
     public static final RegistryObject<Item> ALICANTO_SPAWN_EGG = ITEMS.register("alicanto_spawn_egg",
             () -> new ForgeSpawnEggItem(ModEntities.ALICANTO, 0xF2AE3E, 0x51BC6D, new Item.Properties()));
 
-    public static final RegistryObject<Item> BEHEMOTH_SPAWN_EGG = ITEMS.register("behemoth_spawn_egg",
-            () -> new ForgeSpawnEggItem(ModEntities.BEHEMOTH, 0x645137, 0x433420, new Item.Properties()));
+    public static final RegistryObject<Item> LESSER_BEHEMOTH_SPAWN_EGG = ITEMS.register("lesser_behemoth_spawn_egg",
+            () -> new ForgeSpawnEggItem(ModEntities.LESSER_BEHEMOTH, 0x645137, 0x433420, new Item.Properties()));
 
     public static final RegistryObject<Item> COLOSSAL_LOBSTER_SPAWN_EGG = ITEMS.register("colossal_lobster_spawn_egg",
             () -> new ForgeSpawnEggItem(ModEntities.COLOSSAL_LOBSTER, 0x223227, 0xf08632, new Item.Properties()));
@@ -73,7 +73,7 @@ public class ModItems {
             () -> new ForgeSpawnEggItem(ModEntities.PROTO_WENDIGO, 0xababab, 0xa99393, new Item.Properties()));
 
     public static final RegistryObject<Item> PUKIS_SPAWN_EGG = ITEMS.register("pukis_spawn_egg",
-            () -> new ForgeSpawnEggItem(ModEntities.PUKIS, 0x3b3497, 0x2c1830, new Item.Properties()));
+            () -> new ForgeSpawnEggItem(ModEntities.PUKIS, 0x017900, 0xB4E652, new Item.Properties()));
 
     public static final RegistryObject<Item> RAINBOW_SERPENT_SPAWN_EGG = ITEMS.register("rainbow_serpent_spawn_egg",
             () -> new ForgeSpawnEggItem(ModEntities.LOVELAND_FROGMAN, 0x28C13F, 0x820d8e, new Item.Properties()));
@@ -417,6 +417,24 @@ public class ModItems {
 
     public static final RegistryObject<Item> COOKED_SCUTTLE_CHUNK = ITEMS.register("cooked_scuttle_chunk",
             () -> new Item(new Item.Properties().food(ModFoods.COOKED_SCUTTLE_CHUNK)));
+
+    public static final RegistryObject<Item> RAW_BEAST_PIECE = ITEMS.register("raw_beast_piece",
+            () -> new Item(new Item.Properties().food(ModFoods.RAW_BEAST_PIECE)));
+
+    public static final RegistryObject<Item> COOKED_BEAST_PIECE = ITEMS.register("cooked_beast_piece",
+            () -> new Item(new Item.Properties().food(ModFoods.COOKED_BEAST_PIECE)));
+
+    public static final RegistryObject<Item> RAW_BEAST_MEAT = ITEMS.register("raw_beast_meat",
+            () -> new Item(new Item.Properties().food(ModFoods.RAW_BEAST_MEAT)));
+
+    public static final RegistryObject<Item> COOKED_BEAST_MEAT = ITEMS.register("cooked_beast_meat",
+            () -> new Item(new Item.Properties().food(ModFoods.COOKED_BEAST_MEAT)));
+
+    public static final RegistryObject<Item> RAW_BEAST_CHUNK = ITEMS.register("raw_beast_chunk",
+            () -> new Item(new Item.Properties().food(ModFoods.RAW_BEAST_CHUNK)));
+
+    public static final RegistryObject<Item> COOKED_BEAST_CHUNK = ITEMS.register("cooked_beast_chunk",
+            () -> new Item(new Item.Properties().food(ModFoods.COOKED_BEAST_CHUNK)));
 
     public static void register(IEventBus eventBus) {
         ITEMS.register(eventBus);

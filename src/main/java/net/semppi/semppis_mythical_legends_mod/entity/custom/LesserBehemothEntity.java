@@ -12,11 +12,8 @@ import net.minecraft.world.entity.ai.attributes.Attributes;
 import net.minecraft.world.entity.ai.goal.*;
 import net.minecraft.world.entity.ai.goal.target.HurtByTargetGoal;
 import net.minecraft.world.entity.ai.goal.target.NearestAttackableTargetGoal;
-import net.minecraft.world.entity.ai.navigation.GroundPathNavigation;
-import net.minecraft.world.entity.ai.util.GoalUtils;
 import net.minecraft.world.entity.animal.Animal;
 import net.minecraft.world.entity.animal.IronGolem;
-import net.minecraft.world.entity.monster.Phantom;
 import net.minecraft.world.entity.monster.Pillager;
 import net.minecraft.world.entity.monster.warden.Warden;
 import net.minecraft.world.entity.npc.AbstractVillager;
@@ -34,10 +31,10 @@ import software.bernie.geckolib.core.animatable.instance.SingletonAnimatableInst
 import software.bernie.geckolib.core.animation.*;
 import software.bernie.geckolib.core.object.PlayState;
 
-public class BehemothEntity extends Animal implements GeoEntity {
+public class LesserBehemothEntity extends Animal implements GeoEntity {
     private AnimatableInstanceCache cache = new SingletonAnimatableInstanceCache(this);
 
-    public BehemothEntity(EntityType<? extends Animal> entityType, Level level) {
+    public LesserBehemothEntity(EntityType<? extends Animal> entityType, Level level) {
         super(entityType, level);
         this.setMaxUpStep(5.5F);
     }
@@ -76,7 +73,7 @@ public class BehemothEntity extends Animal implements GeoEntity {
     @Nullable
     @Override
     public AgeableMob getBreedOffspring(ServerLevel level, AgeableMob ageableMob) {
-        return ModEntities.BEHEMOTH.get().create(level);
+        return ModEntities.LESSER_BEHEMOTH.get().create(level);
     }
 
     @Override
