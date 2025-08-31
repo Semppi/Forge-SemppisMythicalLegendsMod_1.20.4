@@ -26,6 +26,7 @@ public class ModCreativeModeTabs {
                         pOutput.accept(ModItems.CHOCOLATE_PORRIDGE.get());
                         pOutput.accept(ModItems.MANDRAKE_BERRIES.get());
                         pOutput.accept(ModItems.EDIBLE_LEAF.get());
+                        pOutput.accept(ModItems.SPRUCE_TIPS.get());
                         pOutput.accept(ModItems.CUCUMBER.get());
                         pOutput.accept(ModItems.RICOTTA_CHEESE.get());
                         pOutput.accept(ModItems.FRIED_EGG.get());
@@ -149,6 +150,7 @@ public class ModCreativeModeTabs {
                         pOutput.accept(ModItems.MANDRAKE_LEAF.get());
                         pOutput.accept(ModItems.SATYR_HORN.get());
                         pOutput.accept(ModItems.GHASTLY_TEETH.get());
+                        pOutput.accept(ModItems.CARE_BRUSH.get());
                         pOutput.accept(ModItems.FROG_BUCKET.get());
                         pOutput.accept(ModItems.BABY_TURTLE_BUCKET.get());
                         pOutput.accept(ModItems.LOBSTER_CRICKET_BUCKET.get());

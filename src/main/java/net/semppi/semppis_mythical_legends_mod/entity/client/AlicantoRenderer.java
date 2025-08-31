@@ -17,7 +17,7 @@ public class AlicantoRenderer extends GeoEntityRenderer<AlicantoEntity> {
 
     @Override
     public ResourceLocation getTextureLocation(AlicantoEntity animatable) {
-        return new ResourceLocation(SemppisMythicalLegendsMod.MOD_ID, "textures/entity/alicanto_gold.png");
+        return ResourceLocation.fromNamespaceAndPath(SemppisMythicalLegendsMod.MOD_ID, "textures/entity/alicanto_gold.png");
     }
 
     @Override

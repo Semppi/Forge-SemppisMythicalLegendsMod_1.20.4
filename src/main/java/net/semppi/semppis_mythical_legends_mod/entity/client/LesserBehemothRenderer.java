@@ -16,7 +16,7 @@ public class LesserBehemothRenderer extends GeoEntityRenderer<LesserBehemothEnti
 
     @Override
     public ResourceLocation getTextureLocation(LesserBehemothEntity animatable) {
-        return new ResourceLocation(SemppisMythicalLegendsMod.MOD_ID, "textures/entity/behemoth_brown.png");
+        return ResourceLocation.fromNamespaceAndPath(SemppisMythicalLegendsMod.MOD_ID, "textures/entity/behemoth_brown.png");
     }
 
     @Override

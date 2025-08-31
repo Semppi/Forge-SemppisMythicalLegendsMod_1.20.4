@@ -8,16 +8,16 @@ import software.bernie.geckolib.model.GeoModel;
 public class WrappedPukisItemModel extends GeoModel<WrappedPukisItem> {
     @Override
     public ResourceLocation getModelResource(WrappedPukisItem animatable) {
-        return new ResourceLocation(SemppisMythicalLegendsMod.MOD_ID, "geo/wrapped_pukis.geo.json");
+        return ResourceLocation.fromNamespaceAndPath(SemppisMythicalLegendsMod.MOD_ID, "geo/wrapped_pukis.geo.json");
     }
 
     @Override
     public ResourceLocation getTextureResource(WrappedPukisItem animatable) {
-        return new ResourceLocation(SemppisMythicalLegendsMod.MOD_ID, "textures/item/pukis_dark_wrapped.png");
+        return ResourceLocation.fromNamespaceAndPath(SemppisMythicalLegendsMod.MOD_ID, "textures/item/pukis_dark_wrapped.png");
     }
 
     @Override
     public ResourceLocation getAnimationResource(WrappedPukisItem animatable) {
-        return new ResourceLocation(SemppisMythicalLegendsMod.MOD_ID, "animations/wrapped_pukis.animation.json");
+        return ResourceLocation.fromNamespaceAndPath(SemppisMythicalLegendsMod.MOD_ID, "animations/wrapped_pukis.animation.json");
     }
 }

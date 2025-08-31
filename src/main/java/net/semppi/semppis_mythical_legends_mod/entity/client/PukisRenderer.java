@@ -20,19 +20,19 @@ public class PukisRenderer extends GeoEntityRenderer<PukisEntity> {
     public ResourceLocation getTextureLocation(PukisEntity animatable) {
         PukisVariant variant = animatable.getVariant();
         if (variant == PukisVariant.GREEN) {
-            return new ResourceLocation(SemppisMythicalLegendsMod.MOD_ID, "textures/entity/pukis_dark.png");
+            return ResourceLocation.fromNamespaceAndPath(SemppisMythicalLegendsMod.MOD_ID, "textures/entity/pukis_dark.png");
         } else if (variant == PukisVariant.BLUE) {
-            return new ResourceLocation(SemppisMythicalLegendsMod.MOD_ID, "textures/entity/pukis_dark.png");
+            return ResourceLocation.fromNamespaceAndPath(SemppisMythicalLegendsMod.MOD_ID, "textures/entity/pukis_dark.png");
         } else if (variant == PukisVariant.RED) {
-            return new ResourceLocation(SemppisMythicalLegendsMod.MOD_ID, "textures/entity/pukis_dark.png");
+            return ResourceLocation.fromNamespaceAndPath(SemppisMythicalLegendsMod.MOD_ID, "textures/entity/pukis_dark.png");
         } else if (variant == PukisVariant.GOLD) {
-            return new ResourceLocation(SemppisMythicalLegendsMod.MOD_ID, "textures/entity/pukis_dark.png");
+            return ResourceLocation.fromNamespaceAndPath(SemppisMythicalLegendsMod.MOD_ID, "textures/entity/pukis_dark.png");
         } else if (variant == PukisVariant.DARK) {
-            return new ResourceLocation(SemppisMythicalLegendsMod.MOD_ID, "textures/entity/pukis_dark.png");
+            return ResourceLocation.fromNamespaceAndPath(SemppisMythicalLegendsMod.MOD_ID, "textures/entity/pukis_dark.png");
         } else if (variant == PukisVariant.SILVER) {
-            return new ResourceLocation(SemppisMythicalLegendsMod.MOD_ID, "textures/entity/pukis_silver.png");
+            return ResourceLocation.fromNamespaceAndPath(SemppisMythicalLegendsMod.MOD_ID, "textures/entity/pukis_silver.png");
         }else {
-            return new ResourceLocation(SemppisMythicalLegendsMod.MOD_ID, "textures/entity/pukis_dark.png");
+            return ResourceLocation.fromNamespaceAndPath(SemppisMythicalLegendsMod.MOD_ID, "textures/entity/pukis_dark.png");
         }
     }
 

@@ -29,6 +29,9 @@ public class ModItems {
     public static final RegistryObject<Item> GHASTLY_TEETH = ITEMS.register("ghastly_teeth",
             () -> new Item(new Item.Properties()));
 
+    public static final RegistryObject<Item> CARE_BRUSH = ITEMS.register("care_brush",
+            () -> new Item(new Item.Properties()));
+
     public static final RegistryObject<Item> FROG_BUCKET = ITEMS.register("frog_bucket",
             () -> new Item(new Item.Properties()));
 
@@ -120,6 +123,9 @@ public class ModItems {
 
     public static final RegistryObject<Item> EDIBLE_LEAF = ITEMS.register("edible_leaf",
             () -> new Item(new Item.Properties().food(ModFoods.EDIBLE_LEAF)));
+
+    public static final RegistryObject<Item> SPRUCE_TIPS = ITEMS.register("spruce_tips",
+            () -> new Item(new Item.Properties().food(ModFoods.SPRUCE_TIPS)));
 
     public static final RegistryObject<Item> CUCUMBER = ITEMS.register("cucumber",
             () -> new Item(new Item.Properties().food(ModFoods.CUCUMBER)));

@@ -9,12 +9,12 @@ import software.bernie.geckolib.model.GeoModel;
 public class PukisEggItemModel extends GeoModel<PukisEggItem> {
     @Override
     public ResourceLocation getModelResource(PukisEggItem animatable) {
-        return new ResourceLocation(SemppisMythicalLegendsMod.MOD_ID, "geo/pukis_egg.geo.json");
+        return ResourceLocation.fromNamespaceAndPath(SemppisMythicalLegendsMod.MOD_ID, "geo/pukis_egg.geo.json");
     }
 
     @Override
     public ResourceLocation getTextureResource(PukisEggItem animatable) {
-        return new ResourceLocation(SemppisMythicalLegendsMod.MOD_ID, "textures/block/pukis_egg_texture.png");
+        return ResourceLocation.fromNamespaceAndPath(SemppisMythicalLegendsMod.MOD_ID, "textures/block/pukis_egg_texture.png");
     }
 
     @Override

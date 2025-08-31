@@ -16,7 +16,7 @@ public class MalphasRenderer extends GeoEntityRenderer<MalphasEntity> {
 
     @Override
     public ResourceLocation getTextureLocation(MalphasEntity animatable) {
-        return new ResourceLocation(SemppisMythicalLegendsMod.MOD_ID, "textures/entity/malphas_texture.png");
+        return ResourceLocation.fromNamespaceAndPath(SemppisMythicalLegendsMod.MOD_ID, "textures/entity/malphas_texture.png");
     }
 
     @Override

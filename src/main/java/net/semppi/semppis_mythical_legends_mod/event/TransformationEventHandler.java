@@ -30,7 +30,7 @@ public class TransformationEventHandler {
     private static final Logger LOGGER = LogManager.getLogger();
     private static final ResourceKey<DamageType> OUT_OF_WORLD_KEY =
             ResourceKey.create(net.minecraft.core.registries.Registries.DAMAGE_TYPE,
-                    new ResourceLocation("minecraft","out_of_world"));
+                    ResourceLocation.fromNamespaceAndPath("minecraft","out_of_world"));
     private static final UUID MOUNT_MINING_MODIFIER_ID =
             UUID.fromString("123e4567-e89b-12d3-a456-426614174000");
 

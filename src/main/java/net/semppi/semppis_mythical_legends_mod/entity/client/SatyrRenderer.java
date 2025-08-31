@@ -21,17 +21,17 @@ public class SatyrRenderer extends GeoEntityRenderer<SatyrEntity> {
     public ResourceLocation getTextureLocation(SatyrEntity animatable) {
         SatyrVariant variant = animatable.getVariant();
         if (variant == SatyrVariant.BLACK) {
-            return new ResourceLocation(SemppisMythicalLegendsMod.MOD_ID, "textures/entity/satyr_black.png");
+            return ResourceLocation.fromNamespaceAndPath(SemppisMythicalLegendsMod.MOD_ID, "textures/entity/satyr_black.png");
         } else if (variant == SatyrVariant.BROWN) {
-            return new ResourceLocation(SemppisMythicalLegendsMod.MOD_ID, "textures/entity/satyr_brown.png");
+            return ResourceLocation.fromNamespaceAndPath(SemppisMythicalLegendsMod.MOD_ID, "textures/entity/satyr_brown.png");
         } else if (variant == SatyrVariant.CARAMEL) {
-            return new ResourceLocation(SemppisMythicalLegendsMod.MOD_ID, "textures/entity/satyr_caramel.png");
+            return ResourceLocation.fromNamespaceAndPath(SemppisMythicalLegendsMod.MOD_ID, "textures/entity/satyr_caramel.png");
         } else if (variant == SatyrVariant.BLONDE) {
-            return new ResourceLocation(SemppisMythicalLegendsMod.MOD_ID, "textures/entity/satyr_blonde.png");
+            return ResourceLocation.fromNamespaceAndPath(SemppisMythicalLegendsMod.MOD_ID, "textures/entity/satyr_blonde.png");
         } else if (variant == SatyrVariant.COPPER_RED) {
-            return new ResourceLocation(SemppisMythicalLegendsMod.MOD_ID, "textures/entity/satyr_copper_red.png");
+            return ResourceLocation.fromNamespaceAndPath(SemppisMythicalLegendsMod.MOD_ID, "textures/entity/satyr_copper_red.png");
         }else {
-            return new ResourceLocation(SemppisMythicalLegendsMod.MOD_ID, "textures/entity/satyr_albino.png");
+            return ResourceLocation.fromNamespaceAndPath(SemppisMythicalLegendsMod.MOD_ID, "textures/entity/satyr_albino.png");
         }
     }
 

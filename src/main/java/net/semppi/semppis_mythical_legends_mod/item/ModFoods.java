@@ -20,6 +20,8 @@ public class ModFoods {
 
     public static final FoodProperties EDIBLE_LEAF = new FoodProperties.Builder().nutrition(2).saturationMod(0.6f).build();
 
+    public static final FoodProperties SPRUCE_TIPS = new FoodProperties.Builder().nutrition(1).saturationMod(0.4f).build();
+
     public static final FoodProperties CUCUMBER = new FoodProperties.Builder().nutrition(3).saturationMod(1.1f).build();
 
     public static final FoodProperties RICOTTA_CHEESE = new FoodProperties.Builder().nutrition(2).saturationMod(1.0f).build();

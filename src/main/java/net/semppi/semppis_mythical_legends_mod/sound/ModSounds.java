@@ -16,7 +16,7 @@ public class ModSounds {
     public static final RegistryObject<SoundEvent> LARGE_CROW_HURT = registerSoundEvent("large_crow_hurt");
 
     private static RegistryObject<SoundEvent> registerSoundEvent(String name) {
-        ResourceLocation id = new ResourceLocation(SemppisMythicalLegendsMod.MOD_ID, name);
+        ResourceLocation id = ResourceLocation.fromNamespaceAndPath(SemppisMythicalLegendsMod.MOD_ID, name);
         return SOUND_EVENTS.register(name, () -> SoundEvent.createVariableRangeEvent(id));
     }
 

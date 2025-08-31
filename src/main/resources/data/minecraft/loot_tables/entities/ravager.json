@@ -5,7 +5,7 @@
       "entries": [
         {
           "type": "minecraft:item",
-          "name": "semppis_mythical_legends_mod:humanoid_steak",
+          "name": "semppis_mythical_legends_mod:cooked_beast_meat",
           "conditions": [
             {
               "condition": "minecraft:entity_properties",
@@ -24,7 +24,7 @@
         },
         {
           "type": "minecraft:item",
-          "name": "semppis_mythical_legends_mod:humanoid_flesh",
+          "name": "semppis_mythical_legends_mod:raw_beast_meat",
           "conditions": [
             {
               "condition": "minecraft:entity_properties",

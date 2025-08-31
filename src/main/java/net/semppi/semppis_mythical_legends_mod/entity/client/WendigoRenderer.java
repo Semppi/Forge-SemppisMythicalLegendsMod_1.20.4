@@ -19,15 +19,15 @@ public class WendigoRenderer extends GeoEntityRenderer<WendigoEntity> {
     public ResourceLocation getTextureLocation(WendigoEntity animatable) {
         WendigoVariant variant = animatable.getVariant();
         if (variant == WendigoVariant.BROWN) {
-            return new ResourceLocation(SemppisMythicalLegendsMod.MOD_ID, "textures/entity/wendigo_brown.png");
+            return ResourceLocation.fromNamespaceAndPath(SemppisMythicalLegendsMod.MOD_ID, "textures/entity/wendigo_brown.png");
         } else if (variant == WendigoVariant.GRAY) {
-            return new ResourceLocation(SemppisMythicalLegendsMod.MOD_ID, "textures/entity/wendigo_gray.png");
+            return ResourceLocation.fromNamespaceAndPath(SemppisMythicalLegendsMod.MOD_ID, "textures/entity/wendigo_gray.png");
         } else if (variant == WendigoVariant.WHITE) {
-            return new ResourceLocation(SemppisMythicalLegendsMod.MOD_ID, "textures/entity/wendigo_white.png");
+            return ResourceLocation.fromNamespaceAndPath(SemppisMythicalLegendsMod.MOD_ID, "textures/entity/wendigo_white.png");
         } else if (variant == WendigoVariant.SOUL) {
-            return new ResourceLocation(SemppisMythicalLegendsMod.MOD_ID, "textures/entity/wendigo_gray.png");
+            return ResourceLocation.fromNamespaceAndPath(SemppisMythicalLegendsMod.MOD_ID, "textures/entity/wendigo_gray.png");
         }else {
-            return new ResourceLocation(SemppisMythicalLegendsMod.MOD_ID, "textures/entity/wendigo_gray.png");
+            return ResourceLocation.fromNamespaceAndPath(SemppisMythicalLegendsMod.MOD_ID, "textures/entity/wendigo_gray.png");
         }
     }
 

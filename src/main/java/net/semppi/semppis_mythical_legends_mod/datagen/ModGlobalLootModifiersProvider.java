@@ -30,9 +30,9 @@ public class ModGlobalLootModifiersProvider extends GlobalLootModifierProvider {
                 LootItemBlockStatePropertyCondition.hasBlockStateProperties(Blocks.DARK_OAK_LEAVES).build(),
                 LootItemRandomChanceCondition.randomChance(0.11f).build()}, ModItems.EDIBLE_LEAF.get()));
 
-        add("edible_leaf_from_spruce_leaves", new AddItemModifier(new LootItemCondition[] {
+        add("spruce_tips_from_spruce_leaves", new AddItemModifier(new LootItemCondition[] {
                 LootItemBlockStatePropertyCondition.hasBlockStateProperties(Blocks.SPRUCE_LEAVES).build(),
-                LootItemRandomChanceCondition.randomChance(0.07f).build()}, ModItems.EDIBLE_LEAF.get()));
+                LootItemRandomChanceCondition.randomChance(0.11f).build()}, ModItems.SPRUCE_TIPS.get()));
 
         add("edible_leaf_from_birch_leaves", new AddItemModifier(new LootItemCondition[] {
                 LootItemBlockStatePropertyCondition.hasBlockStateProperties(Blocks.BIRCH_LEAVES).build(),
@@ -55,7 +55,7 @@ public class ModGlobalLootModifiersProvider extends GlobalLootModifierProvider {
                 LootItemRandomChanceCondition.randomChance(0.11f).build()}, ModItems.EDIBLE_LEAF.get()));
 
         add("ghastly_teeth_from_ghast", new AddItemModifier(new LootItemCondition[] {
-                new LootTableIdCondition.Builder(new ResourceLocation("entities/ghast")).build(),
+                new LootTableIdCondition.Builder(ResourceLocation.fromNamespaceAndPath("minecraft", "entities/ghast")).build(),
                 LootItemRandomChanceCondition.randomChance(0.7f).build() // 70% chance
         }, ModItems.GHASTLY_TEETH.get()));
 

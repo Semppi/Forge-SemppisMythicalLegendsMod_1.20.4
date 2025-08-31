@@ -16,7 +16,7 @@ public class MandrakeSproutlingRenderer extends GeoEntityRenderer<MandrakeSprout
 
     @Override
     public ResourceLocation getTextureLocation(MandrakeSproutlingEntity animatable) {
-        return new ResourceLocation(SemppisMythicalLegendsMod.MOD_ID, "textures/entity/mandrake_sproutling_brown.png");
+        return ResourceLocation.fromNamespaceAndPath(SemppisMythicalLegendsMod.MOD_ID, "textures/entity/mandrake_sproutling_brown.png");
     }
 
     @Override

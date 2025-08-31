@@ -64,6 +64,8 @@ public class SemppisMythicalLegendsMod {
         MinecraftForge.EVENT_BUS.register(this);
         MinecraftForge.EVENT_BUS.register(EntitySpawnHandler.class);
         modEventBus.addListener(this::addCreative);
+
+        net.semppi.semppis_mythical_legends_mod.rules.SMLRules.init();
     }
 
     private void commonSetup(final FMLCommonSetupEvent event) {

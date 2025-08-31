@@ -8,12 +8,12 @@ import software.bernie.geckolib.model.GeoModel;
 public class WendigoSkullItemModel extends GeoModel<WendigoSkullItem> {
     @Override
     public ResourceLocation getModelResource(WendigoSkullItem animatable) {
-        return new ResourceLocation(SemppisMythicalLegendsMod.MOD_ID, "geo/wendigo_skull.geo.json");
+        return ResourceLocation.fromNamespaceAndPath(SemppisMythicalLegendsMod.MOD_ID, "geo/wendigo_skull.geo.json");
     }
 
     @Override
     public ResourceLocation getTextureResource(WendigoSkullItem animatable) {
-        return new ResourceLocation(SemppisMythicalLegendsMod.MOD_ID, "textures/block/wendigo_skull.png");
+        return ResourceLocation.fromNamespaceAndPath(SemppisMythicalLegendsMod.MOD_ID, "textures/block/wendigo_skull.png");
     }
 
     @Override

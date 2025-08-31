@@ -13,17 +13,17 @@ import software.bernie.geckolib.model.data.EntityModelData;
 public class MalphasModel extends GeoModel<MalphasEntity> {
     @Override
     public ResourceLocation getModelResource(MalphasEntity animatable) {
-        return new ResourceLocation(SemppisMythicalLegendsMod.MOD_ID, "geo/malphas.geo.json");
+        return ResourceLocation.fromNamespaceAndPath(SemppisMythicalLegendsMod.MOD_ID, "geo/malphas.geo.json");
     }
 
     @Override
     public ResourceLocation getTextureResource(MalphasEntity animatable) {
-        return new ResourceLocation(SemppisMythicalLegendsMod.MOD_ID, "textures/entity/malphas_texture.png");
+        return ResourceLocation.fromNamespaceAndPath(SemppisMythicalLegendsMod.MOD_ID, "textures/entity/malphas_texture.png");
     }
 
     @Override
     public ResourceLocation getAnimationResource(MalphasEntity animatable) {
-        return new ResourceLocation(SemppisMythicalLegendsMod.MOD_ID, "animations/malphas.animation.json");
+        return ResourceLocation.fromNamespaceAndPath(SemppisMythicalLegendsMod.MOD_ID, "animations/malphas.animation.json");
     }
 
     @Override

@@ -17,7 +17,7 @@ public class ColossalLobsterRenderer extends GeoEntityRenderer<ColossalLobsterEn
 
     @Override
     public ResourceLocation getTextureLocation(ColossalLobsterEntity animatable) {
-        return new ResourceLocation(SemppisMythicalLegendsMod.MOD_ID, "textures/entity/lobster_orange_black.png");
+        return ResourceLocation.fromNamespaceAndPath(SemppisMythicalLegendsMod.MOD_ID, "textures/entity/lobster_orange_black.png");
     }
 
     @Override

@@ -13,17 +13,17 @@ import software.bernie.geckolib.model.data.EntityModelData;
 public class LesserBehemothModel extends GeoModel<LesserBehemothEntity> {
     @Override
     public ResourceLocation getModelResource(LesserBehemothEntity animatable) {
-        return new ResourceLocation(SemppisMythicalLegendsMod.MOD_ID, "geo/behemoth.geo.json");
+        return ResourceLocation.fromNamespaceAndPath(SemppisMythicalLegendsMod.MOD_ID, "geo/behemoth.geo.json");
     }
 
     @Override
     public ResourceLocation getTextureResource(LesserBehemothEntity animatable) {
-        return new ResourceLocation(SemppisMythicalLegendsMod.MOD_ID, "textures/entity/behemoth_brown.png");
+        return ResourceLocation.fromNamespaceAndPath(SemppisMythicalLegendsMod.MOD_ID, "textures/entity/behemoth_brown.png");
     }
 
     @Override
     public ResourceLocation getAnimationResource(LesserBehemothEntity animatable) {
-        return new ResourceLocation(SemppisMythicalLegendsMod.MOD_ID, "animations/behemoth.animation.json");
+        return ResourceLocation.fromNamespaceAndPath(SemppisMythicalLegendsMod.MOD_ID, "animations/behemoth.animation.json");
     }
 
     @Override
