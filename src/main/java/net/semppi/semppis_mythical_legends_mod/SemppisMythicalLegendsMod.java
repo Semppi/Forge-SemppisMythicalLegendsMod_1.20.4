@@ -32,6 +32,7 @@ import net.semppi.semppis_mythical_legends_mod.item.ModCreativeModeTabs;
 import net.semppi.semppis_mythical_legends_mod.item.ModItems;
 import net.semppi.semppis_mythical_legends_mod.loot.ModLootModifiers;
 import net.semppi.semppis_mythical_legends_mod.sound.ModSounds;
+import net.semppi.semppis_mythical_legends_mod.spawn.RegionSpawn;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import software.bernie.geckolib.GeckoLib;
@@ -70,30 +71,40 @@ public class SemppisMythicalLegendsMod {
 
     private void commonSetup(final FMLCommonSetupEvent event) {
         GeckoLib.initialize();
-        SpawnPlacements.register(ModEntities.SATYR.get(),
-                SpawnPlacements.Type.ON_GROUND, Heightmap.Types.MOTION_BLOCKING_NO_LEAVES,
-                Animal::checkAnimalSpawnRules);
-        SpawnPlacements.register(ModEntities.LESSER_BEHEMOTH.get(),
-                SpawnPlacements.Type.ON_GROUND, Heightmap.Types.MOTION_BLOCKING_NO_LEAVES,
-                Animal::checkAnimalSpawnRules);
-        SpawnPlacements.register(ModEntities.PUKIS.get(),
-                SpawnPlacements.Type.ON_GROUND, Heightmap.Types.MOTION_BLOCKING_NO_LEAVES,
-                Animal::checkAnimalSpawnRules);
-        SpawnPlacements.register(ModEntities.WENDIGO.get(),
-                SpawnPlacements.Type.ON_GROUND, Heightmap.Types.MOTION_BLOCKING_NO_LEAVES,
-                Animal::checkAnimalSpawnRules);
-        SpawnPlacements.register(ModEntities.LOVELAND_FROGMAN.get(),
-                SpawnPlacements.Type.ON_GROUND, Heightmap.Types.MOTION_BLOCKING_NO_LEAVES,
-                Animal::checkAnimalSpawnRules);
-        SpawnPlacements.register(ModEntities.COLOSSAL_LOBSTER.get(),
-                SpawnPlacements.Type.IN_WATER, Heightmap.Types.MOTION_BLOCKING_NO_LEAVES,
-                WaterAnimal::checkSurfaceWaterAnimalSpawnRules);
-        SpawnPlacements.register(ModEntities.ALICANTO.get(),
-                SpawnPlacements.Type.ON_GROUND, Heightmap.Types.MOTION_BLOCKING_NO_LEAVES,
-                AlicantoEntity::canAlicantoSpawn);
-        SpawnPlacements.register(ModEntities.PROTO_WENDIGO.get(),
-                SpawnPlacements.Type.ON_GROUND, Heightmap.Types.MOTION_BLOCKING_NO_LEAVES,
-                Animal::checkAnimalSpawnRules);
+        event.enqueueWork(() -> {
+            SpawnPlacements.register(ModEntities.SATYR.get(),
+                    SpawnPlacements.Type.ON_GROUND, Heightmap.Types.MOTION_BLOCKING_NO_LEAVES,
+                    RegionSpawn.gatedLand(Animal::checkAnimalSpawnRules));
+
+            SpawnPlacements.register(ModEntities.LESSER_BEHEMOTH.get(),
+                    SpawnPlacements.Type.ON_GROUND, Heightmap.Types.MOTION_BLOCKING_NO_LEAVES,
+                    RegionSpawn.gatedLand(Animal::checkAnimalSpawnRules));
+
+            SpawnPlacements.register(ModEntities.PUKIS.get(),
+                    SpawnPlacements.Type.ON_GROUND, Heightmap.Types.MOTION_BLOCKING_NO_LEAVES,
+                    RegionSpawn.gatedLand(Animal::checkAnimalSpawnRules));
+
+            SpawnPlacements.register(ModEntities.WENDIGO.get(),
+                    SpawnPlacements.Type.ON_GROUND, Heightmap.Types.MOTION_BLOCKING_NO_LEAVES,
+                    RegionSpawn.gatedLand(Animal::checkAnimalSpawnRules));
+
+            SpawnPlacements.register(ModEntities.LOVELAND_FROGMAN.get(),
+                    SpawnPlacements.Type.ON_GROUND, Heightmap.Types.MOTION_BLOCKING_NO_LEAVES,
+                    RegionSpawn.gatedLand(Animal::checkAnimalSpawnRules));
+
+            SpawnPlacements.register(ModEntities.ALICANTO.get(),
+                    SpawnPlacements.Type.ON_GROUND, Heightmap.Types.MOTION_BLOCKING_NO_LEAVES,
+                    RegionSpawn.gatedLand(AlicantoEntity::canAlicantoSpawn)); // keep your custom predicate, just gated
+
+            SpawnPlacements.register(ModEntities.PROTO_WENDIGO.get(),
+                    SpawnPlacements.Type.ON_GROUND, Heightmap.Types.MOTION_BLOCKING_NO_LEAVES,
+                    RegionSpawn.gatedLand(Animal::checkAnimalSpawnRules));
+
+            // WATER: gate oceans too
+            SpawnPlacements.register(ModEntities.COLOSSAL_LOBSTER.get(),
+                    SpawnPlacements.Type.IN_WATER, Heightmap.Types.MOTION_BLOCKING_NO_LEAVES,
+                    RegionSpawn.gatedSea(WaterAnimal::checkSurfaceWaterAnimalSpawnRules));
+        });
     }
 
     private void addCreative(final BuildCreativeModeTabContentsEvent event) {

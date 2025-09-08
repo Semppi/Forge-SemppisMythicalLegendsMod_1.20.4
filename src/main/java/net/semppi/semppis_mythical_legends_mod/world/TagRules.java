@@ -23,204 +23,417 @@ public final class TagRules {
 
         // NORTH AMERICA
         add(Continent.N_AMERICA, SubDir.CENTRAL,
-                "minecraft:plains","minecraft:forest","minecraft:flower_forest","minecraft:birch_forest",
-                "minecraft:swamp","minecraft:river","minecraft:beach","minecraft:stony_shore",
-                "minecraft:windswept_hills","minecraft:taiga"
+                "minecraft:plains", "minecraft:sunflower_plains", "minecraft:meadow",
+                "minecraft:forest", "minecraft:flower_forest", "minecraft:dark_forest",
+                "minecraft:birch_forest", "minecraft:old_growth_birch_forest", "minecraft:swamp",
+                "minecraft:grove", "minecraft:jagged_peaks", "minecraft:stony_peaks",
+                "minecraft:frozen_peaks", "minecraft:snowy_slopes", "minecraft:windswept_hills",
+                "minecraft:windswept_gravelly_hills", "minecraft:windswept_forest",
+                "minecraft:river", "minecraft:beach", "minecraft:stony_shore",
+                "minecraft:ocean", "minecraft:deep_ocean", "minecraft:lukewarm_ocean", "minecraft:deep_lukewarm_ocean",
+                "minecraft:deep_dark", "minecraft:dripstone_caves", "minecraft:lush_caves"
         );
         add(Continent.N_AMERICA, SubDir.NORTH,
-                "minecraft:taiga","minecraft:snowy_taiga","minecraft:snowy_plains",
-                "minecraft:river","minecraft:beach","minecraft:stony_shore"
+                "minecraft:taiga", "minecraft:old_growth_pine_taiga", "minecraft:old_growth_spruce_taiga",
+                "minecraft:birch_forest", "minecraft:old_growth_birch_forest", "minecraft:forest",
+                "minecraft:flower_forest", "minecraft:dark_forest", "minecraft:plains",
+                "minecraft:swamp", "minecraft:snowy_taiga", "minecraft:snowy_plains",
+                "minecraft:ice_spikes", "minecraft:jagged_peaks", "minecraft:frozen_peaks",
+                "minecraft:stony_peaks", "minecraft:meadow", "minecraft:grove",
+                "minecraft:snowy_slopes", "minecraft:windswept_hills", "minecraft:windswept_gravelly_hills",
+                "minecraft:windswept_forest",
+                "minecraft:frozen_river", "minecraft:snowy_beach",
+                "minecraft:river", "minecraft:beach", "minecraft:stony_shore",
+                "minecraft:ocean", "minecraft:deep_ocean", "minecraft:lukewarm_ocean", "minecraft:deep_lukewarm_ocean", "minecraft:cold_ocean", "minecraft:deep_cold_ocean",
+                "minecraft:frozen_ocean", "minecraft:deep_frozen_ocean",
+                "minecraft:deep_dark", "minecraft:dripstone_caves", "minecraft:lush_caves"
         );
         add(Continent.N_AMERICA, SubDir.EAST,
-                "minecraft:forest","minecraft:birch_forest","minecraft:old_growth_birch_forest",
-                "minecraft:plains","minecraft:swamp","minecraft:river","minecraft:beach",
-                "minecraft:stony_shore","minecraft:windswept_hills"
+                "minecraft:swamp", "minecraft:forest", "minecraft:flower_forest",
+                "minecraft:dark_forest", "minecraft:birch_forest", "minecraft:old_growth_birch_forest",
+                "minecraft:taiga", "minecraft:plains", "minecraft:sunflower_plains",
+                "minecraft:meadow", "minecraft:stony_peaks", "minecraft:windswept_hills",
+                "minecraft:windswept_gravelly_hills", "minecraft:windswept_forest",
+                "minecraft:river", "minecraft:beach", "minecraft:stony_shore",
+                "minecraft:ocean", "minecraft:deep_ocean", "minecraft:lukewarm_ocean", "minecraft:deep_lukewarm_ocean",
+                "minecraft:deep_dark", "minecraft:dripstone_caves", "minecraft:lush_caves"
         );
         add(Continent.N_AMERICA, SubDir.SOUTH,
-                "minecraft:forest","minecraft:birch_forest","minecraft:old_growth_birch_forest",
-                "minecraft:plains","minecraft:swamp","minecraft:river","minecraft:beach",
-                "minecraft:stony_shore","minecraft:windswept_hills"
+                "minecraft:badlands", "minecraft:wooded_badlands", "minecraft:eroded_badlands",
+                "minecraft:savanna", "minecraft:savanna_plateau", "minecraft:windswept_savanna",
+                "minecraft:jungle", "minecraft:sparse_jungle", "minecraft:desert",
+                "minecraft:plains", "minecraft:sunflower_plains", "minecraft:swamp",
+                "minecraft:mangrove_swamp", "minecraft:meadow", "minecraft:forest",
+                "minecraft:flower_forest", "minecraft:dark_forest", "minecraft:mushroom_fields",
+                "minecraft:jagged_peaks", "minecraft:stony_peaks", "minecraft:windswept_hills",
+                "minecraft:windswept_gravelly_hills", "minecraft:windswept_forest",
+                "minecraft:river", "minecraft:beach", "minecraft:stony_shore",
+                "minecraft:ocean", "minecraft:deep_ocean", "minecraft:lukewarm_ocean", "minecraft:deep_lukewarm_ocean", "minecraft:warm_ocean",
+                "minecraft:deep_dark", "minecraft:dripstone_caves", "minecraft:lush_caves"
         );
         add(Continent.N_AMERICA, SubDir.WEST,
-                "minecraft:badlands","minecraft:eroded_badlands","minecraft:wooded_badlands",
-                "minecraft:desert","minecraft:savanna",
-                "minecraft:plains","minecraft:forest","minecraft:windswept_hills",
-                "minecraft:river","minecraft:beach","minecraft:stony_shore"
+                "minecraft:taiga", "minecraft:old_growth_pine_taiga", "minecraft:old_growth_spruce_taiga",
+                "minecraft:birch_forest", "minecraft:old_growth_birch_forest", "minecraft:forest",
+                "minecraft:flower_forest", "minecraft:dark_forest", "minecraft:plains",
+                "minecraft:sunflower_plains", "minecraft:desert", "minecraft:jungle",
+                "minecraft:sparse_jungle", "minecraft:mushroom_fields", "minecraft:meadow",
+                "minecraft:swamp", "minecraft:grove", "minecraft:jagged_peaks",
+                "minecraft:stony_peaks", "minecraft:frozen_peaks", "minecraft:snowy_slopes",
+                "minecraft:windswept_hills", "minecraft:windswept_gravelly_hills", "minecraft:windswept_forest",
+                "minecraft:river", "minecraft:beach", "minecraft:stony_shore",
+                "minecraft:ocean", "minecraft:deep_ocean", "minecraft:lukewarm_ocean", "minecraft:deep_lukewarm_ocean",
+                "minecraft:deep_dark", "minecraft:dripstone_caves", "minecraft:lush_caves"
         );
 
         // EUROPE
         add(Continent.EUROPE, SubDir.CENTRAL,
-                "minecraft:plains", "minecraft:taiga", "minecraft:snowy_taiga",
+                "minecraft:forest", "minecraft:flower_forest", "minecraft:birch_forest",
+                "minecraft:old_growth_birch_forest", "minecraft:dark_forest", "minecraft:plains",
+                "minecraft:sunflower_plains", "minecraft:swamp", "minecraft:meadow",
+                "minecraft:grove", "minecraft:jagged_peaks", "minecraft:stony_peaks",
+                "minecraft:snowy_slopes", "minecraft:frozen_peaks", "minecraft:windswept_hills",
+                "minecraft:windswept_gravelly_hills", "minecraft:windswept_forest",
                 "minecraft:river", "minecraft:beach", "minecraft:stony_shore",
-                "minecraft:windswept_hills"
+                "minecraft:ocean", "minecraft:deep_ocean", "minecraft:lukewarm_ocean", "minecraft:deep_lukewarm_ocean",
+                "minecraft:deep_dark", "minecraft:dripstone_caves", "minecraft:lush_caves"
         );
         add(Continent.EUROPE, SubDir.NORTH,
-                "minecraft:plains", "minecraft:taiga", "minecraft:snowy_taiga",
+                "minecraft:taiga", "minecraft:old_growth_pine_taiga", "minecraft:old_growth_spruce_taiga",
+                "minecraft:birch_forest", "minecraft:old_growth_birch_forest", "minecraft:forest",
+                "minecraft:flower_forest", "minecraft:dark_forest", "minecraft:plains",
+                "minecraft:swamp", "minecraft:snowy_taiga", "minecraft:snowy_plains",
+                "minecraft:ice_spikes", "minecraft:jagged_peaks", "minecraft:frozen_peaks",
+                "minecraft:stony_peaks", "minecraft:meadow", "minecraft:grove",
+                "minecraft:snowy_slopes", "minecraft:windswept_hills", "minecraft:windswept_gravelly_hills",
+                "minecraft:windswept_forest", "minecraft:mushroom_fields",
+                "minecraft:frozen_river", "minecraft:snowy_beach",
                 "minecraft:river", "minecraft:beach", "minecraft:stony_shore",
-                "minecraft:windswept_hills"
+                "minecraft:ocean", "minecraft:deep_ocean", "minecraft:cold_ocean", "minecraft:deep_cold_ocean", "minecraft:lukewarm_ocean", "minecraft:deep_lukewarm_ocean",
+                "minecraft:frozen_ocean", "minecraft:deep_frozen_ocean",
+                "minecraft:deep_dark", "minecraft:dripstone_caves", "minecraft:lush_caves"
         );
         add(Continent.EUROPE, SubDir.EAST,
-                "minecraft:plains", "minecraft:taiga", "minecraft:snowy_taiga",
+                "minecraft:taiga", "minecraft:old_growth_pine_taiga", "minecraft:old_growth_spruce_taiga",
+                "minecraft:birch_forest", "minecraft:old_growth_birch_forest", "minecraft:forest",
+                "minecraft:flower_forest", "minecraft:dark_forest", "minecraft:plains",
+                "minecraft:sunflower_plains", "minecraft:swamp", "minecraft:snowy_taiga",
+                "minecraft:snowy_plains", "minecraft:ice_spikes", "minecraft:jagged_peaks",
+                "minecraft:frozen_peaks", "minecraft:stony_peaks", "minecraft:meadow",
+                "minecraft:grove", "minecraft:snowy_slopes", "minecraft:windswept_hills",
+                "minecraft:windswept_gravelly_hills", "minecraft:windswept_forest", "minecraft:mushroom_fields",
+                "minecraft:frozen_river", "minecraft:snowy_beach",
                 "minecraft:river", "minecraft:beach", "minecraft:stony_shore",
-                "minecraft:windswept_hills"
+                "minecraft:ocean", "minecraft:deep_ocean", "minecraft:lukewarm_ocean", "minecraft:deep_lukewarm_ocean", "minecraft:cold_ocean", "minecraft:deep_cold_ocean",
+                "minecraft:frozen_ocean", "minecraft:deep_frozen_ocean",
+                "minecraft:deep_dark", "minecraft:dripstone_caves", "minecraft:lush_caves"
         );
         add(Continent.EUROPE, SubDir.SOUTH,
-                "minecraft:plains", "minecraft:taiga", "minecraft:snowy_taiga",
+                "minecraft:plains", "minecraft:forest", "minecraft:flower_forest",
+                "minecraft:birch_forest", "minecraft:old_growth_birch_forest", "minecraft:dark_forest",
+                "minecraft:swamp", "minecraft:meadow", "minecraft:grove",
+                "minecraft:jagged_peaks", "minecraft:stony_peaks", "minecraft:snowy_slopes",
+                "minecraft:windswept_hills", "minecraft:windswept_gravelly_hills", "minecraft:windswept_forest",
                 "minecraft:river", "minecraft:beach", "minecraft:stony_shore",
-                "minecraft:windswept_hills"
+                "minecraft:ocean", "minecraft:deep_ocean", "minecraft:lukewarm_ocean", "minecraft:deep_lukewarm_ocean",
+                "minecraft:deep_dark", "minecraft:dripstone_caves", "minecraft:lush_caves"
         );
         add(Continent.EUROPE, SubDir.WEST,
-                "minecraft:plains", "minecraft:forest", "minecraft:birch_forest",
-                "minecraft:old_growth_birch_forest", "minecraft:flower_forest",
-                "minecraft:swamp", "minecraft:river",
-                "minecraft:beach", "minecraft:stony_shore",
-                "minecraft:windswept_hills"
+                "minecraft:plains", "minecraft:sunflower_plains", "minecraft:forest",
+                "minecraft:flower_forest", "minecraft:birch_forest", "minecraft:old_growth_birch_forest",
+                "minecraft:dark_forest", "minecraft:meadow", "minecraft:swamp",
+                "minecraft:windswept_hills", "minecraft:windswept_gravelly_hills", "minecraft:windswept_forest",
+                "minecraft:river", "minecraft:beach", "minecraft:stony_shore",
+                "minecraft:ocean", "minecraft:deep_ocean", "minecraft:lukewarm_ocean", "minecraft:deep_lukewarm_ocean",
+                "minecraft:deep_dark", "minecraft:dripstone_caves", "minecraft:lush_caves"
         );
 
         // ASIA
         add(Continent.ASIA, SubDir.CENTRAL,
-                "minecraft:cherry_grove", "minecraft:birch_forest",
-                "minecraft:plains", "minecraft:forest", "minecraft:river"
+                "minecraft:plains", "minecraft:forest", "minecraft:flower_forest",
+                "minecraft:birch_forest", "minecraft:old_growth_birch_forest", "minecraft:swamp",
+                "minecraft:mangrove_swamp", "minecraft:cherry_grove", "minecraft:desert",
+                "minecraft:jungle", "minecraft:sparse_jungle", "minecraft:bamboo_jungle",
+                "minecraft:snowy_slopes", "minecraft:grove", "minecraft:stony_peaks",
+                "minecraft:jagged_peaks", "minecraft:frozen_peaks", "minecraft:meadow",
+                "minecraft:windswept_hills", "minecraft:windswept_gravelly_hills", "minecraft:windswept_forest",
+                "minecraft:river", "minecraft:beach", "minecraft:stony_shore",
+                "minecraft:ocean", "minecraft:deep_ocean", "minecraft:lukewarm_ocean", "minecraft:deep_lukewarm_ocean", "minecraft:warm_ocean",
+                "minecraft:deep_dark", "minecraft:dripstone_caves", "minecraft:lush_caves"
+
         );
         add(Continent.ASIA, SubDir.NORTH,
-                "minecraft:cherry_grove", "minecraft:bamboo_jungle", "minecraft:jungle",
-                "minecraft:forest", "minecraft:plains", "minecraft:river", "minecraft:beach"
+                "minecraft:snowy_plains", "minecraft:snowy_taiga", "minecraft:taiga",
+                "minecraft:forest", "minecraft:flower_forest", "minecraft:birch_forest",
+                "minecraft:old_growth_birch_forest", "minecraft:dark_forest", "minecraft:old_growth_pine_taiga",
+                "minecraft:old_growth_spruce_taiga", "minecraft:plains", "minecraft:meadow",
+                "minecraft:swamp", "minecraft:snowy_slopes", "minecraft:grove",
+                "minecraft:stony_peaks", "minecraft:jagged_peaks", "minecraft:frozen_peaks",
+                "minecraft:windswept_hills", "minecraft:windswept_gravelly_hills", "minecraft:windswept_forest",
+                "minecraft:ice_spikes", "minecraft:mushroom_fields",
+                "minecraft:frozen_river", "minecraft:snowy_beach",
+                "minecraft:river", "minecraft:beach", "minecraft:stony_shore",
+                "minecraft:ocean", "minecraft:deep_ocean", "minecraft:cold_ocean", "minecraft:deep_cold_ocean", "minecraft:frozen_ocean", "minecraft:deep_frozen_ocean",
+                "minecraft:deep_dark", "minecraft:dripstone_caves", "minecraft:lush_caves"
         );
         add(Continent.ASIA, SubDir.EAST,
-                "minecraft:cherry_grove", "minecraft:bamboo_jungle", "minecraft:jungle",
-                "minecraft:forest", "minecraft:plains", "minecraft:river", "minecraft:beach"
+                "minecraft:forest", "minecraft:plains", "minecraft:cherry_grove",
+                "minecraft:flower_forest", "minecraft:dark_forest", "minecraft:meadow",
+                "minecraft:stony_peaks", "minecraft:jagged_peaks", "minecraft:snowy_slopes",
+                "minecraft:grove", "minecraft:swamp", "minecraft:mangrove_swamp",
+                "minecraft:mushroom_fields", "minecraft:windswept_hills", "minecraft:windswept_gravelly_hills",
+                "minecraft:windswept_forest",
+                "minecraft:river", "minecraft:beach", "minecraft:stony_shore",
+                "minecraft:ocean", "minecraft:deep_ocean", "minecraft:lukewarm_ocean", "minecraft:deep_lukewarm_ocean", "minecraft:warm_ocean",
+                "minecraft:deep_dark", "minecraft:dripstone_caves", "minecraft:lush_caves"
         );
         add(Continent.ASIA, SubDir.SOUTH,
-                "minecraft:desert", "minecraft:jungle", "minecraft:bamboo_jungle",
-                "minecraft:sparse_jungle", "minecraft:swamp", "minecraft:river",
-                "minecraft:beach", "minecraft:plains"
+                "minecraft:jungle", "minecraft:sparse_jungle", "minecraft:bamboo_jungle",
+                "minecraft:savanna", "minecraft:savanna_plateau", "minecraft:windswept_savanna",
+                "minecraft:desert", "minecraft:swamp", "minecraft:mangrove_swamp",
+                "minecraft:forest", "minecraft:dark_forest", "minecraft:plains",
+                "minecraft:meadow", "minecraft:grove", "minecraft:jagged_peaks",
+                "minecraft:frozen_peaks", "minecraft:stony_peaks", "minecraft:snowy_slopes",
+                "minecraft:windswept_hills", "minecraft:windswept_gravelly_hills", "minecraft:windswept_forest",
+                "minecraft:river", "minecraft:beach", "minecraft:stony_shore",
+                "minecraft:ocean", "minecraft:deep_ocean", "minecraft:warm_ocean",
+                "minecraft:deep_dark", "minecraft:dripstone_caves", "minecraft:lush_caves"
         );
         add(Continent.ASIA, SubDir.WEST,
-                "minecraft:desert", "minecraft:jungle", "minecraft:bamboo_jungle",
-                "minecraft:sparse_jungle", "minecraft:swamp", "minecraft:river",
-                "minecraft:beach", "minecraft:plains"
+                "minecraft:desert", "minecraft:plains", "minecraft:swamp",
+                "minecraft:forest", "minecraft:flower_forest", "minecraft:meadow",
+                "minecraft:windswept_gravelly_hills", "minecraft:windswept_forest",
+                "minecraft:river", "minecraft:beach", "minecraft:stony_shore",
+                "minecraft:ocean", "minecraft:deep_ocean", "minecraft:lukewarm_ocean", "minecraft:deep_lukewarm_ocean", "minecraft:warm_ocean",
+                "minecraft:deep_dark", "minecraft:dripstone_caves", "minecraft:lush_caves"
         );
 
         // AFRICA
         add(Continent.AFRICA, SubDir.CENTRAL,
-                "minecraft:savanna", "minecraft:plains", "minecraft:forest", "minecraft:meadow",
-                "minecraft:river", "minecraft:beach", "minecraft:windswept_hills"
+                "minecraft:desert", "minecraft:savanna", "minecraft:savanna_plateau",
+                "minecraft:jungle", "minecraft:sparse_jungle", "minecraft:plains",
+                "minecraft:forest", "minecraft:flower_forest", "minecraft:dark_forest",
+                "minecraft:swamp",
+                "minecraft:river", "minecraft:beach", "minecraft:stony_shore",
+                "minecraft:ocean", "minecraft:deep_ocean", "minecraft:warm_ocean",
+                "minecraft:deep_dark", "minecraft:dripstone_caves", "minecraft:lush_caves"
         );
         add(Continent.AFRICA, SubDir.NORTH,
-                "minecraft:desert", "minecraft:savanna", "minecraft:savanna_plateau",
-                "minecraft:windswept_hills", "minecraft:windswept_gravelly_hills", "minecraft:windswept_forest",
-                "minecraft:stony_peaks", "minecraft:jagged_peaks",
+                "minecraft:plains", "minecraft:desert", "minecraft:savanna",
+                "minecraft:savanna_plateau", "minecraft:windswept_savanna", "minecraft:forest",
+                "minecraft:stony_peaks", "minecraft:jagged_peaks", "minecraft:windswept_gravelly_hills",
+                "minecraft:windswept_forest", "minecraft:meadow",
                 "minecraft:river", "minecraft:beach", "minecraft:stony_shore",
-                "minecraft:ocean", "minecraft:deep_ocean",
-                "minecraft:lukewarm_ocean", "minecraft:deep_lukewarm_ocean", "minecraft:warm_ocean",
-                "minecraft:plains"
+                "minecraft:ocean", "minecraft:deep_ocean", "minecraft:lukewarm_ocean", "minecraft:deep_lukewarm_ocean", "minecraft:warm_ocean",
+                "minecraft:deep_dark", "minecraft:dripstone_caves", "minecraft:lush_caves"
         );
         add(Continent.AFRICA, SubDir.EAST,
-                "minecraft:savanna", "minecraft:plains", "minecraft:forest", "minecraft:meadow",
-                "minecraft:river", "minecraft:beach", "minecraft:windswept_hills"
+                "minecraft:desert", "minecraft:savanna", "minecraft:savanna_plateau",
+                "minecraft:windswept_savanna", "minecraft:mushroom_fields", "minecraft:swamp",
+                "minecraft:mangrove_swamp", "minecraft:plains", "minecraft:forest",
+                "minecraft:flower_forest", "minecraft:stony_peaks", "minecraft:meadow",
+                "minecraft:windswept_gravelly_hills", "minecraft:windswept_forest",
+                "minecraft:river", "minecraft:beach", "minecraft:stony_shore",
+                "minecraft:ocean", "minecraft:deep_ocean", "minecraft:warm_ocean",
+                "minecraft:deep_dark", "minecraft:dripstone_caves", "minecraft:lush_caves"
         );
         add(Continent.AFRICA, SubDir.SOUTH,
-                "minecraft:savanna", "minecraft:plains", "minecraft:forest", "minecraft:meadow",
-                "minecraft:river", "minecraft:beach", "minecraft:windswept_hills"
+                "minecraft:desert", "minecraft:badlands", "minecraft:wooded_badlands",
+                "minecraft:eroded_badlands", "minecraft:savanna", "minecraft:savanna_plateau",
+                "minecraft:windswept_savanna", "minecraft:jungle", "minecraft:sparse_jungle",
+                "minecraft:plains", "minecraft:forest", "minecraft:swamp",
+                "minecraft:mangrove_swamp", "minecraft:meadow", "minecraft:stony_peaks",
+                "minecraft:windswept_gravelly_hills", "minecraft:windswept_forest",
+                "minecraft:river", "minecraft:beach", "minecraft:stony_shore",
+                "minecraft:ocean", "minecraft:deep_ocean", "minecraft:lukewarm_ocean", "minecraft:deep_lukewarm_ocean", "minecraft:warm_ocean",
+                "minecraft:deep_dark", "minecraft:dripstone_caves", "minecraft:lush_caves"
         );
         add(Continent.AFRICA, SubDir.WEST,
-                "minecraft:savanna", "minecraft:plains", "minecraft:forest", "minecraft:meadow",
-                "minecraft:river", "minecraft:beach", "minecraft:windswept_hills"
+                "minecraft:desert", "minecraft:savanna", "minecraft:savanna_plateau",
+                "minecraft:jungle", "minecraft:sparse_jungle", "minecraft:plains",
+                "minecraft:forest", "minecraft:flower_forest", "minecraft:swamp",
+                "minecraft:mangrove_swamp", "minecraft:windswept_gravelly_hills", "minecraft:windswept_forest",
+                "minecraft:river", "minecraft:beach", "minecraft:stony_shore",
+                "minecraft:ocean", "minecraft:deep_ocean", "minecraft:warm_ocean",
+                "minecraft:deep_dark", "minecraft:dripstone_caves", "minecraft:lush_caves"
         );
 
         // SOUTH AMERICA
         add(Continent.S_AMERICA, SubDir.CENTRAL,
-                "minecraft:jungle","minecraft:sparse_jungle","minecraft:bamboo_jungle",
-                "minecraft:savanna","minecraft:plains","minecraft:forest",
-                "minecraft:swamp","minecraft:river","minecraft:beach"
+                "minecraft:savanna", "minecraft:savanna_plateau", "minecraft:windswept_savanna",
+                "minecraft:jungle", "minecraft:sparse_jungle", "minecraft:swamp",
+                "minecraft:plains", "minecraft:meadow", "minecraft:stony_peaks",
+                "minecraft:windswept_hills", "minecraft:windswept_gravelly_hills", "minecraft:windswept_forest",
+                "minecraft:river", "minecraft:beach", "minecraft:stony_shore",
+                "minecraft:ocean", "minecraft:deep_ocean", "minecraft:lukewarm_ocean", "minecraft:deep_lukewarm_ocean",
+                "minecraft:deep_dark", "minecraft:dripstone_caves", "minecraft:lush_caves"
         );
         add(Continent.S_AMERICA, SubDir.NORTH,
-                "minecraft:jungle","minecraft:sparse_jungle","minecraft:bamboo_jungle",
-                "minecraft:river","minecraft:beach","minecraft:plains","minecraft:forest"
+                "minecraft:savanna", "minecraft:savanna_plateau", "minecraft:windswept_savanna",
+                "minecraft:jungle", "minecraft:sparse_jungle", "minecraft:plains",
+                "minecraft:swamp", "minecraft:mangrove_swamp", "minecraft:mushroom_fields",
+                "minecraft:dark_forest", "minecraft:meadow", "minecraft:stony_peaks",
+                "minecraft:windswept_gravelly_hills", "minecraft:windswept_forest",
+                "minecraft:river", "minecraft:beach", "minecraft:stony_shore",
+                "minecraft:ocean", "minecraft:deep_ocean", "minecraft:warm_ocean",
+                "minecraft:deep_dark", "minecraft:dripstone_caves", "minecraft:lush_caves"
         );
         add(Continent.S_AMERICA, SubDir.EAST,
-                "minecraft:jungle","minecraft:sparse_jungle","minecraft:bamboo_jungle",
-                "minecraft:river","minecraft:beach","minecraft:plains","minecraft:forest"
+                "minecraft:jungle", "minecraft:sparse_jungle", "minecraft:savanna",
+                "minecraft:savanna_plateau", "minecraft:windswept_savanna", "minecraft:plains",
+                "minecraft:swamp", "minecraft:mangrove_swamp", "minecraft:forest",
+                "minecraft:flower_forest", "minecraft:dark_forest", "minecraft:meadow",
+                "minecraft:stony_peaks", "minecraft:windswept_hills", "minecraft:windswept_gravelly_hills",
+                "minecraft:windswept_forest",
+                "minecraft:river", "minecraft:beach", "minecraft:stony_shore",
+                "minecraft:ocean", "minecraft:deep_ocean", "minecraft:lukewarm_ocean", "minecraft:deep_lukewarm_ocean", "minecraft:warm_ocean",
+                "minecraft:deep_dark", "minecraft:dripstone_caves", "minecraft:lush_caves"
         );
         add(Continent.S_AMERICA, SubDir.SOUTH,
-                "minecraft:plains","minecraft:forest","minecraft:taiga",
-                "minecraft:windswept_hills","minecraft:river","minecraft:beach","minecraft:stony_shore"
+                "minecraft:desert", "minecraft:savanna", "minecraft:savanna_plateau",
+                "minecraft:windswept_savanna", "minecraft:mushroom_fields", "minecraft:plains",
+                "minecraft:forest", "minecraft:flower_forest", "minecraft:dark_forest",
+                "minecraft:meadow", "minecraft:stony_peaks", "minecraft:windswept_hills",
+                "minecraft:windswept_gravelly_hills", "minecraft:windswept_forest",
+                "minecraft:river", "minecraft:beach", "minecraft:stony_shore",
+                "minecraft:ocean", "minecraft:deep_ocean", "minecraft:lukewarm_ocean", "minecraft:deep_lukewarm_ocean", "minecraft:cold_ocean", "minecraft:deep_cold_ocean",
+                "minecraft:deep_dark", "minecraft:dripstone_caves", "minecraft:lush_caves"
         );
         add(Continent.S_AMERICA, SubDir.WEST,
-                "minecraft:badlands","minecraft:eroded_badlands","minecraft:stony_peaks",
-                "minecraft:windswept_hills","minecraft:plains","minecraft:river",
-                "minecraft:beach","minecraft:stony_shore"
+                "minecraft:desert", "minecraft:savanna", "minecraft:savanna_plateau",
+                "minecraft:windswept_savanna", "minecraft:jungle", "minecraft:sparse_jungle",
+                "minecraft:mushroom_fields", "minecraft:plains", "minecraft:swamp",
+                "minecraft:meadow", "minecraft:stony_peaks", "minecraft:windswept_gravelly_hills",
+                "minecraft:windswept_forest",
+                "minecraft:river", "minecraft:beach", "minecraft:stony_shore",
+                "minecraft:ocean", "minecraft:deep_ocean", "minecraft:lukewarm_ocean", "minecraft:deep_lukewarm_ocean", "minecraft:warm_ocean",
+                "minecraft:deep_dark", "minecraft:dripstone_caves", "minecraft:lush_caves"
         );
 
         // AUSTRALIA
         add(Continent.AUSTRALIA, SubDir.CENTRAL,
-                "minecraft:desert", "minecraft:savanna", "minecraft:plains",
-                "minecraft:badlands", "minecraft:eroded_badlands",
-                "minecraft:river", "minecraft:beach"
+                "minecraft:savanna", "minecraft:savanna_plateau", "minecraft:desert",
+                "minecraft:badlands", "minecraft:wooded_badlands", "minecraft:eroded_badlands",
+                "minecraft:plains", "minecraft:forest", "minecraft:flower_forest",
+                "minecraft:swamp", "minecraft:mangrove_swamp",
+                "minecraft:river", "minecraft:beach", "minecraft:stony_shore",
+                "minecraft:ocean", "minecraft:deep_ocean", "minecraft:lukewarm_ocean", "minecraft:deep_lukewarm_ocean", "minecraft:warm_ocean",
+                "minecraft:deep_dark", "minecraft:dripstone_caves", "minecraft:lush_caves"
         );
         add(Continent.AUSTRALIA, SubDir.NORTH,
-                "minecraft:desert", "minecraft:savanna", "minecraft:plains",
-                "minecraft:badlands", "minecraft:eroded_badlands",
-                "minecraft:river", "minecraft:beach"
+                "minecraft:jungle", "minecraft:sparse_jungle", "minecraft:plains",
+                "minecraft:forest", "minecraft:mushroom_fields", "minecraft:swamp",
+                "minecraft:mangrove_swamp", "minecraft:stony_peaks", "minecraft:windswept_gravelly_hills",
+                "minecraft:windswept_forest",
+                "minecraft:river", "minecraft:beach", "minecraft:stony_shore",
+                "minecraft:ocean", "minecraft:deep_ocean", "minecraft:warm_ocean",
+                "minecraft:deep_dark", "minecraft:dripstone_caves", "minecraft:lush_caves"
         );
         add(Continent.AUSTRALIA, SubDir.EAST,
-                "minecraft:desert", "minecraft:savanna", "minecraft:plains",
-                "minecraft:badlands", "minecraft:eroded_badlands",
-                "minecraft:river", "minecraft:beach"
+                "minecraft:savanna", "minecraft:savanna_plateau", "minecraft:windswept_savanna",
+                "minecraft:desert", "minecraft:plains", "minecraft:swamp",
+                "minecraft:mangrove_swamp", "minecraft:stony_peaks", "minecraft:jagged_peaks",
+                "minecraft:snowy_slopes", "minecraft:grove", "minecraft:windswept_gravelly_hills",
+                "minecraft:windswept_forest", "minecraft:forest", "minecraft:dark_forest",
+                "minecraft:jungle", "minecraft:sparse_jungle", "minecraft:mushroom_fields",
+                "minecraft:river", "minecraft:beach", "minecraft:stony_shore",
+                "minecraft:ocean", "minecraft:deep_ocean", "minecraft:warm_ocean",
+                "minecraft:deep_dark", "minecraft:dripstone_caves", "minecraft:lush_caves"
         );
         add(Continent.AUSTRALIA, SubDir.SOUTH,
-                "minecraft:desert", "minecraft:savanna", "minecraft:plains",
-                "minecraft:badlands", "minecraft:eroded_badlands",
-                "minecraft:river", "minecraft:beach"
+                "minecraft:plains", "minecraft:forest", "minecraft:flower_forest",
+                "minecraft:dark_forest", "minecraft:swamp", "minecraft:mangrove_swamp",
+                "minecraft:stony_peaks", "minecraft:jagged_peaks", "minecraft:snowy_slopes",
+                "minecraft:grove", "minecraft:windswept_gravelly_hills", "minecraft:windswept_forest",
+                "minecraft:mushroom_fields",
+                "minecraft:river", "minecraft:beach", "minecraft:stony_shore",
+                "minecraft:ocean", "minecraft:deep_ocean", "minecraft:lukewarm_ocean", "minecraft:deep_lukewarm_ocean", "minecraft:cold_ocean", "minecraft:deep_cold_ocean",
+                "minecraft:deep_dark", "minecraft:dripstone_caves", "minecraft:lush_caves"
         );
         add(Continent.AUSTRALIA, SubDir.WEST,
-                "minecraft:desert", "minecraft:savanna", "minecraft:plains",
-                "minecraft:badlands", "minecraft:eroded_badlands",
-                "minecraft:river", "minecraft:beach"
+                "minecraft:savanna", "minecraft:savanna_plateau", "minecraft:desert",
+                "minecraft:badlands", "minecraft:wooded_badlands", "minecraft:eroded_badlands",
+                "minecraft:plains", "minecraft:forest", "minecraft:flower_forest",
+                "minecraft:swamp", "minecraft:windswept_gravelly_hills", "minecraft:windswept_forest",
+                "minecraft:river", "minecraft:beach", "minecraft:stony_shore",
+                "minecraft:ocean", "minecraft:deep_ocean", "minecraft:lukewarm_ocean", "minecraft:deep_lukewarm_ocean",
+                "minecraft:deep_dark", "minecraft:dripstone_caves", "minecraft:lush_caves"
         );
 
         // ANTARCTICA
         add(Continent.ANTARCTICA, SubDir.CENTRAL,
-                "minecraft:snowy_plains", "minecraft:snowy_taiga",
-                "minecraft:ice_spikes", "minecraft:frozen_ocean", "minecraft:deep_frozen_ocean",
-                "minecraft:river", "minecraft:stony_peaks"
+                "minecraft:snowy_plains", "minecraft:ice_spikes", "minecraft:frozen_peaks",
+                "minecraft:grove", "minecraft:snowy_slopes", "minecraft:snowy_taiga",
+                "minecraft:mushroom_fields",
+                "minecraft:frozen_river", "minecraft:snowy_beach",
+                "minecraft:river", "minecraft:beach", "minecraft:stony_shore",
+                "minecraft:ocean", "minecraft:deep_ocean", "minecraft:cold_ocean", "minecraft:deep_cold_ocean", "minecraft:frozen_ocean", "minecraft:deep_frozen_ocean",
+                "minecraft:deep_dark", "minecraft:dripstone_caves", "minecraft:lush_caves"
         );
 
         // THE SEVEN SEAS
         putOcean(Ocean.NORTH_ATLANTIC,
+                "minecraft:mushroom_fields",
+                "minecraft:river", "minecraft:beach", "minecraft:stony_shore",
+                "minecraft:frozen_river", "minecraft:snowy_beach",
                 "minecraft:ocean", "minecraft:deep_ocean",
                 "minecraft:cold_ocean", "minecraft:deep_cold_ocean",
-                "minecraft:river", "minecraft:stony_shore", "minecraft:beach"
+                "minecraft:lukewarm_ocean", "minecraft:deep_lukewarm_ocean",
+                "minecraft:warm_ocean",
+                "minecraft:deep_dark", "minecraft:dripstone_caves", "minecraft:lush_caves"
         );
         putOcean(Ocean.SOUTH_ATLANTIC,
+                "minecraft:mushroom_fields",
+                "minecraft:river", "minecraft:beach", "minecraft:stony_shore",
                 "minecraft:ocean", "minecraft:deep_ocean",
+                "minecraft:cold_ocean", "minecraft:deep_cold_ocean",
+                "minecraft:frozen_ocean", "minecraft:deep_frozen_ocean",
                 "minecraft:lukewarm_ocean", "minecraft:deep_lukewarm_ocean",
-                "minecraft:warm_ocean", "minecraft:river", "minecraft:beach"
+                "minecraft:warm_ocean",
+                "minecraft:deep_dark", "minecraft:dripstone_caves", "minecraft:lush_caves"
         );
         putOcean(Ocean.NORTH_PACIFIC,
+                "minecraft:mushroom_fields",
+                "minecraft:river", "minecraft:beach", "minecraft:stony_shore",
+                "minecraft:frozen_river", "minecraft:snowy_beach",
                 "minecraft:ocean", "minecraft:deep_ocean",
                 "minecraft:cold_ocean", "minecraft:deep_cold_ocean",
-                "minecraft:river", "minecraft:stony_shore", "minecraft:beach"
+                "minecraft:lukewarm_ocean", "minecraft:deep_lukewarm_ocean",
+                "minecraft:warm_ocean",
+                "minecraft:deep_dark", "minecraft:dripstone_caves", "minecraft:lush_caves"
         );
         putOcean(Ocean.SOUTH_PACIFIC,
+                "minecraft:mushroom_fields",
+                "minecraft:river", "minecraft:beach", "minecraft:stony_shore",
                 "minecraft:ocean", "minecraft:deep_ocean",
                 "minecraft:cold_ocean", "minecraft:deep_cold_ocean",
-                "minecraft:river", "minecraft:stony_shore", "minecraft:beach"
+                "minecraft:lukewarm_ocean", "minecraft:deep_lukewarm_ocean",
+                "minecraft:warm_ocean",
+                "minecraft:deep_dark", "minecraft:dripstone_caves", "minecraft:lush_caves"
         );
         putOcean(Ocean.INDIAN,
+                "minecraft:mushroom_fields",
+                "minecraft:river", "minecraft:beach", "minecraft:stony_shore",
                 "minecraft:ocean", "minecraft:deep_ocean",
+                "minecraft:cold_ocean", "minecraft:deep_cold_ocean",
                 "minecraft:lukewarm_ocean", "minecraft:deep_lukewarm_ocean",
-                "minecraft:warm_ocean", "minecraft:river", "minecraft:beach"
+                "minecraft:warm_ocean",
+                "minecraft:deep_dark", "minecraft:dripstone_caves", "minecraft:lush_caves"
         );
         putOcean(Ocean.ARCTIC,
-                "minecraft:ocean", "minecraft:deep_ocean",
-                "minecraft:lukewarm_ocean", "minecraft:deep_lukewarm_ocean",
-                "minecraft:warm_ocean", "minecraft:river", "minecraft:beach"
+                "minecraft:mushroom_fields",
+                "minecraft:river", "minecraft:beach", "minecraft:stony_shore",
+                "minecraft:frozen_river", "minecraft:snowy_beach",
+                "minecraft:frozen_ocean", "minecraft:deep_frozen_ocean",
+                "minecraft:cold_ocean", "minecraft:deep_cold_ocean",
+                "minecraft:deep_dark", "minecraft:dripstone_caves", "minecraft:lush_caves"
         );
         putOcean(Ocean.SOUTHERN,
-                "minecraft:ocean", "minecraft:deep_ocean",
-                "minecraft:lukewarm_ocean", "minecraft:deep_lukewarm_ocean",
-                "minecraft:warm_ocean", "minecraft:river", "minecraft:beach"
+                "minecraft:mushroom_fields",
+                "minecraft:river", "minecraft:beach", "minecraft:stony_shore",
+                "minecraft:frozen_river", "minecraft:snowy_beach",
+                "minecraft:frozen_ocean", "minecraft:deep_frozen_ocean",
+                "minecraft:cold_ocean", "minecraft:deep_cold_ocean",
+                "minecraft:deep_dark", "minecraft:dripstone_caves", "minecraft:lush_caves"
         );
 
         rebuildMerged();

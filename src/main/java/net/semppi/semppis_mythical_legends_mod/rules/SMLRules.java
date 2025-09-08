@@ -6,7 +6,8 @@ public final class SMLRules {
     public static final GameRules.Key<GameRules.BooleanValue> CONTINENTAL_SPAWNING =
             GameRules.register("smlContinentalSpawning",
                     GameRules.Category.SPAWNING,
-                    GameRules.BooleanValue.create(true)); // default ON
+                    // default OFF for easier testing
+                    GameRules.BooleanValue.create(false));
 
     public static void init() { /* ensure class loads */ }
 }
