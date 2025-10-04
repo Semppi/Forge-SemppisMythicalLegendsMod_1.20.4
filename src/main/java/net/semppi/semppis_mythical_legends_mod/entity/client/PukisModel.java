@@ -15,19 +15,19 @@ import software.bernie.geckolib.model.data.EntityModelData;
 public class PukisModel extends GeoModel<PukisEntity> {
     @Override
     public ResourceLocation getModelResource(PukisEntity animatable) {
-        return ResourceLocation.fromNamespaceAndPath(SemppisMythicalLegendsMod.MOD_ID, "geo/pukis.geo.json");
+        return new ResourceLocation(SemppisMythicalLegendsMod.MOD_ID, "geo/pukis.geo.json");
     }
 
     @Override
     public ResourceLocation getTextureResource(PukisEntity entity) {
         PukisVariant variant = entity.getVariant();
         String variantName = variant.name().toLowerCase();
-        return ResourceLocation.fromNamespaceAndPath(SemppisMythicalLegendsMod.MOD_ID, "textures/entity/pukis_" + variantName + ".png");
+        return new ResourceLocation(SemppisMythicalLegendsMod.MOD_ID, "textures/entity/pukis_" + variantName + ".png");
     }
 
     @Override
     public ResourceLocation getAnimationResource(PukisEntity animatable) {
-        return ResourceLocation.fromNamespaceAndPath(SemppisMythicalLegendsMod.MOD_ID, "animations/pukis.animation.json");
+        return new ResourceLocation(SemppisMythicalLegendsMod.MOD_ID, "animations/pukis.animation.json");
     }
 
     @Override

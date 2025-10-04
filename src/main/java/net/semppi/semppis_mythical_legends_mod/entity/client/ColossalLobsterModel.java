@@ -14,16 +14,16 @@ import software.bernie.geckolib.model.data.EntityModelData;
 public class ColossalLobsterModel extends GeoModel<ColossalLobsterEntity> {
     @Override
     public ResourceLocation getModelResource(ColossalLobsterEntity animatable) {
-        return ResourceLocation.fromNamespaceAndPath(SemppisMythicalLegendsMod.MOD_ID, "geo/colossal_lobster.geo.json");
+        return new ResourceLocation(SemppisMythicalLegendsMod.MOD_ID, "geo/colossal_lobster.geo.json");
     }
 
     @Override
     public ResourceLocation getTextureResource(ColossalLobsterEntity animatable) {
-        return ResourceLocation.fromNamespaceAndPath(SemppisMythicalLegendsMod.MOD_ID, "textures/entity/lobster_orange_black.png");
+        return new ResourceLocation(SemppisMythicalLegendsMod.MOD_ID, "textures/entity/lobster_orange_black.png");
     }
 
     @Override
     public ResourceLocation getAnimationResource(ColossalLobsterEntity animatable) {
-        return ResourceLocation.fromNamespaceAndPath(SemppisMythicalLegendsMod.MOD_ID, "animations/colossal_lobster.animation.json");
+        return new ResourceLocation(SemppisMythicalLegendsMod.MOD_ID, "animations/colossal_lobster.animation.json");
     }
 }

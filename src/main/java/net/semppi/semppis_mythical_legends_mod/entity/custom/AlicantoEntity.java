@@ -43,7 +43,9 @@ public class AlicantoEntity extends Animal implements GeoEntity {
 
     public static boolean canAlicantoSpawn(EntityType<AlicantoEntity> type, LevelAccessor world, MobSpawnType spawnType, BlockPos pos, RandomSource random) {
         BlockState blockState = world.getBlockState(pos.below());
-        return (blockState.is(Blocks.SAND) || blockState.is(Blocks.RED_SAND)) && world.getMaxLocalRawBrightness(pos) > 8;
+        return (blockState.is(Blocks.SAND) || blockState.is(Blocks.RED_SAND) || blockState.is(Blocks.SANDSTONE) || blockState.is(Blocks.RED_SANDSTONE)
+                || blockState.is(Blocks.GRASS_BLOCK)|| blockState.is(Blocks.DIRT))
+                && world.getMaxLocalRawBrightness(pos) > 8;
     }
 
     public static AttributeSupplier setAttributes() {

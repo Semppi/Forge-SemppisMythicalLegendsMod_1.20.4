@@ -4,10 +4,14 @@ import net.minecraft.world.level.GameRules;
 
 public final class SMLRules {
     public static final GameRules.Key<GameRules.BooleanValue> CONTINENTAL_SPAWNING =
-            GameRules.register("smlContinentalSpawning",
+            GameRules.register(
+                    "smlContinentalSpawning",
                     GameRules.Category.SPAWNING,
                     // default OFF for easier testing
-                    GameRules.BooleanValue.create(false));
+                    GameRules.BooleanValue.create(true)
+            );
 
-    public static void init() { /* ensure class loads */ }
+    public static void init() {
+        /* ensure class loads */
+    }
 }

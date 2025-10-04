@@ -7,6 +7,7 @@ import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.sounds.SoundEvent;
 import net.minecraft.sounds.SoundEvents;
 import net.minecraft.util.Mth;
+import net.minecraft.util.RandomSource;
 import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.entity.*;
 import net.minecraft.world.entity.ai.attributes.AttributeSupplier;
@@ -20,6 +21,8 @@ import net.minecraft.world.entity.animal.*;
 import net.minecraft.world.entity.npc.AbstractVillager;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.level.Level;
+import net.minecraft.world.level.LevelAccessor;
+import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.Vec2;
 import net.minecraft.world.phys.Vec3;
@@ -49,6 +52,12 @@ public class ProtoWendigoEntity extends Animal implements GeoEntity, PlayerRidea
     public ProtoWendigoEntity(EntityType<? extends Animal> entityType, Level level) {
         super(entityType, level);
         this.setMaxUpStep(1.0F);
+    }
+
+    public static boolean canProtoWendigoSpawn(EntityType<ProtoWendigoEntity> type, LevelAccessor world, MobSpawnType spawnType, BlockPos pos, RandomSource random) {
+        BlockState blockState = world.getBlockState(pos.below());
+        return (blockState.is(Blocks.GRASS_BLOCK) || blockState.is(Blocks.DIRT) || blockState.is(Blocks.SNOW_BLOCK) || blockState.is(Blocks.STONE))
+                && world.getMaxLocalRawBrightness(pos) > 8;
     }
 
     public static AttributeSupplier setAttributes() {

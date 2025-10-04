@@ -18,7 +18,7 @@ public class ProtoWendigoRenderer extends GeoEntityRenderer<ProtoWendigoEntity> 
 
     @Override
     public ResourceLocation getTextureLocation(ProtoWendigoEntity animatable) {
-        return ResourceLocation.fromNamespaceAndPath(SemppisMythicalLegendsMod.MOD_ID, "textures/entity/proto_wendigo_gray.png");
+        return new ResourceLocation(SemppisMythicalLegendsMod.MOD_ID, "textures/entity/proto_wendigo_gray.png");
     }
 
     @Override

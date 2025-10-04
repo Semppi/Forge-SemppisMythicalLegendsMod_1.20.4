@@ -15,17 +15,17 @@ import software.bernie.geckolib.model.data.EntityModelData;
 public class KrakenModel extends GeoModel<KrakenEntity> {
     @Override
     public ResourceLocation getModelResource(KrakenEntity animatable) {
-        return ResourceLocation.fromNamespaceAndPath(SemppisMythicalLegendsMod.MOD_ID, "geo/kraken.geo.json");
+        return new ResourceLocation(SemppisMythicalLegendsMod.MOD_ID, "geo/kraken.geo.json");
     }
 
     @Override
     public ResourceLocation getTextureResource(KrakenEntity animatable) {
-        return ResourceLocation.fromNamespaceAndPath(SemppisMythicalLegendsMod.MOD_ID, "textures/entity/kraken_red.png");
+        return new ResourceLocation(SemppisMythicalLegendsMod.MOD_ID, "textures/entity/kraken_red.png");
     }
 
     @Override
     public ResourceLocation getAnimationResource(KrakenEntity animatable) {
-        return ResourceLocation.fromNamespaceAndPath(SemppisMythicalLegendsMod.MOD_ID, "animations/kraken.animation.json");
+        return new ResourceLocation(SemppisMythicalLegendsMod.MOD_ID, "animations/kraken.animation.json");
     }
 
     @Override

@@ -18,7 +18,7 @@ public class LovelandFrogmanRenderer extends GeoEntityRenderer<LovelandFrogmanEn
 
     @Override
     public ResourceLocation getTextureLocation(LovelandFrogmanEntity animatable) {
-        return ResourceLocation.fromNamespaceAndPath(SemppisMythicalLegendsMod.MOD_ID, "textures/entity/frogman_green.png");
+        return new ResourceLocation(SemppisMythicalLegendsMod.MOD_ID, "textures/entity/frogman_green.png");
     }
 
     @Override

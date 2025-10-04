@@ -6,22 +6,16 @@ import net.minecraft.resources.ResourceLocation;
 public final class TagRules {
     private TagRules() {}
 
-    // Per-(continent, direction) allow-lists for VANILLA biomes (namespace "minecraft").
-    // Modded biomes are allowed by default.
-    private static final Map<Continent, Map<SubDir, Set<ResourceLocation>>> BY_DIR =
-            new EnumMap<>(Continent.class);
-
-    // Continent-merged allow sets (used by cluster scoring fallback)
-    private static final Map<Continent, Set<ResourceLocation>> MERGED =
-            new EnumMap<>(Continent.class);
-
-    // Optional: per-ocean allow-lists (not currently used by sampler, but ready to use)
-    private static final Map<Ocean, Set<ResourceLocation>> OCEAN_ALLOW =
-            new EnumMap<>(Ocean.class);
+    // Per-(continent, direction) allow-lists for VANILLA biomes. Mod biomes allowed by default.
+    private static final Map<Continent, Map<SubDir, Set<ResourceLocation>>> BY_DIR = new EnumMap<>(Continent.class);
+    // Merged per-continent sets (for cluster scoring)
+    private static final Map<Continent, Set<ResourceLocation>> MERGED = new EnumMap<>(Continent.class);
+    // Optional: per-ocean allow-lists
+    private static final Map<Ocean, Set<ResourceLocation>> OCEAN_ALLOW = new EnumMap<>(Ocean.class);
 
     static {
-
-        // NORTH AMERICA
+        // --- the big tables (same as you pasted) ---
+        // N_AMERICA
         add(Continent.N_AMERICA, SubDir.CENTRAL,
                 "minecraft:plains", "minecraft:sunflower_plains", "minecraft:meadow",
                 "minecraft:forest", "minecraft:flower_forest", "minecraft:dark_forest",
@@ -439,12 +433,10 @@ public final class TagRules {
         rebuildMerged();
     }
 
-    // ---- helpers for building the tables ----
+    // ---- helpers for building ----
     private static void add(Continent c, SubDir d, String... ids) {
-        Map<SubDir, Set<ResourceLocation>> perDir =
-                BY_DIR.computeIfAbsent(c, k -> new EnumMap<>(SubDir.class));
-        Set<ResourceLocation> set =
-                perDir.computeIfAbsent(d, k -> new HashSet<>());
+        Map<SubDir, Set<ResourceLocation>> perDir = BY_DIR.computeIfAbsent(c, k -> new EnumMap<>(SubDir.class));
+        Set<ResourceLocation> set = perDir.computeIfAbsent(d, k -> new HashSet<>());
         for (String s : ids) set.add(ResourceLocation.parse(s));
     }
 
@@ -463,9 +455,10 @@ public final class TagRules {
     }
 
     // ---- API used by RegionSampler ----
+
     /** Direction-aware check. If per-dir list missing, falls back to continent aggregate. */
     public static boolean allows(Continent c, SubDir d, ResourceLocation biomeId) {
-        if (!"minecraft".equals(biomeId.getNamespace())) return true; // mod biomes allowed
+        if (!"minecraft".equals(biomeId.getNamespace())) return true; // allow mod biomes
         Map<SubDir, Set<ResourceLocation>> perDir = BY_DIR.get(c);
         if (perDir == null) return false;
         Set<ResourceLocation> set = perDir.get(d);
@@ -474,14 +467,14 @@ public final class TagRules {
         return merged != null && merged.contains(biomeId);
     }
 
-    /** Backwards-compatible continent-level check (used by cluster scoring). */
+    /** Continent-level check (cluster scoring). */
     public static boolean continentAllows(Continent c, ResourceLocation biomeId) {
         if (!"minecraft".equals(biomeId.getNamespace())) return true;
         Set<ResourceLocation> merged = MERGED.get(c);
         return merged != null && merged.contains(biomeId);
     }
 
-    /** Optional ocean rule check (not currently used by sampler). */
+    /** Ocean rule check used by sea selection. */
     public static boolean oceanAllows(Ocean o, ResourceLocation biomeId) {
         if (!"minecraft".equals(biomeId.getNamespace())) return true;
         Set<ResourceLocation> set = OCEAN_ALLOW.get(o);

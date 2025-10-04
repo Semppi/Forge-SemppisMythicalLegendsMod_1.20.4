@@ -10,15 +10,15 @@ import net.minecraft.world.level.Level;
 import net.semppi.semppis_mythical_legends_mod.SemppisMythicalLegendsMod;
 import net.semppi.semppis_mythical_legends_mod.rules.SMLRules;
 import net.semppi.semppis_mythical_legends_mod.world.Region;
-import net.semppi.semppis_mythical_legends_mod.world.RegionSampler;
 import net.semppi.semppis_mythical_legends_mod.world.RegionCompat;
+import net.semppi.semppis_mythical_legends_mod.world.RegionSampler;
 
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 
 public final class RegionGate {
-    private RegionGate(){}
+    private RegionGate() {}
 
     // ----- sampling & cache -----
     private static final RegionSampler SAMPLER = new RegionSampler();
@@ -32,7 +32,11 @@ public final class RegionGate {
     private static final class CacheEntry {
         final long expireAtTick;
         final Region region;
-        CacheEntry(long expireAtTick, Region region) { this.expireAtTick = expireAtTick; this.region = region; }
+
+        CacheEntry(long expireAtTick, Region region) {
+            this.expireAtTick = expireAtTick;
+            this.region = region;
+        }
     }
 
     /** Back-compat: reasonless call. */
@@ -47,13 +51,16 @@ public final class RegionGate {
         if (!isOurMob(type)) return true;
 
         // BYPASS here as well
-        if (reason == MobSpawnType.SPAWN_EGG || reason == MobSpawnType.COMMAND
-                || reason == MobSpawnType.DISPENSER || reason == MobSpawnType.CONVERSION) {
+        if (reason == MobSpawnType.SPAWN_EGG
+                || reason == MobSpawnType.COMMAND
+                || reason == MobSpawnType.DISPENSER
+                || reason == MobSpawnType.CONVERSION) {
             return true;
         }
 
         // Breeding allowed anywhere by default, unless the species opted-in to picky breeding
-        if (reason == MobSpawnType.BREEDING && !RegionMobAllow.isBreedingRestricted(type)) {
+        if (reason == MobSpawnType.BREEDING
+                && !RegionMobAllow.isBreedingRestricted(type)) {
             return true;
         }
 
@@ -79,10 +86,8 @@ public final class RegionGate {
             return ce.region;
         }
 
-        Region r = aquatic
-                ? SAMPLER.seaRegion(level, x, z)
+        Region r = aquatic ? SAMPLER.seaRegion(level, x, z)
                 : SAMPLER.landRegion(level, x, z);
-
         CACHE.put(key, new CacheEntry(now + CACHE_TTL_TICKS, r));
 
         // sweep less often to reduce overhead (every 4096 puts)
@@ -103,9 +108,9 @@ public final class RegionGate {
     private static long cacheKey(ServerLevel level, int chunkX, int chunkZ, boolean aquatic) {
         long seed = level.getSeed();
         int dimHash = level.dimension().location().hashCode();
-        long k = seed ^ (long)dimHash * 0x9E3779B97F4A7C15L;
-        k ^= (long)chunkX * 0xC2B2AE3D27D4EB4FL;
-        k ^= (long)chunkZ * 0x165667B19E3779F9L;
+        long k = seed ^ (long) dimHash * 0x9E3779B97F4A7C15L;
+        k ^= (long) chunkX * 0xC2B2AE3D27D4EB4FL;
+        k ^= (long) chunkZ * 0x165667B19E3779F9L;
         k ^= aquatic ? 0xA5A5A5A5A5A5A5A5L : 0x5A5A5A5A5A5A5A5AL;
         return k;
     }

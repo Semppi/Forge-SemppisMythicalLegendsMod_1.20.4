@@ -14,22 +14,21 @@ import net.minecraft.world.level.levelgen.synth.SimplexNoise;
 
 public final class RegionSampler {
     // ===== scales =====
-    // Direction blobs ~50% larger (as you set)
-    private static final int GRID = 1920;
-    // Continental clusters scale with GRID
-    private static final int CLUSTER = GRID * 6;
+    private static final int GRID = 1920;            // ~50% larger blobs
+    private static final int CLUSTER = GRID * 6;     // continental clusters
 
     // ===== salts =====
-    private static final long SALT_CENTERS         = 0xB76C3C51D4A3B1E7L;
-    private static final long SALT_PICK            = 0x4F72B9138C0D2A55L;
-    private static final long SALT_CLUSTER_CENTERS = 0xA4B1D2C3E5F60719L;
-    private static final long SALT_CLUSTER_PICK    = 0x3D6F9A2C5B7E8D10L;
-    private static final long SALT_NOISE           = 0x9D7F6C3B2A159E37L;
-    private static final long SALT_OCEAN_PICK      = 0x6C8E9FA1B2C3D4E5L;
+    private static final long SALT_CENTERS          = 0xB76C3C51D4A3B1E7L;
+    private static final long SALT_PICK             = 0x4F72B9138C0D2A55L;
+    private static final long SALT_CLUSTER_CENTERS  = 0xA4B1D2C3E5F60719L;
+    private static final long SALT_CLUSTER_PICK     = 0x3D6F9A2C5B7E8D10L;
+    private static final long SALT_NOISE            = 0x9D7F6C3B2A159E37L;
+    private static final long SALT_OCEAN_PICK       = 0x6C8E9FA1B2C3D4E5L;
 
     // ===== warp (2D Simplex) =====
     private static final double WARP_FREQ = 1.0 / 360.0;
     private static final double WARP_MAG  = 64.0;
+
     private final SimplexNoise warpX = new SimplexNoise(RandomSource.create(SALT_NOISE ^ 0xA61E5F1DL));
     private final SimplexNoise warpZ = new SimplexNoise(RandomSource.create(SALT_NOISE ^ 0xC3D2E1F0L));
 
@@ -38,11 +37,10 @@ public final class RegionSampler {
 
     // ---------- public API ----------
 
-    /** Legacy: noise-only (kept because other code still calls it). */
+    /** Noise-only land (kept for legacy callers). */
     public Region landRegion(long worldSeed, int x, int z) {
-        long cKey = clusterKey(worldSeed, x, z);   // restored
+        long cKey = clusterKey(worldSeed, x, z);
         Continent cont = pickContinent(cKey);
-
         long site = siteKey(worldSeed, x, z, true);
         int cgx = Math.floorDiv(x, CLUSTER), cgz = Math.floorDiv(z, CLUSTER);
         long mix = hash(worldSeed, cgx, cgz, SALT_CLUSTER_PICK);
@@ -50,108 +48,48 @@ public final class RegionSampler {
         return Region.land(cont, dir);
     }
 
-    /** Land: biome-aware + consensus so whole biomes tend to agree. */
+    /** Biome-aware land with consensus so whole biomes tend to agree. */
     public Region landRegion(ServerLevel level, int x, int z) {
-        // connector-aware early guard (keep as-is)
         ResourceLocation centerId = biomeId(level, x, z);
         if (isConnector(centerId)) {
             Region fromNeighbors = majorityRegionAcrossConnectors(level, x, z);
             if (fromNeighbors != null) return fromNeighbors;
         }
-
-        // NEW: tiny-patch adoption
         if (isTinyPatch(level, x, z, centerId)) {
             Region adopt = adoptFromNeighbors(level, x, z, centerId);
             if (adopt != null) return adopt;
         }
-
         Region base = rawLandRegion(level, x, z);
         return biomeConsensus(level, x, z, base);
     }
 
-// --- helpers (add near the other helpers) ---
-
-    /** Treats very small biome islands as adoptive: let them inherit neighbor majority. */
-    private static boolean isTinyPatch(ServerLevel level, int x, int z, ResourceLocation centerId) {
-        final int STEP = 24;
-        int same = 0, total = 0;
-        for (int oz = -1; oz <= 1; oz++) for (int ox = -1; ox <= 1; ox++) {
-            if (ox == 0 && oz == 0) continue;
-            int sx = x + ox * STEP, sz = z + oz * STEP;
-            ResourceLocation id = biomeId(level, sx, sz);
-            total++;
-            if (id.equals(centerId)) same++;
-        }
-        // If fewer than ~25% of neighbors match, consider it a tiny patch
-        return same * 4 < total; // < 25%
-    }
-
-    /** Majority region among neighbors that are NOT the tiny center biome. */
-    private Region adoptFromNeighbors(ServerLevel level, int x, int z, ResourceLocation centerId) {
-        final int STEP = 24;
-        int[] contVotes = new int[Continent.values().length];
-        Map<SubDir, Integer> dirVotesWithinWinner = new HashMap<>();
-
-        for (int oz = -1; oz <= 1; oz++) for (int ox = -1; ox <= 1; ox++) {
-            if (ox == 0 && oz == 0) continue;
-            int sx = x + ox * STEP, sz = z + oz * STEP;
-            ResourceLocation id = biomeId(level, sx, sz);
-            if (id.equals(centerId)) continue;
-            Region r = rawLandRegion(level, sx, sz);
-            if (r.ocean()) continue;
-            contVotes[r.continent().ordinal()]++;
-        }
-
-        // winner continent
-        int best = -1; Continent winner = null;
-        for (Continent c : Continent.values()) {
-            int v = contVotes[c.ordinal()];
-            if (v > best) { best = v; winner = c; }
-        }
-        if (winner == null || best <= 0) return null;
-
-        // pick a direction favored among neighbors with the winner continent
-        for (int oz = -1; oz <= 1; oz++) for (int ox = -1; ox <= 1; ox++) {
-            if (ox == 0 && oz == 0) continue;
-            int sx = x + ox * STEP, sz = z + oz * STEP;
-            ResourceLocation id = biomeId(level, sx, sz);
-            if (id.equals(centerId)) continue;
-            Region r = rawLandRegion(level, sx, sz);
-            if (!r.ocean() && r.continent() == winner) {
-                dirVotesWithinWinner.merge(r.dir(), 1, Integer::sum);
-            }
-        }
-
-        SubDir dir = SubDir.CENTRAL;
-        int dirBest = -1;
-        for (Map.Entry<SubDir, Integer> e : dirVotesWithinWinner.entrySet()) {
-            if (e.getValue() > dirBest) { dirBest = e.getValue(); dir = e.getKey(); }
-        }
-        if (winner == Continent.ANTARCTICA) dir = SubDir.CENTRAL;
-        return Region.land(winner, dir);
-    }
-
-    /** Sea: biome-aware + consensus (TagRules.oceanAllows) */
+    /** Biome-aware ocean with consensus. */
     public Region seaRegion(ServerLevel level, int x, int z) {
         Ocean o = rawSeaRegion(level, x, z);
         o = oceanConsensus(level, x, z, o);
         return Region.sea(o);
     }
 
+    /** Noise-only seas for unloaded/new chunks (network sync fallback). */
+    public Region seaRegion(long worldSeed, int x, int z) {
+        return Region.sea(pickSea(hash(worldSeed,
+                Math.floorDiv(x, CLUSTER), Math.floorDiv(z, CLUSTER),
+                SALT_CLUSTER_PICK ^ SALT_OCEAN_PICK)));
+    }
+
     // ---------- core land selection ----------
+
     private Region rawLandRegion(ServerLevel level, int x, int z) {
         long seed = level.getSeed();
         ClusterDecision dec = clusterDecision(level, x, z);
-
         long site = siteKey(seed, x, z, true);
         long clusterPick = hash(seed, Math.floorDiv(x, CLUSTER), Math.floorDiv(z, CLUSTER), SALT_CLUSTER_PICK);
         SubDir dir = pickSubdir(site ^ (clusterPick << 1));
-
         ResourceLocation biomeId = biomeId(level, x, z);
 
         Continent chosen = null;
 
-        // 1) Try primary (same dir or best allowed dir on that continent)
+        // 1) primary
         if (dec.primary != null) {
             if (TagRules.allows(dec.primary, dir, biomeId)) {
                 chosen = dec.primary;
@@ -161,7 +99,7 @@ public final class RegionSampler {
             }
         }
 
-        // 2) Try secondary
+        // 2) secondary
         if (chosen == null && dec.secondary != null) {
             if (TagRules.allows(dec.secondary, dir, biomeId)) {
                 chosen = dec.secondary;
@@ -171,22 +109,18 @@ public final class RegionSampler {
             }
         }
 
-        // 3) FINAL fallback: choose ANY continent that accepts this biome (stable tie-break)
+        // 3) any continent that accepts this biome
         if (chosen == null) {
-            Continent bestC = null; SubDir bestD = null; long bestH = Long.MIN_VALUE;
+            Continent bestC = null; SubDir bestD = null;
+            long bestH = Long.MIN_VALUE;
             for (Continent c : Continent.values()) {
                 SubDir alt = bestAllowedDir(seed, c, biomeId, site, clusterPick);
-                if (alt == null) continue; // this continent can't host this biome
+                if (alt == null) continue;
                 long h = hash(seed, (c.ordinal() << 8) ^ alt.ordinal(), biomeId.hashCode(), SALT_PICK ^ site ^ clusterPick);
                 if (h > bestH) { bestH = h; bestC = c; bestD = alt; }
             }
-            if (bestC != null) {
-                chosen = bestC;
-                dir = bestD;
-            } else {
-                // If truly nothing matches, fall back to base pick deterministically
-                chosen = (dec.primary != null) ? dec.primary : Continent.values()[0];
-            }
+            if (bestC != null) { chosen = bestC; dir = bestD; }
+            else { chosen = (dec.primary != null) ? dec.primary : Continent.values()[0]; }
         }
 
         if (chosen == Continent.ANTARCTICA) dir = SubDir.CENTRAL;
@@ -194,52 +128,17 @@ public final class RegionSampler {
     }
 
     private static SubDir bestAllowedDir(long seed, Continent c, ResourceLocation biomeId, long site, long clusterPick) {
-        SubDir best = null;
-        long bestH = Long.MIN_VALUE;
+        SubDir best = null; long bestH = Long.MIN_VALUE;
         for (SubDir cand : SubDir.values()) {
-            if (!TagRules.allows(c, cand, biomeId)) continue;
-            long h = hash(seed, (c.ordinal() << 8) ^ cand.ordinal(), biomeId.hashCode(),
-                    SALT_PICK ^ site ^ clusterPick);
+            if (!TagRules.allows(cand == SubDir.CENTRAL ? c : c, cand, biomeId)) continue;
+            long h = hash(seed, (c.ordinal() << 8) ^ cand.ordinal(), biomeId.hashCode(), SALT_PICK ^ site ^ clusterPick);
             if (h > bestH) { bestH = h; best = cand; }
         }
         return best;
     }
 
-    /** Coarse Voronoi: pick which CONTINENT cluster this area belongs to (legacy path). */
-    private long clusterKey(long worldSeed, int x, int z) {
-        double[] w = warpCoords(worldSeed, x, z);
-        double sx = w[0], sz = w[1];
-
-        int gx = (int)Math.floor(sx / CLUSTER);
-        int gz = (int)Math.floor(sz / CLUSTER);
-
-        double best = Double.POSITIVE_INFINITY;
-        long bestKey = 0L;
-
-        for (int dz = -1; dz <= 1; dz++) {
-            for (int dx = -1; dx <= 1; dx++) {
-                int cgx = gx + dx, cgz = gz + dz;
-                long h = hash(worldSeed, cgx, cgz, SALT_CLUSTER_CENTERS);
-
-                int offX = (int)(unsignedInt(h) % CLUSTER);
-                int offZ = (int)(unsignedInt(h >>> 32) % CLUSTER);
-                int cx = cgx * CLUSTER + offX;
-                int cz = cgz * CLUSTER + offZ;
-
-                double dxw = sx - cx;
-                double dzw = sz - cz;
-                double d2  = dxw*dxw + dzw*dzw;
-
-                if (d2 < best) {
-                    best = d2;
-                    bestKey = hash(worldSeed, cgx, cgz, SALT_CLUSTER_PICK);
-                }
-            }
-        }
-        return bestKey;
-    }
-
     // ---------- connector handling ----------
+
     private static boolean isConnector(ResourceLocation id) {
         if (!"minecraft".equals(id.getNamespace())) return false;
         String p = id.getPath();
@@ -250,68 +149,116 @@ public final class RegionSampler {
 
     private Region majorityRegionAcrossConnectors(ServerLevel level, int x, int z) {
         final int[] steps = {24, 40, 56};
-        Region winner = null;
-        int votes = 0;
-
+        Region winner = null; int votes = 0;
         for (var d : net.minecraft.core.Direction.Plane.HORIZONTAL) {
             for (int s : steps) {
-                int sx = x + d.getStepX() * s;
-                int sz = z + d.getStepZ() * s;
-
+                int sx = x + d.getStepX() * s, sz = z + d.getStepZ() * s;
                 ResourceLocation id = biomeIdIfLoaded(level, sx, sz);
-                if (id == null) continue;           // don’t load/generate
-                if (isConnector(id)) continue;       // keep peeking outward
-
-                Region r = rawLandRegion(level, sx, sz); // first non-connector we *already* have
-                if (winner == null || !same(winner, r)) { winner = r; votes = 1; }
-                else votes++;
+                if (id == null || isConnector(id)) continue;
+                Region r = rawLandRegion(level, sx, sz);
+                if (winner == null || !same(winner, r)) { winner = r; votes = 1; } else votes++;
                 break;
             }
         }
         return votes > 0 ? winner : null;
     }
 
-    // ---------- land biome consensus (whole-biome coherence) ----------
-    private Region biomeConsensus(ServerLevel level, int x, int z, Region base) {
-        int y0 = level.getHeight(net.minecraft.world.level.levelgen.Heightmap.Types.MOTION_BLOCKING, x, z);
-        Holder<Biome> here = level.getBiome(new BlockPos(x, y0, z));
+    // tiny-patch adoption
+    private static boolean isTinyPatch(ServerLevel level, int x, int z, ResourceLocation centerId) {
+        final int STEP = 24;
+        int same = 0, total = 0;
+        for (int oz = -1; oz <= 1; oz++)
+            for (int ox = -1; ox <= 1; ox++) {
+                if (ox == 0 && oz == 0) continue;
+                int sx = x + ox * STEP, sz = z + oz * STEP;
+                ResourceLocation id = biomeId(level, sx, sz);
+                total++;
+                if (id.equals(centerId)) same++;
+            }
+        return same * 4 < total; // <25%
+    }
 
+    private Region adoptFromNeighbors(ServerLevel level, int x, int z, ResourceLocation centerId) {
         final int STEP = 24;
         int[] contVotes = new int[Continent.values().length];
         Map<SubDir, Integer> dirVotesWithinWinner = new HashMap<>();
 
+        for (int oz = -1; oz <= 1; oz++)
+            for (int ox = -1; ox <= 1; ox++) {
+                if (ox == 0 && oz == 0) continue;
+                int sx = x + ox * STEP, sz = z + oz * STEP;
+                ResourceLocation id = biomeId(level, sx, sz);
+                if (id.equals(centerId)) continue;
+                Region r = rawLandRegion(level, sx, sz);
+                if (r.ocean()) continue;
+                contVotes[r.continent().ordinal()]++;
+            }
+
+        int best = -1; Continent winner = null;
+        for (Continent c : Continent.values()) {
+            int v = contVotes[c.ordinal()];
+            if (v > best) { best = v; winner = c; }
+        }
+        if (winner == null || best <= 0) return null;
+
+        for (int oz = -1; oz <= 1; oz++)
+            for (int ox = -1; ox <= 1; ox++) {
+                if (ox == 0 && oz == 0) continue;
+                int sx = x + ox * STEP, sz = z + oz * STEP;
+                ResourceLocation id = biomeId(level, sx, sz);
+                if (id.equals(centerId)) continue;
+                Region r = rawLandRegion(level, sx, sz);
+                if (!r.ocean() && r.continent() == winner) {
+                    dirVotesWithinWinner.merge(r.dir(), 1, Integer::sum);
+                }
+            }
+
+        SubDir dir = SubDir.CENTRAL; int dirBest = -1;
+        for (Map.Entry<SubDir, Integer> e : dirVotesWithinWinner.entrySet()) {
+            if (e.getValue() > dirBest) { dirBest = e.getValue(); dir = e.getKey(); }
+        }
+        if (winner == Continent.ANTARCTICA) dir = SubDir.CENTRAL;
+        return Region.land(winner, dir);
+    }
+
+    // biome consensus
+    private Region biomeConsensus(ServerLevel level, int x, int z, Region base) {
+        int y0 = level.getHeight(net.minecraft.world.level.levelgen.Heightmap.Types.MOTION_BLOCKING, x, z);
+        Holder<Biome> here = level.getBiome(new BlockPos(x, y0, z));
+        final int STEP = 24;
+
+        int[] contVotes = new int[Continent.values().length];
+        Map<SubDir, Integer> dirVotesWithinWinner = new HashMap<>();
         if (!base.ocean()) contVotes[base.continent().ordinal()]++;
 
-        for (int oz = -1; oz <= 1; oz++) for (int ox = -1; ox <= 1; ox++) {
-            int sx = x + ox * STEP, sz = z + oz * STEP;
-            int sy = level.getHeight(net.minecraft.world.level.levelgen.Heightmap.Types.MOTION_BLOCKING, sx, sz);
-            if (!level.getBiome(new BlockPos(sx, sy, sz)).equals(here)) continue;
+        for (int oz = -1; oz <= 1; oz++)
+            for (int ox = -1; ox <= 1; ox++) {
+                int sx = x + ox * STEP, sz = z + oz * STEP;
+                int sy = level.getHeight(net.minecraft.world.level.levelgen.Heightmap.Types.MOTION_BLOCKING, sx, sz);
+                if (!level.getBiome(new BlockPos(sx, sy, sz)).equals(here)) continue;
+                Region r = rawLandRegion(level, sx, sz);
+                if (r.ocean()) continue;
+                contVotes[r.continent().ordinal()]++;
+            }
 
-            Region r = rawLandRegion(level, sx, sz);
-            if (r.ocean()) continue;
-            contVotes[r.continent().ordinal()]++;
-        }
-
-        Continent winner = base.continent();
-        int best = contVotes[winner.ordinal()];
+        Continent winner = base.continent(); int best = contVotes[winner.ordinal()];
         for (Continent c : Continent.values()) {
             int v = contVotes[c.ordinal()];
             if (v > best) { best = v; winner = c; }
         }
 
-        for (int oz = -1; oz <= 1; oz++) for (int ox = -1; ox <= 1; ox++) {
-            int sx = x + ox * STEP, sz = z + oz * STEP;
-            int sy = level.getHeight(net.minecraft.world.level.levelgen.Heightmap.Types.MOTION_BLOCKING, sx, sz);
-            if (!level.getBiome(new BlockPos(sx, sy, sz)).equals(here)) continue;
-
-            Region r = rawLandRegion(level, sx, sz);
-            if (!r.ocean() && r.continent() == winner) {
-                dirVotesWithinWinner.merge(r.dir(), 1, Integer::sum);
+        for (int oz = -1; oz <= 1; oz++)
+            for (int ox = -1; ox <= 1; ox++) {
+                int sx = x + ox * STEP, sz = z + oz * STEP;
+                int sy = level.getHeight(net.minecraft.world.level.levelgen.Heightmap.Types.MOTION_BLOCKING, sx, sz);
+                if (!level.getBiome(new BlockPos(sx, sy, sz)).equals(here)) continue;
+                Region r = rawLandRegion(level, sx, sz);
+                if (!r.ocean() && r.continent() == winner) {
+                    dirVotesWithinWinner.merge(r.dir(), 1, Integer::sum);
+                }
             }
-        }
 
-        SubDir dir = base.dir();
-        int dirBest = -1;
+        SubDir dir = base.dir(); int dirBest = -1;
         for (Map.Entry<SubDir, Integer> e : dirVotesWithinWinner.entrySet()) {
             int v = e.getValue();
             if (v > dirBest || (v == dirBest && e.getKey() == dir)) {
@@ -324,22 +271,14 @@ public final class RegionSampler {
     }
 
     // ---------- sea selection ----------
-    public Region seaRegion(long worldSeed, int x, int z) {
-        return Region.sea(pickSea(hash(worldSeed,
-                Math.floorDiv(x, CLUSTER), Math.floorDiv(z, CLUSTER),
-                SALT_CLUSTER_PICK ^ SALT_OCEAN_PICK)));
-    }
 
     private Ocean rawSeaRegion(ServerLevel level, int x, int z) {
         long seed = level.getSeed();
-        int cgx = Math.floorDiv(x, CLUSTER);
-        int cgz = Math.floorDiv(z, CLUSTER);
-
+        int cgx = Math.floorDiv(x, CLUSTER), cgz = Math.floorDiv(z, CLUSTER);
         long basinKey = hash(seed, cgx, cgz, SALT_CLUSTER_PICK ^ SALT_OCEAN_PICK);
         Ocean base = pickSea(basinKey);
 
         ResourceLocation id = biomeId(level, x, z);
-
         if (TagRules.oceanAllows(base, id)) return base;
 
         Ocean[] neigh = neighbors(base);
@@ -363,23 +302,22 @@ public final class RegionSampler {
     private Ocean oceanConsensus(ServerLevel level, int x, int z, Ocean prelim) {
         int y0 = level.getHeight(net.minecraft.world.level.levelgen.Heightmap.Types.MOTION_BLOCKING, x, z);
         ResourceLocation centerId = biomeId(level, x, z);
-
         final int STEP = 32;
+
         int[] votes = new int[Ocean.values().length];
         votes[prelim.ordinal()]++;
 
-        for (int oz = -1; oz <= 1; oz++) for (int ox = -1; ox <= 1; ox++) {
-            int sx = x + ox * STEP, sz = z + oz * STEP;
-            int sy = level.getHeight(net.minecraft.world.level.levelgen.Heightmap.Types.MOTION_BLOCKING, sx, sz);
-            ResourceLocation id = biomeId(level, sx, sz);
-            if (!id.equals(centerId)) continue;
+        for (int oz = -1; oz <= 1; oz++)
+            for (int ox = -1; ox <= 1; ox++) {
+                int sx = x + ox * STEP, sz = z + oz * STEP;
+                int sy = level.getHeight(net.minecraft.world.level.levelgen.Heightmap.Types.MOTION_BLOCKING, sx, sz);
+                ResourceLocation id = biomeId(level, sx, sz);
+                if (!id.equals(centerId)) continue;
+                Ocean o = rawSeaRegion(level, sx, sz);
+                votes[o.ordinal()]++;
+            }
 
-            Ocean o = rawSeaRegion(level, sx, sz);
-            votes[o.ordinal()]++;
-        }
-
-        Ocean winner = prelim;
-        int best = votes[winner.ordinal()];
+        Ocean winner = prelim; int best = votes[winner.ordinal()];
         for (Ocean o : Ocean.values()) {
             int v = votes[o.ordinal()];
             if (v > best) { best = v; winner = o; }
@@ -389,25 +327,24 @@ public final class RegionSampler {
 
     private static Ocean[] neighbors(Ocean o) {
         return switch (o) {
-            case ARCTIC          -> new Ocean[]{ Ocean.NORTH_ATLANTIC, Ocean.NORTH_PACIFIC };
-            case NORTH_ATLANTIC  -> new Ocean[]{ Ocean.ARCTIC, Ocean.SOUTH_ATLANTIC };
-            case SOUTH_ATLANTIC  -> new Ocean[]{ Ocean.NORTH_ATLANTIC, Ocean.SOUTHERN, Ocean.INDIAN };
-            case INDIAN          -> new Ocean[]{ Ocean.SOUTHERN, Ocean.SOUTH_ATLANTIC, Ocean.SOUTH_PACIFIC };
-            case NORTH_PACIFIC   -> new Ocean[]{ Ocean.ARCTIC, Ocean.SOUTH_PACIFIC };
-            case SOUTH_PACIFIC   -> new Ocean[]{ Ocean.NORTH_PACIFIC, Ocean.SOUTHERN, Ocean.INDIAN };
-            case SOUTHERN        -> new Ocean[]{ Ocean.INDIAN, Ocean.SOUTH_ATLANTIC, Ocean.SOUTH_PACIFIC };
+            case ARCTIC -> new Ocean[]{ Ocean.NORTH_ATLANTIC, Ocean.NORTH_PACIFIC };
+            case NORTH_ATLANTIC -> new Ocean[]{ Ocean.ARCTIC, Ocean.SOUTH_ATLANTIC };
+            case SOUTH_ATLANTIC -> new Ocean[]{ Ocean.NORTH_ATLANTIC, Ocean.SOUTHERN, Ocean.INDIAN };
+            case INDIAN -> new Ocean[]{ Ocean.SOUTHERN, Ocean.SOUTH_ATLANTIC, Ocean.SOUTH_PACIFIC };
+            case NORTH_PACIFIC -> new Ocean[]{ Ocean.ARCTIC, Ocean.SOUTH_PACIFIC };
+            case SOUTH_PACIFIC -> new Ocean[]{ Ocean.NORTH_PACIFIC, Ocean.SOUTHERN, Ocean.INDIAN };
+            case SOUTHERN -> new Ocean[]{ Ocean.INDIAN, Ocean.SOUTH_ATLANTIC, Ocean.SOUTH_PACIFIC };
         };
     }
 
     // ---------- continent cluster decision ----------
+
     private ClusterDecision clusterDecision(ServerLevel level, int x, int z) {
         long seed = level.getSeed();
-        int cgx = Math.floorDiv(x, CLUSTER);
-        int cgz = Math.floorDiv(z, CLUSTER);
+        int cgx = Math.floorDiv(x, CLUSTER), cgz = Math.floorDiv(z, CLUSTER);
         long key = (((long)cgx) << 32) ^ (cgz & 0xFFFFFFFFL) ^ seed;
         ClusterDecision cached = clusterCache.get(key);
         if (cached != null) return cached;
-
         ClusterDecision dec = chooseDecision(level, cgx, cgz);
         clusterCache.put(key, dec);
         return dec;
@@ -417,8 +354,7 @@ public final class RegionSampler {
         long seed = level.getSeed();
         final int baseX = cgx * CLUSTER, baseZ = cgz * CLUSTER;
 
-        // Lighter sampling + no forced chunk loads
-        final int SAMPLES = 48;          // was 96
+        final int SAMPLES = 48;        // light sampling
         final double KEEP_THRESH = 0.55;
         final double SECOND_MIN  = 0.30;
 
@@ -430,26 +366,19 @@ public final class RegionSampler {
             int sx = baseX + (int)(unsignedInt(h) % CLUSTER);
             int sz = baseZ + (int)(unsignedInt(h >>> 32) % CLUSTER);
 
-            // Only count if the chunk is already loaded (avoid freezes)
             ResourceLocation id = biomeIdIfLoaded(level, sx, sz);
-            if (id == null) continue;
-
+            if (id == null) continue; // avoid forcing chunk loads
             validSamples++;
+
             for (Continent c : Continent.values()) {
                 if (TagRules.continentAllows(c, id)) score[c.ordinal()]++;
             }
         }
 
         Continent base = pickContinent(hash(seed, cgx, cgz, SALT_CLUSTER_PICK));
+        if (validSamples < 16) return new ClusterDecision(base, null);
 
-        // If we saw too few loaded samples, fall back to the base pick
-        if (validSamples < 16) {
-            return new ClusterDecision(base, null);
-        }
-
-        // Use the number of valid samples for percentages
         int denom = Math.max(1, validSamples);
-
         Continent primary = base;
         int bestScore = score[primary.ordinal()];
         if ((double)bestScore / denom < KEEP_THRESH) {
@@ -461,8 +390,7 @@ public final class RegionSampler {
             }
         }
 
-        Continent secondary = null;
-        int secondScore = Integer.MIN_VALUE;
+        Continent secondary = null; int secondScore = Integer.MIN_VALUE;
         for (Continent c : Continent.values()) {
             if (c == primary) continue;
             int sc = score[c.ordinal()];
@@ -484,48 +412,47 @@ public final class RegionSampler {
 
     private record ClusterDecision(Continent primary, Continent secondary) {}
 
-    // ---------- fine Voronoi (blobby) ----------
+    // ---------- fine Voronoi (direction blobs) ----------
+
     private long siteKey(long worldSeed, int x, int z, boolean warp) {
         double sx = x, sz = z;
         if (warp) {
             double[] w = warpCoords(worldSeed, x, z);
             sx = w[0]; sz = w[1];
         }
-
         int gx = (int)Math.floor(sx / GRID);
         int gz = (int)Math.floor(sz / GRID);
 
         double bestScore = Double.POSITIVE_INFINITY;
         long bestKey = 0L;
 
-        for (int dz = -1; dz <= 1; dz++) for (int dx = -1; dx <= 1; dx++) {
-            int cgx = gx + dx, cgz = gz + dz;
-            long h = hash(worldSeed, cgx, cgz, SALT_CENTERS);
+        for (int dz = -1; dz <= 1; dz++)
+            for (int dx = -1; dx <= 1; dx++) {
+                int cgx = gx + dx, cgz = gz + dz;
+                long h = hash(worldSeed, cgx, cgz, SALT_CENTERS);
+                int offX = (int)(unsignedInt(h) % GRID);
+                int offZ = (int)(unsignedInt(h >>> 32) % GRID);
+                int cx = cgx * GRID + offX;
+                int cz = cgz * GRID + offZ;
 
-            int offX = (int)(unsignedInt(h) % GRID);
-            int offZ = (int)(unsignedInt(h >>> 32) % GRID);
-            int cx = cgx * GRID + offX;
-            int cz = cgz * GRID + offZ;
+                double dxw = sx - cx, dzw = sz - cz;
+                double d2 = dxw*dxw + dzw*dzw;
 
-            double dxw = sx - cx, dzw = sz - cz;
-            double d2  = dxw*dxw + dzw*dzw;
+                int roll = (int)Math.floorMod(h, 100);
+                double weight = (roll < 5) ? sq(GRID * 0.50)
+                        : (roll < 55 ? sq(GRID * 1.125) : sq(GRID * 1.875));
+                double score = d2 - weight;
 
-            // Big blobs, fewer tiny ones (your tuned weights)
-            int roll = (int)Math.floorMod(h, 100);
-            double weight = (roll < 5) ? sq(GRID * 0.50)
-                    : (roll < 55 ? sq(GRID * 1.125)
-                    : sq(GRID * 1.875));
-
-            double score = d2 - weight;
-            if (score < bestScore) {
-                bestScore = score;
-                bestKey   = hash(worldSeed, cgx, cgz, SALT_PICK);
+                if (score < bestScore) {
+                    bestScore = score;
+                    bestKey = hash(worldSeed, cgx, cgz, SALT_PICK);
+                }
             }
-        }
         return bestKey;
     }
 
-    // ---------- warp (2D Simplex) ----------
+    // ---------- warp ----------
+
     private double[] warpCoords(long worldSeed, double x, double z) {
         double fx = WARP_FREQ * 0.97 + ((worldSeed >>> 17) & 255) * 1e-6;
         double fz = WARP_FREQ * 1.03 + ((worldSeed >>> 29) & 255) * 1e-6;
@@ -535,6 +462,7 @@ public final class RegionSampler {
     }
 
     // ---------- helpers ----------
+
     private static ResourceLocation biomeId(ServerLevel level, int x, int z) {
         int y = level.getHeight(net.minecraft.world.level.levelgen.Heightmap.Types.MOTION_BLOCKING, x, z);
         y = Math.max(level.getMinBuildHeight(), Math.min(y, level.getMaxBuildHeight() - 1));
@@ -546,13 +474,50 @@ public final class RegionSampler {
 
     private static ResourceLocation biomeIdIfLoaded(ServerLevel level, int x, int z) {
         int cx = x >> 4, cz = z >> 4;
-        if (!level.getChunkSource().hasChunk(cx, cz)) return null; // don't load/generate
+        if (!level.getChunkSource().hasChunk(cx, cz)) return null;
         int y = level.getHeight(net.minecraft.world.level.levelgen.Heightmap.Types.MOTION_BLOCKING, x, z);
         y = Math.max(level.getMinBuildHeight(), Math.min(y, level.getMaxBuildHeight() - 1));
         Holder<Biome> hb = level.getBiome(new net.minecraft.core.BlockPos(x, y, z));
         return level.registryAccess()
                 .registryOrThrow(net.minecraft.core.registries.Registries.BIOME)
                 .getKey(hb.value());
+    }
+
+    private static long clusterKey(long worldSeed, int x, int z) {
+        double[] w = warpCoordsStatic(worldSeed, x, z);
+        double sx = w[0], sz = w[1];
+        int gx = (int)Math.floor(sx / CLUSTER);
+        int gz = (int)Math.floor(sz / CLUSTER);
+        double best = Double.POSITIVE_INFINITY;
+        long bestKey = 0L;
+        for (int dz = -1; dz <= 1; dz++) {
+            for (int dx = -1; dx <= 1; dx++) {
+                int cgx = gx + dx, cgz = gz + dz;
+                long h = hash(worldSeed, cgx, cgz, SALT_CLUSTER_CENTERS);
+                int offX = (int)(unsignedInt(h) % CLUSTER);
+                int offZ = (int)(unsignedInt(h >>> 32) % CLUSTER);
+                int cx = cgx * CLUSTER + offX;
+                int cz = cgz * CLUSTER + offZ;
+                double dxw = sx - cx;
+                double dzw = sz - cz;
+                double d2 = dxw*dxw + dzw*dzw;
+                if (d2 < best) {
+                    best = d2;
+                    bestKey = hash(worldSeed, cgx, cgz, SALT_CLUSTER_PICK);
+                }
+            }
+        }
+        return bestKey;
+    }
+
+    // static warp (for noise-only path)
+    private static double[] warpCoordsStatic(long worldSeed, double x, double z) {
+        double fx = WARP_FREQ * 0.97 + ((worldSeed >>> 17) & 255) * 1e-6;
+        double fz = WARP_FREQ * 1.03 + ((worldSeed >>> 29) & 255) * 1e-6;
+        // simple deterministic 2D value-noise-ish offsets
+        double wx = Math.sin((x + worldSeed) * fx) + Math.cos((z - worldSeed) * fx * 0.5);
+        double wz = Math.cos((z + worldSeed) * fz) - Math.sin((x - worldSeed) * fz * 0.5);
+        return new double[]{ x + wx * (WARP_MAG * 0.25), z + wz * (WARP_MAG * 0.25) };
     }
 
     private static boolean same(Region a, Region b) {
@@ -566,9 +531,11 @@ public final class RegionSampler {
     private static Continent pickContinent(long k) {
         return Continent.values()[(int)Math.floorMod(k, 7)];
     }
+
     private static SubDir pickSubdir(long k) {
         return SubDir.values()[(int)Math.floorMod(k >>> 16, 5)];
     }
+
     private static Ocean pickSea(long k) {
         return Ocean.values()[(int)Math.floorMod(k >>> 32, Ocean.values().length)];
     }
@@ -584,6 +551,7 @@ public final class RegionSampler {
         h ^= (h >>> 33);
         return h;
     }
+
     private static long unsignedInt(long v){ return v & 0xFFFFFFFFL; }
     private static double sq(double v){ return v*v; }
 }

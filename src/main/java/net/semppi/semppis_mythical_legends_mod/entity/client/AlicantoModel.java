@@ -14,17 +14,17 @@ import software.bernie.geckolib.model.data.EntityModelData;
 public class AlicantoModel extends GeoModel<AlicantoEntity> {
     @Override
     public ResourceLocation getModelResource(AlicantoEntity animatable) {
-        return ResourceLocation.fromNamespaceAndPath(SemppisMythicalLegendsMod.MOD_ID, "geo/alicanto.geo.json");
+        return new ResourceLocation(SemppisMythicalLegendsMod.MOD_ID, "geo/alicanto.geo.json");
     }
 
     @Override
     public ResourceLocation getTextureResource(AlicantoEntity animatable) {
-        return ResourceLocation.fromNamespaceAndPath(SemppisMythicalLegendsMod.MOD_ID, "textures/entity/alicanto_gold.png");
+        return new ResourceLocation(SemppisMythicalLegendsMod.MOD_ID, "textures/entity/alicanto_gold.png");
     }
 
     @Override
     public ResourceLocation getAnimationResource(AlicantoEntity animatable) {
-        return ResourceLocation.fromNamespaceAndPath(SemppisMythicalLegendsMod.MOD_ID, "animations/alicanto.animation.json");
+        return new ResourceLocation(SemppisMythicalLegendsMod.MOD_ID, "animations/alicanto.animation.json");
     }
 
     @Override

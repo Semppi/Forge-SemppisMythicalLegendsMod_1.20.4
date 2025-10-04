@@ -13,17 +13,17 @@ import software.bernie.geckolib.model.data.EntityModelData;
 public class MandrakeSproutlingModel extends GeoModel<MandrakeSproutlingEntity> {
     @Override
     public ResourceLocation getModelResource(MandrakeSproutlingEntity animatable) {
-        return ResourceLocation.fromNamespaceAndPath(SemppisMythicalLegendsMod.MOD_ID, "geo/mandrake_sproutling.geo.json");
+        return new ResourceLocation(SemppisMythicalLegendsMod.MOD_ID, "geo/mandrake_sproutling.geo.json");
     }
 
     @Override
     public ResourceLocation getTextureResource(MandrakeSproutlingEntity animatable) {
-        return ResourceLocation.fromNamespaceAndPath(SemppisMythicalLegendsMod.MOD_ID, "textures/entity/mandrake_sproutling_brown.png");
+        return new ResourceLocation(SemppisMythicalLegendsMod.MOD_ID, "textures/entity/mandrake_sproutling_brown.png");
     }
 
     @Override
     public ResourceLocation getAnimationResource(MandrakeSproutlingEntity animatable) {
-        return ResourceLocation.fromNamespaceAndPath(SemppisMythicalLegendsMod.MOD_ID, "animations/mandrake_sproutling.animation.json");
+        return new ResourceLocation(SemppisMythicalLegendsMod.MOD_ID, "animations/mandrake_sproutling.animation.json");
     }
 
     @Override

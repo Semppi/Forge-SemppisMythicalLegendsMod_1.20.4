@@ -19,7 +19,7 @@ public class KrakenRenderer extends GeoEntityRenderer<KrakenEntity> {
 
     @Override
     public ResourceLocation getTextureLocation(KrakenEntity animatable) {
-        return ResourceLocation.fromNamespaceAndPath(SemppisMythicalLegendsMod.MOD_ID, "textures/entity/kraken_red.png");
+        return new ResourceLocation(SemppisMythicalLegendsMod.MOD_ID, "textures/entity/kraken_red.png");
     }
 
     @Override

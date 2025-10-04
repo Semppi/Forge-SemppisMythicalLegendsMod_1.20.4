@@ -36,8 +36,7 @@ public final class RegionMobAllow {
             return c == Continent.EUROPE && (d == SubDir.CENTRAL || d == SubDir.EAST);
         }
         if (type == ModEntities.SATYR.get()) {
-            return (c == Continent.EUROPE && d == SubDir.SOUTH)
-                    || (c == Continent.ASIA   && d == SubDir.WEST);
+            return (c == Continent.EUROPE && d == SubDir.SOUTH) || (c == Continent.ASIA && d == SubDir.WEST);
         }
         if (type == ModEntities.WENDIGO.get()) {
             return c == Continent.N_AMERICA && (d == SubDir.NORTH || d == SubDir.EAST || d == SubDir.CENTRAL);

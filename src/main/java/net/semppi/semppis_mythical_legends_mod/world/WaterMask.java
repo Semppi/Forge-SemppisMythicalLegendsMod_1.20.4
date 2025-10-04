@@ -16,8 +16,9 @@ public final class WaterMask {
         // Only run in the Overworld
         if (level instanceof Level lvl && lvl.dimension() != Level.OVERWORLD) return false;
 
-        final int R = 64;    // radius
+        final int R = 64;   // radius
         final int STEP = 32; // sampling stride (chunk-friendly)
+
         int water = 0, total = 0;
 
         for (int dz = -R; dz <= R; dz += STEP) {
@@ -28,7 +29,6 @@ public final class WaterMask {
                 // sample at the surface, not underground
                 int y = level.getHeight(Heightmap.Types.MOTION_BLOCKING, x, z);
                 Holder<Biome> b = level.getBiome(new BlockPos(x, y, z));
-
                 total++;
                 if (isWaterBiome(b)) water++;
             }
@@ -37,7 +37,9 @@ public final class WaterMask {
     }
 
     public static boolean isWaterBiome(Holder<Biome> biome) {
-        return biome.is(BiomeTags.IS_OCEAN) || biome.is(BiomeTags.IS_DEEP_OCEAN)
-                || biome.is(BiomeTags.IS_RIVER) || biome.is(BiomeTags.IS_BEACH);
+        return biome.is(BiomeTags.IS_OCEAN)
+                || biome.is(BiomeTags.IS_DEEP_OCEAN)
+                || biome.is(BiomeTags.IS_RIVER)
+                || biome.is(BiomeTags.IS_BEACH);
     }
 }

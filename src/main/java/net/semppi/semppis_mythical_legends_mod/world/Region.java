@@ -1,9 +1,11 @@
 package net.semppi.semppis_mythical_legends_mod.world;
 
 public record Region(boolean ocean, Continent continent, SubDir dir, Ocean sea) {
+
     public static Region land(Continent c, SubDir d) {
         return new Region(false, c, d, null);
     }
+
     public static Region sea(Ocean s) {
         return new Region(true, null, SubDir.CENTRAL, s);
     }
@@ -35,13 +37,15 @@ public record Region(boolean ocean, Continent continent, SubDir dir, Ocean sea) 
             case S_AMERICA -> "South America";
             case AUSTRALIA -> "Australia";
         };
+
         String dName = switch (dir) {
             case NORTH -> "Northern";
             case SOUTH -> "Southern";
-            case EAST -> "Eastern";
-            case WEST -> "Western";
+            case EAST  -> "Eastern";
+            case WEST  -> "Western";
             case CENTRAL -> "Central";
         };
+
         return dName + " " + cName;
     }
 }

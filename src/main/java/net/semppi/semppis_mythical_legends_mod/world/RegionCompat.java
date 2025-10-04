@@ -7,7 +7,7 @@ public final class RegionCompat {
     private RegionCompat() {}
 
     public static boolean isAllowedForBiome(Holder<Biome> biome, Region region) {
-        // Start permissive; you can add rules like "no deserts in Europe" later.
+        // Start permissive; add stricter rules later if desired
         return true;
     }
 }

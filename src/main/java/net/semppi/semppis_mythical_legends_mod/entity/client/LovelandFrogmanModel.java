@@ -13,17 +13,17 @@ import software.bernie.geckolib.model.data.EntityModelData;
 public class LovelandFrogmanModel extends GeoModel<LovelandFrogmanEntity> {
     @Override
     public ResourceLocation getModelResource(LovelandFrogmanEntity animatable) {
-        return ResourceLocation.fromNamespaceAndPath(SemppisMythicalLegendsMod.MOD_ID, "geo/loveland_frogman.geo.json");
+        return new ResourceLocation(SemppisMythicalLegendsMod.MOD_ID, "geo/loveland_frogman.geo.json");
     }
 
     @Override
     public ResourceLocation getTextureResource(LovelandFrogmanEntity animatable) {
-        return ResourceLocation.fromNamespaceAndPath(SemppisMythicalLegendsMod.MOD_ID, "textures/entity/frogman_green.png");
+        return new ResourceLocation(SemppisMythicalLegendsMod.MOD_ID, "textures/entity/frogman_green.png");
     }
 
     @Override
     public ResourceLocation getAnimationResource(LovelandFrogmanEntity animatable) {
-        return ResourceLocation.fromNamespaceAndPath(SemppisMythicalLegendsMod.MOD_ID, "animations/loveland_frogman.animation.json");
+        return new ResourceLocation(SemppisMythicalLegendsMod.MOD_ID, "animations/loveland_frogman.animation.json");
     }
 
     @Override

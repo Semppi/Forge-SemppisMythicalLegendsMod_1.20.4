@@ -54,10 +54,12 @@ public class ModGlobalLootModifiersProvider extends GlobalLootModifierProvider {
                 LootItemBlockStatePropertyCondition.hasBlockStateProperties(Blocks.CHERRY_LEAVES).build(),
                 LootItemRandomChanceCondition.randomChance(0.11f).build()}, ModItems.EDIBLE_LEAF.get()));
 
-        add("ghastly_teeth_from_ghast", new AddItemModifier(new LootItemCondition[] {
-                new LootTableIdCondition.Builder(ResourceLocation.fromNamespaceAndPath("minecraft", "entities/ghast")).build(),
-                LootItemRandomChanceCondition.randomChance(0.7f).build() // 70% chance
-        }, ModItems.GHASTLY_TEETH.get()));
-
+        add("ghastly_teeth_from_ghast", new AddItemModifier(
+                new LootItemCondition[] {
+                        new LootTableIdCondition.Builder(new ResourceLocation("minecraft", "entities/ghast")).build(),
+                        LootItemRandomChanceCondition.randomChance(0.7f).build()
+                },
+                ModItems.GHASTLY_TEETH.get()
+        ));
     }
 }

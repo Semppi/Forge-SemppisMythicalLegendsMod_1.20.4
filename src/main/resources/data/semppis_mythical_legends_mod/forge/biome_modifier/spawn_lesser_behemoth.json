@@ -4,7 +4,7 @@
     "minecraft:savanna"
   ],
   "spawners": {
-    "type": "semppis_mythical_legends_mod:behemoth",
+    "type": "semppis_mythical_legends_mod:lesser_behemoth",
     "weight": 1,
     "minCount": 1,
     "maxCount": 1

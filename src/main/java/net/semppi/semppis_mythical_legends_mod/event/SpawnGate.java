@@ -19,7 +19,7 @@ public final class SpawnGate {
 
     private static boolean explicitBypass(MobSpawnType t) {
         return t == MobSpawnType.COMMAND
-//                || t == MobSpawnType.SPAWN_EGG
+                // || t == MobSpawnType.SPAWN_EGG
                 || t == MobSpawnType.DISPENSER
                 || t == MobSpawnType.CONVERSION;
     }
@@ -40,7 +40,6 @@ public final class SpawnGate {
     public static void onFinalize(MobSpawnEvent.FinalizeSpawn e) {
         if (!EXTRA_SAFETY_GATES) return;
         if (!(e.getLevel() instanceof ServerLevel sl)) return;
-
         if (!sl.getGameRules().getBoolean(
                 net.semppi.semppis_mythical_legends_mod.rules.SMLRules.CONTINENTAL_SPAWNING)) return;
         if (explicitBypass(e.getSpawnType())) return;
@@ -59,10 +58,8 @@ public final class SpawnGate {
     public static void onJoin(EntityJoinLevelEvent e) {
         if (!EXTRA_SAFETY_GATES) return;
         if (!(e.getLevel() instanceof ServerLevel sl)) return;
-
         if (!sl.getGameRules().getBoolean(
                 net.semppi.semppis_mythical_legends_mod.rules.SMLRules.CONTINENTAL_SPAWNING)) return;
-
         if (!(e.getEntity() instanceof net.minecraft.world.entity.Mob mob)) return; // OK here: Join event is Entity
         if (!isOurMob(mob.getType())) return;
         if (mob.isBaby()

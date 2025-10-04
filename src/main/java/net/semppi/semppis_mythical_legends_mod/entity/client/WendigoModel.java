@@ -16,19 +16,19 @@ import software.bernie.geckolib.model.data.EntityModelData;
 public class WendigoModel extends GeoModel<WendigoEntity> {
     @Override
     public ResourceLocation getModelResource(WendigoEntity animatable) {
-        return ResourceLocation.fromNamespaceAndPath(SemppisMythicalLegendsMod.MOD_ID, "geo/wendigo.geo.json");
+        return new ResourceLocation(SemppisMythicalLegendsMod.MOD_ID, "geo/wendigo.geo.json");
     }
 
     @Override
     public ResourceLocation getTextureResource(WendigoEntity entity) {
         WendigoVariant variant = entity.getVariant();
         String variantName = variant.name().toLowerCase();
-        return ResourceLocation.fromNamespaceAndPath(SemppisMythicalLegendsMod.MOD_ID, "textures/entity/wendigo_" + variantName + ".png");
+        return new ResourceLocation(SemppisMythicalLegendsMod.MOD_ID, "textures/entity/wendigo_" + variantName + ".png");
     }
 
     @Override
     public ResourceLocation getAnimationResource(WendigoEntity animatable) {
-        return ResourceLocation.fromNamespaceAndPath(SemppisMythicalLegendsMod.MOD_ID, "animations/wendigo.animation.json");
+        return new ResourceLocation(SemppisMythicalLegendsMod.MOD_ID, "animations/wendigo.animation.json");
     }
 
     @Override

@@ -1,6 +1,8 @@
 package net.semppi.semppis_mythical_legends_mod.client;
 
-import net.semppi.semppis_mythical_legends_mod.world.*;
+import net.semppi.semppis_mythical_legends_mod.world.Continent;
+import net.semppi.semppis_mythical_legends_mod.world.Ocean;
+import net.semppi.semppis_mythical_legends_mod.world.Region;
 
 public final class RegionText {
     private RegionText() {}
@@ -18,12 +20,13 @@ public final class RegionText {
         }
 
         String dir = switch (region.dir()) {
-            case NORTH   -> "Northern";
-            case SOUTH   -> "Southern";
-            case EAST    -> "Eastern";
-            case WEST    -> "Western";
+            case NORTH -> "Northern";
+            case SOUTH -> "Southern";
+            case EAST  -> "Eastern";
+            case WEST  -> "Western";
             case CENTRAL -> "Central";
         };
+
         return dir + " " + prettyContinent(region.continent());
     }
 

@@ -16,19 +16,19 @@ import software.bernie.geckolib.model.data.EntityModelData;
 public class SatyrModel extends GeoModel<SatyrEntity> {
     @Override
     public ResourceLocation getModelResource(SatyrEntity animatable) {
-        return ResourceLocation.fromNamespaceAndPath(SemppisMythicalLegendsMod.MOD_ID, "geo/satyr.geo.json");
+        return new ResourceLocation(SemppisMythicalLegendsMod.MOD_ID, "geo/satyr.geo.json");
     }
 
     @Override
     public ResourceLocation getTextureResource(SatyrEntity entity) {
         SatyrVariant variant = entity.getVariant();
         String variantName = variant.name().toLowerCase();
-        return ResourceLocation.fromNamespaceAndPath(SemppisMythicalLegendsMod.MOD_ID, "textures/entity/satyr_" + variantName + ".png");
+        return new ResourceLocation(SemppisMythicalLegendsMod.MOD_ID, "textures/entity/satyr_" + variantName + ".png");
     }
 
     @Override
     public ResourceLocation getAnimationResource(SatyrEntity animatable) {
-        return ResourceLocation.fromNamespaceAndPath(SemppisMythicalLegendsMod.MOD_ID, "animations/satyr.animation.json");
+        return new ResourceLocation(SemppisMythicalLegendsMod.MOD_ID, "animations/satyr.animation.json");
     }
 
     @Override

@@ -8,6 +8,7 @@ import net.minecraft.network.syncher.SynchedEntityData;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.sounds.SoundEvent;
 import net.minecraft.sounds.SoundEvents;
+import net.minecraft.util.RandomSource;
 import net.minecraft.world.DifficultyInstance;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
@@ -31,7 +32,9 @@ import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
+import net.minecraft.world.level.LevelAccessor;
 import net.minecraft.world.level.ServerLevelAccessor;
+import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.scores.PlayerTeam;
 import net.minecraftforge.event.ForgeEventFactory;
@@ -86,6 +89,12 @@ public class WendigoEntity extends TamableAnimal implements GeoEntity, PlayerRid
     public WendigoEntity(EntityType<? extends TamableAnimal> entityType, Level level) {
         super(entityType, level);
         this.setMaxUpStep(2.0F);
+    }
+
+    public static boolean canWendigoSpawn(EntityType<WendigoEntity> type, LevelAccessor world, MobSpawnType spawnType, BlockPos pos, RandomSource random) {
+        BlockState blockState = world.getBlockState(pos.below());
+        return (blockState.is(Blocks.GRASS_BLOCK) || blockState.is(Blocks.DIRT) || blockState.is(Blocks.SNOW_BLOCK) || blockState.is(Blocks.STONE))
+                && world.getMaxLocalRawBrightness(pos) > 8;
     }
 
     public static AttributeSupplier setAttributes() {

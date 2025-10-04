@@ -1,21 +1,19 @@
 package net.semppi.semppis_mythical_legends_mod.event;
 
 import net.minecraft.core.BlockPos;
-import net.minecraft.core.Holder;
-import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.tags.FluidTags;
 import net.minecraft.world.level.Level;
-import net.minecraft.world.level.biome.Biome;
-import net.minecraft.world.level.levelgen.Heightmap;
 import net.minecraftforge.event.TickEvent;
 import net.minecraftforge.event.entity.player.PlayerEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
-
 import net.semppi.semppis_mythical_legends_mod.SemppisMythicalLegendsMod;
-import net.semppi.semppis_mythical_legends_mod.network.RegionSyncPayload;
-import net.semppi.semppis_mythical_legends_mod.world.*;
+import net.semppi.semppis_mythical_legends_mod.world.Region;
+import net.semppi.semppis_mythical_legends_mod.world.RegionSampler;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -23,19 +21,27 @@ import java.util.UUID;
 
 @Mod.EventBusSubscriber(modid = SemppisMythicalLegendsMod.MOD_ID, bus = Mod.EventBusSubscriber.Bus.FORGE)
 public final class RegionSyncServer {
-    private static final RegionSampler SAMPLER = new RegionSampler();
+    private static final Logger LOG = LogManager.getLogger(RegionSyncServer.class);
 
-    private static final Map<UUID, Region> LAST = new HashMap<>();
-    private static final int INTERVAL = 40; // was 10 -> check every ~2s
+    private static final RegionSampler SAMPLER = new RegionSampler();
+    private static final Map<UUID, Region> LAST_REGION = new HashMap<>();
+    private static final Map<UUID, Long> LAST_CHUNK_KEY = new HashMap<>();
     private static final Map<UUID, Integer> COOLDOWN = new HashMap<>();
+
+    // how often we *allow* a recalculation at most (ticks)
+    private static final int INTERVAL = 40; // ~2s
+
+    private RegionSyncServer() {}
 
     @SubscribeEvent
     public static void onPlayerLoggedIn(PlayerEvent.PlayerLoggedInEvent e) {
-        if (e.getEntity() instanceof ServerPlayer sp) sendIfChanged(sp, true);
+        if (e.getEntity() instanceof ServerPlayer sp) {
+            // force an initial sync on login
+            sendIfChanged(sp, true);
+        }
     }
 
-    @SuppressWarnings("removal")
-    @SubscribeEvent
+    @SubscribeEvent @SuppressWarnings("removal")
     public static void onPlayerTick(TickEvent.PlayerTickEvent e) {
         if (!(e.player instanceof ServerPlayer sp)) return;
         if (e.phase != TickEvent.Phase.END) return;
@@ -47,95 +53,65 @@ public final class RegionSyncServer {
         sendIfChanged(sp, false);
     }
 
+    @SubscribeEvent
+    public static void onPlayerLoggedOut(PlayerEvent.PlayerLoggedOutEvent e) {
+        if (e.getEntity() instanceof ServerPlayer sp) {
+            UUID id = sp.getUUID();
+            LAST_REGION.remove(id);
+            LAST_CHUNK_KEY.remove(id);
+            COOLDOWN.remove(id);
+        }
+    }
+
+    private static long chunkKey(int cx, int cz) {
+        return (((long) cx) << 32) ^ (cz & 0xffffffffL);
+    }
+
     private static void sendIfChanged(ServerPlayer sp, boolean force) {
         ServerLevel level = sp.serverLevel();
         if (level.dimension() != Level.OVERWORLD) return;
 
-        // NEW: integrated (not dedicated) servers don't need the packet at all.
-        if (!sp.getServer().isDedicatedServer()) return;
-
-        if (!level.getGameRules().getBoolean(net.semppi.semppis_mythical_legends_mod.rules.SMLRules.CONTINENTAL_SPAWNING))
-            return;
-
         BlockPos pos = sp.blockPosition();
-        boolean aquatic = WaterMask.isWaterDominant(level, pos);
-
-        Region region;
         int cx = pos.getX() >> 4, cz = pos.getZ() >> 4;
-        if (level.getChunkSource().hasChunk(cx, cz)) {
-            // loaded -> use cached biome-aware result
-            region = net.semppi.semppis_mythical_legends_mod.spawn.RegionGate.peekRegion(
-                    level, pos.getX(), pos.getZ(), aquatic
-            );
-        } else {
-            // NEW: avoid any loads in new territory; use noise-only
-            region = aquatic
-                    ? SAMPLER.seaRegion(level.getSeed(), pos.getX(), pos.getZ())
-                    : SAMPLER.landRegion(level.getSeed(), pos.getX(), pos.getZ());
-        }
+        long key = chunkKey(cx, cz);
 
-        Region prev = LAST.get(sp.getUUID());
+        // Only recompute when entering a new chunk (unless forced)
+        if (!force) {
+            Long prevKey = LAST_CHUNK_KEY.get(sp.getUUID());
+            if (prevKey != null && prevKey == key) return;
+        }
+        LAST_CHUNK_KEY.put(sp.getUUID(), key);
+
+        // Never force a chunk load: only proceed if this chunk is already present
+        if (level.getChunkSource().getChunkNow(cx, cz) == null) return;
+
+        boolean aquatic =
+                         level.getFluidState(pos).is(FluidTags.WATER)
+                              || level.getFluidState(pos.below()).is(FluidTags.WATER)
+                              || net.semppi.semppis_mythical_legends_mod.world.WaterMask.isWaterDominant(level, pos)
+                              || net.semppi.semppis_mythical_legends_mod.world.WaterMask.isWaterBiome(
+                                     level.getBiome(pos));
+
+        // Sample at the chunk center with noise-only sampler (stable & cheap)
+        int sx = (cx << 4) + 8;
+        int sz = (cz << 4) + 8;
+        Region region = aquatic
+                ? SAMPLER.seaRegion(level, sx, sz)
+                : SAMPLER.landRegion(level, sx, sz);
+
+        Region prev = LAST_REGION.get(sp.getUUID());
         if (!force && same(prev, region)) return;
 
-        LAST.put(sp.getUUID(), region);
+        LAST_REGION.put(sp.getUUID(), region);
         sendPacket(sp, region);
+
+        // Debug logging is nice but can be noisy; keep it off by default
+        // LOG.debug("[SML] Sync region to {}: {}", sp.getGameProfile().getName(), region.display());
     }
 
     private static void sendPacket(ServerPlayer sp, Region region) {
-        FriendlyByteBuf buf = new FriendlyByteBuf(io.netty.buffer.Unpooled.buffer());
-
-        // 1) Prefix our channel id so the client can tell whose packet this is
-        buf.writeResourceLocation(RegionSyncPayload.ID);
-
-        // 2) Then write the actual 4 bytes (your RegionSyncPayload)
-        RegionSyncPayload.from(region).write(buf);
-
-        // 3) Send as an "opaque" payload so Forge fires CustomPayloadEvent on the client
-        sp.connection.send(new net.minecraft.network.protocol.common.ClientboundCustomPayloadPacket(
-                new RawBufPayload(RegionSyncPayload.ID, buf)
-        ));
-    }
-
-    /** Minimal wrapper so we can send raw bytes under our own channel id */
-    private static final class RawBufPayload implements net.minecraft.network.protocol.common.custom.CustomPacketPayload {
-        private final net.minecraft.resources.ResourceLocation id;
-        private final net.minecraft.network.FriendlyByteBuf data;
-
-        RawBufPayload(net.minecraft.resources.ResourceLocation id, net.minecraft.network.FriendlyByteBuf data) {
-            this.id = id;
-            this.data = data;
-        }
-        @Override public void write(net.minecraft.network.FriendlyByteBuf out) { out.writeBytes(data.copy()); }
-        @Override public net.minecraft.resources.ResourceLocation id() { return id; }
-    }
-
-    private static Region snapToBiomeEdge(ServerLevel level, int x, int z, Region base) {
-        final int STEP = 16;
-        int diff = 0;
-        for (int oz = -1; oz <= 1; oz++) for (int ox = -1; ox <= 1; ox++) {
-            if (ox == 0 && oz == 0) continue;
-            Region r = SAMPLER.landRegion(level, x + ox * STEP, z + oz * STEP);
-            if (!same(r, base)) diff++;
-        }
-        if (diff == 0) return base;
-
-        int y0 = level.getHeight(Heightmap.Types.MOTION_BLOCKING, x, z);
-        Holder<Biome> here = level.getBiome(new BlockPos(x, y0, z));
-
-        int votesBase = 0, votesOther = 0;
-        Region other = base;
-
-        for (int oz = -1; oz <= 1; oz++) for (int ox = -1; ox <= 1; ox++) {
-            if (ox == 0 && oz == 0) continue;
-            int sx = x + ox * STEP, sz = z + oz * STEP;
-            int sy = level.getHeight(Heightmap.Types.MOTION_BLOCKING, sx, sz);
-
-            if (level.getBiome(new BlockPos(sx, sy, sz)).equals(here)) {
-                Region r = SAMPLER.landRegion(level, sx, sz);
-                if (same(r, base)) votesBase++; else { votesOther++; other = r; }
-            }
-        }
-        return (votesOther > votesBase) ? other : base;
+        net.semppi.semppis_mythical_legends_mod.network.SMLNetwork
+                .sendTo(sp, net.semppi.semppis_mythical_legends_mod.network.RegionSyncPayload.from(region));
     }
 
     private static boolean same(Region a, Region b) {

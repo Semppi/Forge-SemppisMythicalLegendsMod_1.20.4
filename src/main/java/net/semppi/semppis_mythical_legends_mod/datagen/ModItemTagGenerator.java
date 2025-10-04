@@ -57,6 +57,6 @@ public class ModItemTagGenerator extends ItemTagsProvider {
     }
 
     private static TagKey<Item> createTag(String name) {
-        return TagKey.create(Registries.ITEM, ResourceLocation.fromNamespaceAndPath(SemppisMythicalLegendsMod.MOD_ID, name));
+        return TagKey.create(Registries.ITEM, new ResourceLocation(SemppisMythicalLegendsMod.MOD_ID, name));
     }
 }

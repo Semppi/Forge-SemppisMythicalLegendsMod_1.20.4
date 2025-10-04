@@ -23,10 +23,12 @@ public final class RegionGateCached {
 
     public static boolean allows(ServerLevel level, EntityType<?> type, BlockPos pos, MobSpawnType reason) {
         final long tick = level.getGameTime();
-        if (tick != lastTick) { // new tick, flush
+        if (tick != lastTick) {
+            // new tick, flush
             CACHE.clear();
             lastTick = tick;
         }
+
         final int cx = pos.getX() >> 4;
         final int cz = pos.getZ() >> 4;
         final Key key = new Key(level.dimension(), type, cx, cz, reason);
@@ -49,10 +51,7 @@ public final class RegionGateCached {
         @Override public boolean equals(Object o) {
             if (this == o) return true;
             if (!(o instanceof Key k)) return false;
-            return cx == k.cx && cz == k.cz &&
-                    Objects.equals(dim, k.dim) &&
-                    type == k.type &&
-                    reason == k.reason;
+            return cx == k.cx && cz == k.cz && Objects.equals(dim, k.dim) && type == k.type && reason == k.reason;
         }
         @Override public int hashCode() {
             int h = dim.hashCode();

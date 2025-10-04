@@ -13,6 +13,7 @@ import net.semppi.semppis_mythical_legends_mod.world.*;
 
 public final class RegionSpawnUtil {
     private RegionSpawnUtil() {}
+
     private static final RegionSampler SAMPLER = new RegionSampler();
 
     /** Returns true if added; false if denied by continental rules. */

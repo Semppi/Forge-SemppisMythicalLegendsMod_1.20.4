@@ -10,6 +10,12 @@ import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.event.BuildCreativeModeTabContentsEvent;
 import net.minecraftforge.event.RegisterCommandsEvent;
+import net.minecraftforge.eventbus.api.IEventBus;
+import net.minecraftforge.eventbus.api.SubscribeEvent;
+import net.minecraftforge.fml.common.Mod;
+import net.minecraftforge.fml.event.lifecycle.FMLClientSetupEvent;
+import net.minecraftforge.fml.event.lifecycle.FMLCommonSetupEvent;
+import net.minecraftforge.fml.javafmlmod.FMLJavaModLoadingContext;
 import net.semppi.semppis_mythical_legends_mod.block.ModBlocks;
 import net.semppi.semppis_mythical_legends_mod.block.client.PukisEggRenderer;
 import net.semppi.semppis_mythical_legends_mod.block.client.WendigoSkullRenderer;
@@ -17,16 +23,11 @@ import net.semppi.semppis_mythical_legends_mod.block.entity.ModBlockEntities;
 import net.semppi.semppis_mythical_legends_mod.commands.CancelTransformCommand;
 import net.semppi.semppis_mythical_legends_mod.commands.TransformCommand;
 import net.semppi.semppis_mythical_legends_mod.datagen.DataGenerators;
-import net.semppi.semppis_mythical_legends_mod.entity.EntitySpawnHandler;
-import net.semppi.semppis_mythical_legends_mod.entity.client.*;
-import net.minecraftforge.eventbus.api.IEventBus;
-import net.minecraftforge.eventbus.api.SubscribeEvent;
-import net.minecraftforge.fml.common.Mod;
-import net.minecraftforge.fml.event.lifecycle.FMLClientSetupEvent;
-import net.minecraftforge.fml.event.lifecycle.FMLCommonSetupEvent;
-import net.minecraftforge.fml.javafmlmod.FMLJavaModLoadingContext;
 import net.semppi.semppis_mythical_legends_mod.entity.ModEntities;
+import net.semppi.semppis_mythical_legends_mod.entity.client.*;
 import net.semppi.semppis_mythical_legends_mod.entity.custom.AlicantoEntity;
+import net.semppi.semppis_mythical_legends_mod.entity.custom.ProtoWendigoEntity;
+import net.semppi.semppis_mythical_legends_mod.entity.custom.WendigoEntity;
 import net.semppi.semppis_mythical_legends_mod.event.*;
 import net.semppi.semppis_mythical_legends_mod.item.ModCreativeModeTabs;
 import net.semppi.semppis_mythical_legends_mod.item.ModItems;
@@ -53,6 +54,7 @@ public class SemppisMythicalLegendsMod {
         ModBlockEntities.register(modEventBus);
         ModEntities.register(modEventBus);
         ModSounds.register(modEventBus);
+
         modEventBus.addListener(DataGenerators::gatherData);
 
         MinecraftForge.EVENT_BUS.addListener(this::onRegisterCommands);
@@ -63,8 +65,10 @@ public class SemppisMythicalLegendsMod {
 
         modEventBus.addListener(this::commonSetup);
         MinecraftForge.EVENT_BUS.register(this);
-        MinecraftForge.EVENT_BUS.register(EntitySpawnHandler.class);
+        //MinecraftForge.EVENT_BUS.register(EntitySpawnHandler.class);
         modEventBus.addListener(this::addCreative);
+
+        net.semppi.semppis_mythical_legends_mod.network.SMLNetwork.init();
 
         net.semppi.semppis_mythical_legends_mod.rules.SMLRules.init();
     }
@@ -86,7 +90,7 @@ public class SemppisMythicalLegendsMod {
 
             SpawnPlacements.register(ModEntities.WENDIGO.get(),
                     SpawnPlacements.Type.ON_GROUND, Heightmap.Types.MOTION_BLOCKING_NO_LEAVES,
-                    RegionSpawn.gatedLand(Animal::checkAnimalSpawnRules));
+                    RegionSpawn.gatedLand(WendigoEntity::canWendigoSpawn));
 
             SpawnPlacements.register(ModEntities.LOVELAND_FROGMAN.get(),
                     SpawnPlacements.Type.ON_GROUND, Heightmap.Types.MOTION_BLOCKING_NO_LEAVES,
@@ -98,7 +102,7 @@ public class SemppisMythicalLegendsMod {
 
             SpawnPlacements.register(ModEntities.PROTO_WENDIGO.get(),
                     SpawnPlacements.Type.ON_GROUND, Heightmap.Types.MOTION_BLOCKING_NO_LEAVES,
-                    RegionSpawn.gatedLand(Animal::checkAnimalSpawnRules));
+                    RegionSpawn.gatedLand(ProtoWendigoEntity::canProtoWendigoSpawn));
 
             // WATER: gate oceans too
             SpawnPlacements.register(ModEntities.COLOSSAL_LOBSTER.get(),
