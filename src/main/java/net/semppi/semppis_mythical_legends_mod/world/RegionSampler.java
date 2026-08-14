@@ -139,12 +139,25 @@ public final class RegionSampler {
 
     // ---------- connector handling ----------
 
-    private static boolean isConnector(ResourceLocation id) {
+    private static boolean isWaterId(ResourceLocation id) {
         if (!"minecraft".equals(id.getNamespace())) return false;
         String p = id.getPath();
-        return p.equals("river") || p.equals("frozen_river")
+        // rivers & shores & beaches
+        if (p.equals("river") || p.equals("frozen_river")
                 || p.equals("beach") || p.equals("snowy_beach")
-                || p.equals("stony_shore");
+                || p.equals("stony_shore")) return true;
+        // every vanilla ocean variant
+        return p.equals("ocean") || p.equals("deep_ocean")
+                || p.equals("warm_ocean")
+                || p.equals("lukewarm_ocean") || p.equals("deep_lukewarm_ocean")
+                || p.equals("cold_ocean") || p.equals("deep_cold_ocean")
+                || p.equals("frozen_ocean") || p.equals("deep_frozen_ocean");
+    }
+
+    // Keep this for non-water connectors if you like, or just delete it and inline isWaterId
+    private static boolean isConnector(ResourceLocation id) {
+        // “Connector” in land logic now = any water-ish surface
+        return isWaterId(id);
     }
 
     private Region majorityRegionAcrossConnectors(ServerLevel level, int x, int z) {
@@ -154,7 +167,7 @@ public final class RegionSampler {
             for (int s : steps) {
                 int sx = x + d.getStepX() * s, sz = z + d.getStepZ() * s;
                 ResourceLocation id = biomeIdIfLoaded(level, sx, sz);
-                if (id == null || isConnector(id)) continue;
+                if (id == null || isWaterId(id)) continue;
                 Region r = rawLandRegion(level, sx, sz);
                 if (winner == null || !same(winner, r)) { winner = r; votes = 1; } else votes++;
                 break;
@@ -166,16 +179,17 @@ public final class RegionSampler {
     // tiny-patch adoption
     private static boolean isTinyPatch(ServerLevel level, int x, int z, ResourceLocation centerId) {
         final int STEP = 24;
+        final int R = 2; // was implicit 1; expand like we did above
         int same = 0, total = 0;
-        for (int oz = -1; oz <= 1; oz++)
-            for (int ox = -1; ox <= 1; ox++) {
+        for (int oz = -R; oz <= R; oz++)
+            for (int ox = -R; ox <= R; ox++) {
                 if (ox == 0 && oz == 0) continue;
                 int sx = x + ox * STEP, sz = z + oz * STEP;
                 ResourceLocation id = biomeId(level, sx, sz);
                 total++;
                 if (id.equals(centerId)) same++;
             }
-        return same * 4 < total; // <25%
+        return same * 4 < total; // <25% same-biome => adopt from neighbors
     }
 
     private Region adoptFromNeighbors(ServerLevel level, int x, int z, ResourceLocation centerId) {
@@ -223,16 +237,19 @@ public final class RegionSampler {
 
     // biome consensus
     private Region biomeConsensus(ServerLevel level, int x, int z, Region base) {
+        long seed = level.getSeed();
         int y0 = level.getHeight(net.minecraft.world.level.levelgen.Heightmap.Types.MOTION_BLOCKING, x, z);
         Holder<Biome> here = level.getBiome(new BlockPos(x, y0, z));
+
         final int STEP = 24;
+        final int R = 2; // 5x5 window in the *same biome*
 
         int[] contVotes = new int[Continent.values().length];
-        Map<SubDir, Integer> dirVotesWithinWinner = new HashMap<>();
-        if (!base.ocean()) contVotes[base.continent().ordinal()]++;
+        java.util.Map<SubDir, Integer> dirVotesWithinWinner = new java.util.HashMap<>();
 
-        for (int oz = -1; oz <= 1; oz++)
-            for (int ox = -1; ox <= 1; ox++) {
+        // collect votes from the same-biome neighborhood (no base seeding)
+        for (int oz = -R; oz <= R; oz++) {
+            for (int ox = -R; ox <= R; ox++) {
                 int sx = x + ox * STEP, sz = z + oz * STEP;
                 int sy = level.getHeight(net.minecraft.world.level.levelgen.Heightmap.Types.MOTION_BLOCKING, sx, sz);
                 if (!level.getBiome(new BlockPos(sx, sy, sz)).equals(here)) continue;
@@ -240,15 +257,23 @@ public final class RegionSampler {
                 if (r.ocean()) continue;
                 contVotes[r.continent().ordinal()]++;
             }
+        }
 
-        Continent winner = base.continent(); int best = contVotes[winner.ordinal()];
+        // pick continent by pure majority; resolve ties deterministically
+        Continent winner = null; int best = -1;
         for (Continent c : Continent.values()) {
             int v = contVotes[c.ordinal()];
             if (v > best) { best = v; winner = c; }
+            else if (v == best && winner != null &&
+                    tie2(seed, x, z, c.ordinal(), winner.ordinal()) > 0) {
+                winner = c;
+            }
         }
+        if (winner == null) winner = base.continent(); // extremely rare: no votes (tiny biome edge)
 
-        for (int oz = -1; oz <= 1; oz++)
-            for (int ox = -1; ox <= 1; ox++) {
+        // collect direction votes but only from samples that chose the winning continent
+        for (int oz = -R; oz <= R; oz++) {
+            for (int ox = -R; ox <= R; ox++) {
                 int sx = x + ox * STEP, sz = z + oz * STEP;
                 int sy = level.getHeight(net.minecraft.world.level.levelgen.Heightmap.Types.MOTION_BLOCKING, sx, sz);
                 if (!level.getBiome(new BlockPos(sx, sy, sz)).equals(here)) continue;
@@ -257,12 +282,16 @@ public final class RegionSampler {
                     dirVotesWithinWinner.merge(r.dir(), 1, Integer::sum);
                 }
             }
+        }
 
-        SubDir dir = base.dir(); int dirBest = -1;
-        for (Map.Entry<SubDir, Integer> e : dirVotesWithinWinner.entrySet()) {
+        // pick direction with deterministic tiebreak; no bias toward base.dir
+        SubDir dir = SubDir.CENTRAL; int dirBest = -1;
+        for (var e : dirVotesWithinWinner.entrySet()) {
             int v = e.getValue();
-            if (v > dirBest || (v == dirBest && e.getKey() == dir)) {
-                dirBest = v; dir = e.getKey();
+            if (v > dirBest) { dirBest = v; dir = e.getKey(); }
+            else if (v == dirBest &&
+                    tie2(seed, x, z, e.getKey().ordinal(), dir.ordinal()) > 0) {
+                dir = e.getKey();
             }
         }
 
@@ -463,6 +492,11 @@ public final class RegionSampler {
 
     // ---------- helpers ----------
 
+    private static int tie2(long seed, int x, int z, int aKey, int bKey) {
+        long h = hash(seed, (x >> 4) ^ aKey, (z >> 4) ^ bKey, 0xCAFEBABECAFEL);
+        return Long.compare(h, 0L); // >0 => pick A
+    }
+
     private static ResourceLocation biomeId(ServerLevel level, int x, int z) {
         int y = level.getHeight(net.minecraft.world.level.levelgen.Heightmap.Types.MOTION_BLOCKING, x, z);
         y = Math.max(level.getMinBuildHeight(), Math.min(y, level.getMaxBuildHeight() - 1));
@@ -472,7 +506,7 @@ public final class RegionSampler {
                 .getKey(hb.value());
     }
 
-    private static ResourceLocation biomeIdIfLoaded(ServerLevel level, int x, int z) {
+    public static ResourceLocation biomeIdIfLoaded(ServerLevel level, int x, int z) {
         int cx = x >> 4, cz = z >> 4;
         if (!level.getChunkSource().hasChunk(cx, cz)) return null;
         int y = level.getHeight(net.minecraft.world.level.levelgen.Heightmap.Types.MOTION_BLOCKING, x, z);

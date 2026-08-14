@@ -5,7 +5,7 @@
       "entries": [
         {
           "type": "minecraft:item",
-          "name": "semppis_mythical_legends_mod:cooked_bushmeat",
+          "name": "semppis_mythical_legends_mod:cooked_bushmeat_piece",
           "conditions": [
             {
               "condition": "minecraft:entity_properties",
@@ -20,7 +20,7 @@
         },
         {
           "type": "minecraft:item",
-          "name": "semppis_mythical_legends_mod:raw_bushmeat",
+          "name": "semppis_mythical_legends_mod:raw_bushmeat_piece",
           "conditions": [
             {
               "condition": "minecraft:entity_properties",
@@ -38,8 +38,8 @@
         {
           "function": "minecraft:set_count",
           "count": {
-            "min": 0,
-            "max": 1
+            "min": 1,
+            "max": 2
           }
         }
       ]

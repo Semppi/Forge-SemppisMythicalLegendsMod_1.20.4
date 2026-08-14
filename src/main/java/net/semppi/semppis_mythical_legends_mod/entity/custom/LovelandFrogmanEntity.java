@@ -18,9 +18,11 @@ import net.minecraft.world.entity.ai.navigation.GroundPathNavigation;
 import net.minecraft.world.entity.ai.util.GoalUtils;
 import net.minecraft.world.entity.animal.Animal;
 import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.state.BlockState;
 import net.semppi.semppis_mythical_legends_mod.entity.ModEntities;
+import net.semppi.semppis_mythical_legends_mod.item.ModItems;
 import org.jetbrains.annotations.Nullable;
 import software.bernie.geckolib.core.animation.*;
 import software.bernie.geckolib.core.object.PlayState;
@@ -119,5 +121,16 @@ public class LovelandFrogmanEntity extends Animal implements GeoEntity {
 
     protected float getSoundVolume() {
         return 0.2F;
+    }
+
+    @Override
+    protected void dropFromLootTable(DamageSource source, boolean causedByPlayer) {
+        // Drop raw amphibian meat
+        int dropCount = this.random.nextInt(2) + 1; // Randomly generate a number between 1 and 2
+        for (int i = 0; i < dropCount; i++) {
+            this.spawnAtLocation(new ItemStack(ModItems.RAW_AMPHIBIAN_MEAT.get()));
+        }
+
+        super.dropFromLootTable(source, causedByPlayer);
     }
 }

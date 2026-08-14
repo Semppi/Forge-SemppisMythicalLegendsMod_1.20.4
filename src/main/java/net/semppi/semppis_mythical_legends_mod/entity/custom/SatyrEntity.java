@@ -126,7 +126,7 @@ public class SatyrEntity extends TamableAnimal implements GeoEntity {
 
     @Override
     public boolean isFood(ItemStack pStack) {
-        return pStack.getItem() == ModItems.RICOTTA_CHEESE.get();
+        return pStack.getItem() == ModItems.CHEESE.get();
     }
 
     @Override
@@ -184,15 +184,15 @@ public class SatyrEntity extends TamableAnimal implements GeoEntity {
     protected float getSoundVolume() {
         return 0.2F;
     }
-    /// ToDo: Add the looting enchantment effect to satyrs drop for humanoid flesh if killed with the looting enchant
-    /// ToDo: Add humanoid flesh to drop humanoid steak if entity is burning for a drop
+    /// ToDo: Add the looting enchantment effect to satyr drop for raw fey meat if killed with the looting enchant
+    /// ToDo: Add raw fey meat to drop cooked fey meat if entity is burning
 
     @Override
     protected void dropFromLootTable(DamageSource source, boolean causedByPlayer) {
-        // Drop humanoid flesh
+        // Drop fey meat
         int dropCount = this.random.nextInt(2) + 1; // Randomly generate a number between 1 and 2
         for (int i = 0; i < dropCount; i++) {
-            this.spawnAtLocation(new ItemStack(ModItems.HUMANOID_FLESH.get()));
+            this.spawnAtLocation(new ItemStack(ModItems.RAW_FEY_MEAT.get()));
         }
 
         super.dropFromLootTable(source, causedByPlayer);

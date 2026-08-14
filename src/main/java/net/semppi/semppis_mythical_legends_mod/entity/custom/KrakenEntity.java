@@ -24,9 +24,11 @@ import net.minecraft.world.entity.monster.Drowned;
 import net.minecraft.world.entity.monster.Zombie;
 import net.minecraft.world.entity.npc.AbstractVillager;
 import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.state.BlockState;
 import net.semppi.semppis_mythical_legends_mod.entity.ModEntities;
+import net.semppi.semppis_mythical_legends_mod.item.ModItems;
 import org.jetbrains.annotations.Nullable;
 import software.bernie.geckolib.animatable.GeoEntity;
 import software.bernie.geckolib.core.animatable.GeoAnimatable;
@@ -111,5 +113,16 @@ public class KrakenEntity extends Animal implements GeoEntity {
 
     protected float getSoundVolume() {
         return 1.7F;
+    }
+
+    @Override
+    protected void dropFromLootTable(DamageSource source, boolean causedByPlayer) {
+        // Drop raw mollusc chunk
+        int dropCount = this.random.nextInt(21) + 11; // Randomly generate a number
+        for (int i = 0; i < dropCount; i++) {
+            this.spawnAtLocation(new ItemStack(ModItems.RAW_MOLLUSC_CHUNK.get()));
+        }
+
+        super.dropFromLootTable(source, causedByPlayer);
     }
 }

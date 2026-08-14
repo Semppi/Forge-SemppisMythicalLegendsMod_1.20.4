@@ -11,6 +11,7 @@ import net.minecraftforge.registries.DeferredRegister;
 import net.minecraftforge.registries.ForgeRegistries;
 import net.minecraftforge.registries.RegistryObject;
 import net.semppi.semppis_mythical_legends_mod.SemppisMythicalLegendsMod;
+import net.semppi.semppis_mythical_legends_mod.block.custom.MediumHumanoidDropBlock;
 import net.semppi.semppis_mythical_legends_mod.block.custom.PukisEgg;
 import net.semppi.semppis_mythical_legends_mod.block.custom.WendigoSkull;
 import net.semppi.semppis_mythical_legends_mod.item.ModItems;
@@ -34,6 +35,18 @@ public class ModBlocks {
                     .strength(0.6F, 2.5F)
                     .sound(SoundType.STONE)
                     .noOcclusion()));
+
+    public static final RegistryObject<Block> MEDIUM_HUMANOID_DROP =
+            registerBlock(
+                    "medium_humanoid_drop",
+                    () -> new MediumHumanoidDropBlock(
+                            BlockBehaviour.Properties.of()
+                                    .mapColor(MapColor.COLOR_LIGHT_GRAY)
+                                    .strength(0.8F)
+                                    .sound(SoundType.BONE_BLOCK)
+                                    .noOcclusion()
+                    )
+            );
 
     private static <T extends Block> RegistryObject<T> registerBlock(String name, Supplier<T> block) {
         RegistryObject<T> toReturn = BLOCKS.register(name, block);

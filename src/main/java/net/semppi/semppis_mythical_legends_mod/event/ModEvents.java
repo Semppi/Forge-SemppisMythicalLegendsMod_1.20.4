@@ -17,6 +17,7 @@ public class ModEvents {
         event.put(ModEntities.KRAKEN.get(), KrakenEntity.setAttributes());
         event.put(ModEntities.LOVELAND_FROGMAN.get(), LovelandFrogmanEntity.setAttributes());
         event.put(ModEntities.MALPHAS.get(), MalphasEntity.setAttributes());
+        event.put(ModEntities.MANDRAKE.get(), MandrakeEntity.setAttributes());
         event.put(ModEntities.MANDRAKE_SPROUTLING.get(), MandrakeSproutlingEntity.setAttributes());
         event.put(ModEntities.PROTO_WENDIGO.get(), ProtoWendigoEntity.setAttributes());
         event.put(ModEntities.PUKIS.get(), PukisEntity.setAttributes());

@@ -1,0 +1,10 @@
+{
+  "variants": {
+    "waterlogged=false": {
+      "model": "semppis_mythical_legends_mod:block/medium_humanoid_drop"
+    },
+    "waterlogged=true": {
+      "model": "semppis_mythical_legends_mod:block/medium_humanoid_drop"
+    }
+  }
+}

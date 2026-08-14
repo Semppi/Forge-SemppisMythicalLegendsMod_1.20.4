@@ -24,7 +24,7 @@ public final class RegionGate {
     private static final RegionSampler SAMPLER = new RegionSampler();
 
     // 1200 ticks ≈ 60 seconds at 20 TPS
-    private static final int CACHE_TTL_TICKS = 1200;
+    private static final int CACHE_TTL_TICKS = 600;
 
     private static final Map<Long, CacheEntry> CACHE = new ConcurrentHashMap<>();
     private static final AtomicInteger PUTS = new AtomicInteger(0);
@@ -77,22 +77,15 @@ public final class RegionGate {
 
     // ----- cache helpers -----
     private static Region cachedRegion(ServerLevel level, int x, int z, boolean aquatic) {
-        int cx = x >> 4, cz = z >> 4;
         long now = level.getGameTime();
-        long key = cacheKey(level, cx, cz, aquatic);
+        long key = cacheKey(level, x, z, aquatic);   // pass block coords
 
         CacheEntry ce = CACHE.get(key);
-        if (ce != null && now <= ce.expireAtTick) {
-            return ce.region;
-        }
+        if (ce != null && now <= ce.expireAtTick) return ce.region;
 
-        Region r = aquatic ? SAMPLER.seaRegion(level, x, z)
-                : SAMPLER.landRegion(level, x, z);
+        Region r = aquatic ? SAMPLER.seaRegion(level, x, z) : SAMPLER.landRegion(level, x, z);
         CACHE.put(key, new CacheEntry(now + CACHE_TTL_TICKS, r));
-
-        // sweep less often to reduce overhead (every 4096 puts)
         if ((PUTS.incrementAndGet() & 0xFFF) == 0) sweep(now);
-
         return r;
     }
 
@@ -105,14 +98,26 @@ public final class RegionGate {
         CACHE.entrySet().removeIf(e -> e.getValue().expireAtTick < now);
     }
 
-    private static long cacheKey(ServerLevel level, int chunkX, int chunkZ, boolean aquatic) {
+    private static long cacheKey(ServerLevel level, int x, int z, boolean aquatic) {
         long seed = level.getSeed();
         int dimHash = level.dimension().location().hashCode();
-        long k = seed ^ (long) dimHash * 0x9E3779B97F4A7C15L;
-        k ^= (long) chunkX * 0xC2B2AE3D27D4EB4FL;
-        k ^= (long) chunkZ * 0x165667B19E3779F9L;
+
+        // correct: use *block* coords to get the local biome id, and
+        // optionally also mix the chunk coords once for cache locality
+        int chunkX = x >> 4, chunkZ = z >> 4;
+        var biomeId = RegionSampler.biomeIdIfLoaded(level, x, z);
+        int biomeHash = (biomeId != null ? biomeId.hashCode() : 0);
+
+        long k = seed ^ (long)dimHash * 0x9E3779B97F4A7C15L;
+        k ^= (long)chunkX * 0xC2B2AE3D27D4EB4FL;
+        k ^= (long)chunkZ * 0x165667B19E3779F9L;
+        k ^= (long)biomeHash * 0x9E3779B97F4A7C15L;
         k ^= aquatic ? 0xA5A5A5A5A5A5A5A5L : 0x5A5A5A5A5A5A5A5AL;
         return k;
+    }
+
+    public static Region sampleNow(ServerLevel lvl, int x, int z, boolean aquatic) {
+        return aquatic ? SAMPLER.seaRegion(lvl, x, z) : SAMPLER.landRegion(lvl, x, z);
     }
 
     // ----- type helpers -----

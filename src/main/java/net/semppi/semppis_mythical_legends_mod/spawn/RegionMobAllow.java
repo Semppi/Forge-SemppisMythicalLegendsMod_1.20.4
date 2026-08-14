@@ -29,6 +29,14 @@ public final class RegionMobAllow {
         if (type == ModEntities.LOVELAND_FROGMAN.get()) {
             return c == Continent.N_AMERICA && (d == SubDir.EAST);
         }
+        if (type == ModEntities.MANDRAKE.get()) {
+            return (c == Continent.EUROPE && d == SubDir.SOUTH)
+                    || (c == Continent.AFRICA && d == SubDir.NORTH)
+                    || (c == Continent.ASIA
+                    && (d == SubDir.WEST
+                    || d == SubDir.SOUTH
+                    || d == SubDir.CENTRAL));
+        }
         if (type == ModEntities.PROTO_WENDIGO.get()) {
             return c == Continent.N_AMERICA && (d == SubDir.NORTH || d == SubDir.CENTRAL || d == SubDir.EAST);
         }

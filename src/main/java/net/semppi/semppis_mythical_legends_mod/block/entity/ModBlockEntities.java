@@ -20,6 +20,16 @@ public class ModBlockEntities {
             BLOCK_ENTITIES.register("pukis_egg_block_entity",
                     () -> BlockEntityType.Builder.of(PukisEggBlockEntity::new, ModBlocks.PUKIS_EGG.get()).build(null));
 
+    public static final RegistryObject<BlockEntityType<MediumHumanoidDropBlockEntity>>
+            MEDIUM_HUMANOID_DROP_BLOCK_ENTITY =
+            BLOCK_ENTITIES.register(
+                    "medium_humanoid_drop_block_entity",
+                    () -> BlockEntityType.Builder.of(
+                            MediumHumanoidDropBlockEntity::new,
+                            ModBlocks.MEDIUM_HUMANOID_DROP.get()
+                    ).build(null)
+            );
+
     public static void register(IEventBus eventBus) {
         BLOCK_ENTITIES.register(eventBus);
     }

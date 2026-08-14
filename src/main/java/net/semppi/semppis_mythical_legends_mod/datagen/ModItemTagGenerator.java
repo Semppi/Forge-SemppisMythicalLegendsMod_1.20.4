@@ -24,6 +24,7 @@ public class ModItemTagGenerator extends ItemTagsProvider {
     public static final TagKey<Item> TREE_LEAVES = createTag("tree_leaves");
     public static final TagKey<Item> RAW_FISH = createTag("raw_fish");
     public static final TagKey<Item> COOKED_FISH = createTag("cooked_fish");
+    public static final TagKey<Item> RAW_COMMON_FISH = createTag("raw_common_fish");
 
     public ModItemTagGenerator(PackOutput pOutput, CompletableFuture<HolderLookup.Provider> pLookupProvider,
                                CompletableFuture<TagLookup<Block>> pBlockTags, @Nullable ExistingFileHelper existingFileHelper) {
@@ -53,6 +54,11 @@ public class ModItemTagGenerator extends ItemTagsProvider {
                 net.minecraft.world.item.Items.COOKED_COD,
                 net.minecraft.world.item.Items.COOKED_SALMON,
                 ModItems.COOKED_FISH_MEAT.get()
+        );
+        tag(RAW_COMMON_FISH).add(
+                net.minecraft.world.item.Items.COD,
+                net.minecraft.world.item.Items.SALMON,
+                ModItems.RAW_FISH_MEAT.get()
         );
     }
 

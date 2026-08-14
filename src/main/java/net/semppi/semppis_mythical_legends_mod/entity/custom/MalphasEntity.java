@@ -25,8 +25,10 @@ import net.minecraft.world.entity.monster.AbstractIllager;
 import net.minecraft.world.entity.monster.Zombie;
 import net.minecraft.world.entity.npc.AbstractVillager;
 import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.state.BlockState;
+import net.semppi.semppis_mythical_legends_mod.item.ModItems;
 import net.semppi.semppis_mythical_legends_mod.sound.ModSounds;
 import org.jetbrains.annotations.Nullable;
 import software.bernie.geckolib.animatable.GeoEntity;
@@ -134,6 +136,17 @@ public class MalphasEntity extends Animal implements GeoEntity {
 
     protected float getSoundVolume() {
         return 1.5F;
+    }
+
+    @Override
+    protected void dropFromLootTable(DamageSource source, boolean causedByPlayer) {
+        // Drop fiend flesh
+        int dropCount = this.random.nextInt(3) + 1; // Randomly generate a number between 1 and 3
+        for (int i = 0; i < dropCount; i++) {
+            this.spawnAtLocation(new ItemStack(ModItems.FIEND_FLESH.get()));
+        }
+
+        super.dropFromLootTable(source, causedByPlayer);
     }
 
     @Override

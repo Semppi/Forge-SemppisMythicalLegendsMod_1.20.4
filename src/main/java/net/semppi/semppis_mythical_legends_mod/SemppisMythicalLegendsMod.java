@@ -7,6 +7,8 @@ import net.minecraft.world.entity.animal.Animal;
 import net.minecraft.world.entity.animal.WaterAnimal;
 import net.minecraft.world.level.levelgen.Heightmap;
 import net.minecraftforge.api.distmarker.Dist;
+import net.minecraftforge.client.event.RegisterGuiOverlaysEvent;
+import net.minecraftforge.client.gui.overlay.VanillaGuiOverlay;
 import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.event.BuildCreativeModeTabContentsEvent;
 import net.minecraftforge.event.RegisterCommandsEvent;
@@ -19,13 +21,16 @@ import net.minecraftforge.fml.javafmlmod.FMLJavaModLoadingContext;
 import net.semppi.semppis_mythical_legends_mod.block.ModBlocks;
 import net.semppi.semppis_mythical_legends_mod.block.client.PukisEggRenderer;
 import net.semppi.semppis_mythical_legends_mod.block.client.WendigoSkullRenderer;
+import net.semppi.semppis_mythical_legends_mod.block.client.MediumHumanoidDropRenderer;
 import net.semppi.semppis_mythical_legends_mod.block.entity.ModBlockEntities;
+import net.semppi.semppis_mythical_legends_mod.client.hud.InteractionHudOverlay;
 import net.semppi.semppis_mythical_legends_mod.commands.CancelTransformCommand;
 import net.semppi.semppis_mythical_legends_mod.commands.TransformCommand;
 import net.semppi.semppis_mythical_legends_mod.datagen.DataGenerators;
 import net.semppi.semppis_mythical_legends_mod.entity.ModEntities;
 import net.semppi.semppis_mythical_legends_mod.entity.client.*;
 import net.semppi.semppis_mythical_legends_mod.entity.custom.AlicantoEntity;
+import net.semppi.semppis_mythical_legends_mod.entity.custom.MandrakeEntity;
 import net.semppi.semppis_mythical_legends_mod.entity.custom.ProtoWendigoEntity;
 import net.semppi.semppis_mythical_legends_mod.entity.custom.WendigoEntity;
 import net.semppi.semppis_mythical_legends_mod.event.*;
@@ -98,11 +103,16 @@ public class SemppisMythicalLegendsMod {
 
             SpawnPlacements.register(ModEntities.ALICANTO.get(),
                     SpawnPlacements.Type.ON_GROUND, Heightmap.Types.MOTION_BLOCKING_NO_LEAVES,
-                    RegionSpawn.gatedLand(AlicantoEntity::canAlicantoSpawn)); // keep your custom predicate, just gated
+                    RegionSpawn.gatedLand(AlicantoEntity::canAlicantoSpawn));
 
             SpawnPlacements.register(ModEntities.PROTO_WENDIGO.get(),
                     SpawnPlacements.Type.ON_GROUND, Heightmap.Types.MOTION_BLOCKING_NO_LEAVES,
                     RegionSpawn.gatedLand(ProtoWendigoEntity::canProtoWendigoSpawn));
+
+            SpawnPlacements.register(ModEntities.MANDRAKE.get(),
+                    SpawnPlacements.Type.ON_GROUND, Heightmap.Types.MOTION_BLOCKING_NO_LEAVES,
+                    RegionSpawn.gatedLand(MandrakeEntity::canMandrakeSpawn)
+            );
 
             // WATER: gate oceans too
             SpawnPlacements.register(ModEntities.COLOSSAL_LOBSTER.get(),
@@ -131,6 +141,7 @@ public class SemppisMythicalLegendsMod {
             EntityRenderers.register(ModEntities.KRAKEN.get(), KrakenRenderer::new);
             EntityRenderers.register(ModEntities.LOVELAND_FROGMAN.get(), LovelandFrogmanRenderer::new);
             EntityRenderers.register(ModEntities.MALPHAS.get(), MalphasRenderer::new);
+            EntityRenderers.register(ModEntities.MANDRAKE.get(), MandrakeRenderer::new);
             EntityRenderers.register(ModEntities.MANDRAKE_SPROUTLING.get(), MandrakeSproutlingRenderer::new);
             EntityRenderers.register(ModEntities.PROTO_WENDIGO.get(), ProtoWendigoRenderer::new);
             EntityRenderers.register(ModEntities.PUKIS.get(), PukisRenderer::new);
@@ -140,7 +151,19 @@ public class SemppisMythicalLegendsMod {
             event.enqueueWork(() -> {
                 BlockEntityRenderers.register(ModBlockEntities.WENDIGO_SKULL_BLOCK_ENTITY.get(), WendigoSkullRenderer::new);
                 BlockEntityRenderers.register(ModBlockEntities.PUKIS_EGG_BLOCK_ENTITY.get(), PukisEggRenderer::new);
+                BlockEntityRenderers.register(ModBlockEntities.MEDIUM_HUMANOID_DROP_BLOCK_ENTITY.get(), MediumHumanoidDropRenderer::new);
             });
+        }
+
+        @SubscribeEvent
+        public static void registerGuiOverlays(
+                RegisterGuiOverlaysEvent event
+        ) {
+            event.registerAbove(
+                    VanillaGuiOverlay.HOTBAR.id(),
+                    "interaction_hud",
+                    InteractionHudOverlay.OVERLAY
+            );
         }
     }
 }

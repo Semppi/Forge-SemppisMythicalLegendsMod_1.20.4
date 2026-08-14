@@ -93,7 +93,9 @@ public class WendigoEntity extends TamableAnimal implements GeoEntity, PlayerRid
 
     public static boolean canWendigoSpawn(EntityType<WendigoEntity> type, LevelAccessor world, MobSpawnType spawnType, BlockPos pos, RandomSource random) {
         BlockState blockState = world.getBlockState(pos.below());
-        return (blockState.is(Blocks.GRASS_BLOCK) || blockState.is(Blocks.DIRT) || blockState.is(Blocks.SNOW_BLOCK) || blockState.is(Blocks.STONE))
+        return (blockState.is(Blocks.GRASS_BLOCK) || blockState.is(Blocks.DIRT) || blockState.is(Blocks.COARSE_DIRT) || blockState.is(Blocks.PODZOL)
+                || blockState.is(Blocks.SNOW) || blockState.is(Blocks.SNOW_BLOCK) || blockState.is(Blocks.ICE) || blockState.is(Blocks.PACKED_ICE)
+                || blockState.is(Blocks.GRAVEL) || blockState.is(Blocks.STONE))
                 && world.getMaxLocalRawBrightness(pos) > 8;
     }
 

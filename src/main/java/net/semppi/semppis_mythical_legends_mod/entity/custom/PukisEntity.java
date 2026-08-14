@@ -188,6 +188,17 @@ public class PukisEntity extends TamableAnimal implements GeoEntity {
     }
 
     @Override
+    protected void dropFromLootTable(DamageSource source, boolean causedByPlayer) {
+        // Drop draconic meat
+        int dropCount = this.random.nextInt(2) + 1; // Randomly generate a number between 1 and 2
+        for (int i = 0; i < dropCount; i++) {
+            this.spawnAtLocation(new ItemStack(ModItems.DRACONIC_FLESH_PIECE.get()));
+        }
+
+        super.dropFromLootTable(source, causedByPlayer);
+    }
+
+    @Override
     public InteractionResult mobInteract(Player player, InteractionHand hand) {
         ItemStack itemstack = player.getItemInHand(hand);
         Item item = itemstack.getItem();

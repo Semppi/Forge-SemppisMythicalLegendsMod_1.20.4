@@ -69,6 +69,19 @@ public class ModRecipeProvider extends RecipeProvider implements IConditionBuild
         createCookingRecipe(recipeOutput, ModItems.RAW_BEAST_PIECE.get(), ModItems.COOKED_BEAST_PIECE.get(), 0.1f, 200, "cooked_beast_piece");
         createCookingRecipe(recipeOutput, ModItems.RAW_BEAST_MEAT.get(), ModItems.COOKED_BEAST_MEAT.get(), 0.25f, 200, "cooked_beast_meat");
         createCookingRecipe(recipeOutput, ModItems.RAW_BEAST_CHUNK.get(), ModItems.COOKED_BEAST_CHUNK.get(), 0.25f, 200, "cooked_beast_chunk");
+        createCookingRecipe(recipeOutput, ModItems.RAW_FEY_PIECE.get(), ModItems.COOKED_FEY_PIECE.get(), 0.1f, 200, "cooked_fey_piece");
+        createCookingRecipe(recipeOutput, ModItems.RAW_FEY_MEAT.get(), ModItems.COOKED_FEY_MEAT.get(), 0.25f, 200, "cooked_fey_meat");
+        createCookingRecipe(recipeOutput, ModItems.RAW_FEY_CHUNK.get(), ModItems.COOKED_FEY_CHUNK.get(), 0.25f, 200, "cooked_fey_chunk");
+        createCookingRecipe(recipeOutput, ModItems.DRACONIC_FLESH_PIECE.get(), ModItems.DRACONIC_STEAK_PIECE.get(), 0.1f, 200, "draconic_steak_piece");
+        createCookingRecipe(recipeOutput, ModItems.DRACONIC_FLESH.get(), ModItems.DRACONIC_STEAK.get(), 0.25f, 200, "draconic_steak");
+        createCookingRecipe(recipeOutput, ModItems.DRACONIC_FLESH_CHUNK.get(), ModItems.DRACONIC_STEAK_CHUNK.get(), 0.25f, 200, "draconic_steak_chunk");
+        createCookingRecipe(recipeOutput, ModItems.ABERRANT_FLESH_PIECE.get(), ModItems.COOKED_ABERRANT_PIECE.get(), 0.1f, 200, "cooked_aberrant_piece");
+        createCookingRecipe(recipeOutput, ModItems.ABERRANT_FLESH.get(), ModItems.COOKED_ABERRANT_MEAT.get(), 0.25f, 200, "cooked_aberrant_meat");
+        createCookingRecipe(recipeOutput, ModItems.ABERRANT_FLESH_CHUNK.get(), ModItems.COOKED_ABERRANT_CHUNK.get(), 0.25f, 200, "cooked_aberrant_chunk");
+        createCookingRecipe(recipeOutput, ModItems.FIEND_FLESH_PIECE.get(), ModItems.COOKED_FIEND_PIECE.get(), 0.1f, 200, "cooked_fiend_piece");
+        createCookingRecipe(recipeOutput, ModItems.FIEND_FLESH.get(), ModItems.COOKED_FIEND_MEAT.get(), 0.25f, 200, "cooked_fiend_meat");
+        createCookingRecipe(recipeOutput, ModItems.FIEND_FLESH_CHUNK.get(), ModItems.COOKED_FIEND_CHUNK.get(), 0.25f, 200, "cooked_fiend_chunk");
+
         createCookingRecipe(recipeOutput, Items.BROWN_MUSHROOM, ModItems.COOKED_MUSHROOM.get(), 0.25f, 200, "cooked_mushroom");
         createCookingRecipe(recipeOutput, Items.RED_MUSHROOM, ModItems.COOKED_MUSHROOM.get(), 0.25f, 200, "cooked_mushroom");
         createCookingRecipe(recipeOutput, Items.EGG, ModItems.FRIED_EGG.get(), 0.25f, 200, "fried_egg");
@@ -99,10 +112,10 @@ public class ModRecipeProvider extends RecipeProvider implements IConditionBuild
 
         // Shapeless recipe for Cod Soup
         ShapelessRecipeBuilder.shapeless(RecipeCategory.FOOD, ModItems.COD_SOUP.get())
-                .requires(Items.COD)
+                .requires(Items.COOKED_COD)
                 .requires(Items.BOWL)
                 .requires(Items.SEAGRASS)
-                .requires(Items.POTATO)
+                .requires(Items.BAKED_POTATO)
                 .unlockedBy("has_cod", has(Items.COD))
                 .save(recipeOutput, new ResourceLocation(SemppisMythicalLegendsMod.MOD_ID, "cod_soup"));
 
@@ -110,7 +123,7 @@ public class ModRecipeProvider extends RecipeProvider implements IConditionBuild
         ShapelessRecipeBuilder.shapeless(RecipeCategory.FOOD, ModItems.BAKED_CHEESY_FISH.get())
                 .requires(Items.COOKED_COD)
                 .requires(Items.BOWL)
-                .requires(ModItems.RICOTTA_CHEESE.get())
+                .requires(ModItems.CHEESE.get())
                 .requires(Items.BEETROOT)
                 .requires(Items.BEETROOT)
                 .requires(Items.BAKED_POTATO)
@@ -144,8 +157,36 @@ public class ModRecipeProvider extends RecipeProvider implements IConditionBuild
                 .unlockedBy("has_porridge", has(ModItems.PORRIDGE.get()))
                 .save(recipeOutput, new ResourceLocation(SemppisMythicalLegendsMod.MOD_ID, "chocolate_porridge"));
 
+        // Shapeless recipe for Grass Bundle
+        ShapelessRecipeBuilder.shapeless(RecipeCategory.FOOD, ModItems.GRASS_BUNDLE.get())
+                .requires(Items.SHORT_GRASS)
+                .requires(Items.SHORT_GRASS)
+                .requires(Items.SHORT_GRASS)
+                .requires(Items.SHORT_GRASS)
+                .requires(Items.SHORT_GRASS)
+                .requires(Items.SHORT_GRASS)
+                .requires(Items.SHORT_GRASS)
+                .requires(Items.SHORT_GRASS)
+                .requires(Items.SHORT_GRASS)
+                .unlockedBy("has_short_grass", has(Items.SHORT_GRASS))
+                .save(recipeOutput, new ResourceLocation(SemppisMythicalLegendsMod.MOD_ID, "grass_bundle"));
+
+        // Shapeless recipe for Seagrass Bundle
+        ShapelessRecipeBuilder.shapeless(RecipeCategory.FOOD, ModItems.SEAGRASS_BUNDLE.get())
+                .requires(Items.SEAGRASS)
+                .requires(Items.SEAGRASS)
+                .requires(Items.SEAGRASS)
+                .requires(Items.SEAGRASS)
+                .requires(Items.SEAGRASS)
+                .requires(Items.SEAGRASS)
+                .requires(Items.SEAGRASS)
+                .requires(Items.SEAGRASS)
+                .requires(Items.SEAGRASS)
+                .unlockedBy("has_seagrass", has(Items.SEAGRASS))
+                .save(recipeOutput, new ResourceLocation(SemppisMythicalLegendsMod.MOD_ID, "seagrass_bundle"));
+
         // Shapeless recipe for Ricotta Cheese
-        ShapelessRecipeBuilder.shapeless(RecipeCategory.FOOD, ModItems.RICOTTA_CHEESE.get(), 6)
+        ShapelessRecipeBuilder.shapeless(RecipeCategory.FOOD, ModItems.CHEESE.get(), 6)
                 .requires(Items.MILK_BUCKET)
                 .requires(Items.MILK_BUCKET)
                 .requires(Items.WHEAT)
@@ -177,6 +218,15 @@ public class ModRecipeProvider extends RecipeProvider implements IConditionBuild
                 .unlockedBy("has_sweet_berries", has(Items.SWEET_BERRIES))
                 .save(recipeOutput, new ResourceLocation(SemppisMythicalLegendsMod.MOD_ID, "sweet_berry_jam"));
 
+        // Shapeless recipe for Glow Berry Jam
+        ShapelessRecipeBuilder.shapeless(RecipeCategory.FOOD, ModItems.GLOW_BERRY_JAM.get())
+                .requires(Items.GLOW_BERRIES)
+                .requires(Items.GLOW_BERRIES)
+                .requires(Items.GLOW_BERRIES)
+                .requires(Items.SUGAR)
+                .unlockedBy("has_glow_berries", has(Items.GLOW_BERRIES))
+                .save(recipeOutput, new ResourceLocation(SemppisMythicalLegendsMod.MOD_ID, "glow_berry_jam"));
+
         // Shapeless recipe for Chocolate Butter
         ShapelessRecipeBuilder.shapeless(RecipeCategory.FOOD, ModItems.CHOCOLATE_BUTTER.get())
                 .requires(Items.MILK_BUCKET)
@@ -191,7 +241,7 @@ public class ModRecipeProvider extends RecipeProvider implements IConditionBuild
                 .requires(Items.WATER_BUCKET)
                 .requires(Items.CACTUS)
                 .requires(Items.CACTUS)
-                .requires(ModItems.RICOTTA_CHEESE.get())
+                .requires(ModItems.CHEESE.get())
                 .requires(Items.COOKED_CHICKEN)
                 .requires(Items.WHEAT)
                 .requires(Items.EGG)
@@ -204,6 +254,13 @@ public class ModRecipeProvider extends RecipeProvider implements IConditionBuild
                 .requires(Items.BREAD)
                 .unlockedBy("has_sweet_berry_jam", has(ModItems.SWEET_BERRY_JAM.get()))
                 .save(recipeOutput, new ResourceLocation(SemppisMythicalLegendsMod.MOD_ID, "sweet_berry_jam_on_bread"));
+
+        // Shapeless recipe for Glow Berry Jam on Bread
+        ShapelessRecipeBuilder.shapeless(RecipeCategory.FOOD, ModItems.GLOW_BERRY_JAM_ON_BREAD.get(), 2)
+                .requires(ModItems.GLOW_BERRY_JAM.get())
+                .requires(Items.BREAD)
+                .unlockedBy("has_glow_berry_jam", has(ModItems.GLOW_BERRY_JAM.get()))
+                .save(recipeOutput, new ResourceLocation(SemppisMythicalLegendsMod.MOD_ID, "glow_berry_jam_on_bread"));
 
         // Shapeless recipe for Chocolate Butter on Bread
         ShapelessRecipeBuilder.shapeless(RecipeCategory.FOOD, ModItems.CHOCOLATE_BUTTER_ON_BREAD.get(), 2)
@@ -225,17 +282,30 @@ public class ModRecipeProvider extends RecipeProvider implements IConditionBuild
                 .requires(Items.WATER_BUCKET)
                 .requires(Items.MILK_BUCKET)
                 .requires(ModItemTagGenerator.TREE_LEAVES)
-                .requires(ModItems.RICOTTA_CHEESE.get())
+                .requires(ModItems.CHEESE.get())
                 .requires(Items.WHEAT_SEEDS)
                 .requires(Items.WHEAT)
                 .requires(Items.EGG)
-                .unlockedBy("has_ricotta_cheese", has(ModItems.RICOTTA_CHEESE.get()))
+                .unlockedBy("has_ricotta_cheese", has(ModItems.CHEESE.get()))
                 .save(recipeOutput, new ResourceLocation(SemppisMythicalLegendsMod.MOD_ID, "spanakopita"));
+
+        // Shapeless recipe for Pork and Rabbit Pie
+        ShapelessRecipeBuilder.shapeless(RecipeCategory.FOOD, ModItems.PORK_AND_RABBIT_PIE.get())
+                .requires(Items.WATER_BUCKET)
+                .requires(Items.WHEAT)
+                .requires(Items.WHEAT)
+                .requires(Items.EGG)
+                .requires(ModItems.BUTTER.get())
+                .requires(ModItems.EDIBLE_LEAF.get())
+                .requires(Items.COOKED_PORKCHOP)
+                .requires(Items.COOKED_RABBIT)
+                .unlockedBy("has_cooked_porkchop", has(Items.COOKED_PORKCHOP))
+                .save(recipeOutput, new ResourceLocation(SemppisMythicalLegendsMod.MOD_ID, "pork_and_rabbit_pie"));
 
         // Shapeless recipe for Honeyed Meat Pie
         ShapelessRecipeBuilder.shapeless(RecipeCategory.FOOD, ModItems.HONEYED_MEAT_PIE.get(), 4)
                 .requires(Items.WATER_BUCKET)
-                .requires(Items.BEEF)
+                .requires(Items.COOKED_BEEF)
                 .requires(Items.WHEAT)
                 .requires(Items.WHEAT)
                 .requires(Items.HONEY_BOTTLE)
@@ -259,7 +329,7 @@ public class ModRecipeProvider extends RecipeProvider implements IConditionBuild
                 .requires(ModItemTagGenerator.RAW_FISH)
                 .requires(ModItemTagGenerator.RAW_FISH)
                 .requires(ModItemTagGenerator.RAW_FISH)
-                .requires(ModItems.RICOTTA_CHEESE.get())
+                .requires(ModItems.CHEESE.get())
                 .requires(Items.KELP)
                 .requires(Items.KELP)
                 .requires(Items.KELP)
@@ -271,7 +341,7 @@ public class ModRecipeProvider extends RecipeProvider implements IConditionBuild
                 .requires(ModItemTagGenerator.COOKED_FISH)
                 .requires(ModItemTagGenerator.COOKED_FISH)
                 .requires(ModItemTagGenerator.COOKED_FISH)
-                .requires(ModItems.RICOTTA_CHEESE.get())
+                .requires(ModItems.CHEESE.get())
                 .requires(Items.DRIED_KELP)
                 .requires(Items.DRIED_KELP)
                 .requires(Items.DRIED_KELP)
@@ -604,9 +674,15 @@ public class ModRecipeProvider extends RecipeProvider implements IConditionBuild
 
         // Shapeless recipe crafting Raw Generic Fish to 4 Raw Fish Piece
         ShapelessRecipeBuilder.shapeless(RecipeCategory.FOOD, ModItems.RAW_FISH_PIECE.get(), 4)
-                .requires(ModItemTagGenerator.RAW_FISH)
+                .requires(ModItemTagGenerator.RAW_COMMON_FISH)
                 .unlockedBy(getHasName(Items.COD), has(Items.COD))
                 .save(recipeOutput, new ResourceLocation(SemppisMythicalLegendsMod.MOD_ID, "raw_fish_to_piece"));
+
+        // Shapeless recipe crafting Tropical Fish to 1 Raw Fish Piece
+        ShapelessRecipeBuilder.shapeless(RecipeCategory.FOOD, ModItems.RAW_FISH_PIECE.get(), 1)
+                .requires(Items.TROPICAL_FISH)
+                .unlockedBy(getHasName(Items.TROPICAL_FISH), has(Items.TROPICAL_FISH))
+                .save(recipeOutput, new ResourceLocation(SemppisMythicalLegendsMod.MOD_ID, "tropical_fish_to_piece"));
 
         // Shapeless recipe crafting Cooked Generic Fish to 4 Cooked Fish Piece
         ShapelessRecipeBuilder.shapeless(RecipeCategory.FOOD, ModItems.COOKED_FISH_PIECE.get(), 4)
@@ -626,9 +702,15 @@ public class ModRecipeProvider extends RecipeProvider implements IConditionBuild
                 .unlockedBy(getHasName(ModItems.COOKED_FISH_PIECE.get()), has(ModItems.COOKED_FISH_PIECE.get()))
                 .save(recipeOutput, new ResourceLocation(SemppisMythicalLegendsMod.MOD_ID, "piece_to_cooked_fish_meat"));
 
+        // Shapeless recipe crafting 4 Raw Tropical Fish to a Raw Fish Meat
+        ShapelessRecipeBuilder.shapeless(RecipeCategory.FOOD, ModItems.RAW_FISH_MEAT.get())
+                .requires(Items.TROPICAL_FISH, 4)
+                .unlockedBy(getHasName(Items.TROPICAL_FISH), has(Items.TROPICAL_FISH))
+                .save(recipeOutput, new ResourceLocation(SemppisMythicalLegendsMod.MOD_ID, "tropical_fish_to_raw_fish_meat"));
+
         // Shapeless recipe crafting 4 Raw Generic Fish to a Chunk
         ShapelessRecipeBuilder.shapeless(RecipeCategory.FOOD, ModItems.RAW_FISH_CHUNK.get())
-                .requires(Ingredient.of(ModItemTagGenerator.RAW_FISH), 4)
+                .requires(Ingredient.of(ModItemTagGenerator.RAW_COMMON_FISH), 4)
                 .unlockedBy(getHasName(Items.COD), has(Items.COD))
                 .save(recipeOutput, new ResourceLocation(SemppisMythicalLegendsMod.MOD_ID, "raw_fish_meat_to_chunk"));
 
@@ -1125,6 +1207,206 @@ public class ModRecipeProvider extends RecipeProvider implements IConditionBuild
                 .requires(ModItems.COOKED_BEAST_CHUNK.get())
                 .unlockedBy(getHasName(ModItems.COOKED_BEAST_CHUNK.get()), has(ModItems.COOKED_BEAST_CHUNK.get()))
                 .save(recipeOutput, new ResourceLocation(SemppisMythicalLegendsMod.MOD_ID, "chunk_to_cooked_beast_meat"));
+
+        /////////////////////////////////////////////////////////////////////////////////
+
+        // Shapeless recipe crafting Raw Fey Meat to 4 Raw Fey Piece
+        ShapelessRecipeBuilder.shapeless(RecipeCategory.FOOD, ModItems.RAW_FEY_PIECE.get(), 4)
+                .requires(ModItems.RAW_FEY_MEAT.get())
+                .unlockedBy(getHasName(ModItems.RAW_FEY_MEAT.get()), has(ModItems.RAW_FEY_MEAT.get()))
+                .save(recipeOutput, new ResourceLocation(SemppisMythicalLegendsMod.MOD_ID, "raw_fey_to_piece"));
+
+        // Shapeless recipe crafting Cooked Fey Meat to 4 Cooked Fey Piece
+        ShapelessRecipeBuilder.shapeless(RecipeCategory.FOOD, ModItems.COOKED_FEY_PIECE.get(), 4)
+                .requires(ModItems.COOKED_FEY_MEAT.get())
+                .unlockedBy(getHasName(ModItems.COOKED_FEY_MEAT.get()), has(ModItems.COOKED_FEY_MEAT.get()))
+                .save(recipeOutput, new ResourceLocation(SemppisMythicalLegendsMod.MOD_ID, "cooked_fey_to_piece"));
+
+        // Shapeless recipe crafting 4 Raw Fey Piece to a Raw Fey Meat
+        ShapelessRecipeBuilder.shapeless(RecipeCategory.FOOD, ModItems.RAW_FEY_MEAT.get())
+                .requires(ModItems.RAW_FEY_PIECE.get(), 4)
+                .unlockedBy(getHasName(ModItems.RAW_FEY_PIECE.get()), has(ModItems.RAW_FEY_PIECE.get()))
+                .save(recipeOutput, new ResourceLocation(SemppisMythicalLegendsMod.MOD_ID, "piece_to_raw_fey_meat"));
+
+        // Shapeless recipe crafting 4 Cooked Fey Piece to a Cooked Fey Meat
+        ShapelessRecipeBuilder.shapeless(RecipeCategory.FOOD, ModItems.COOKED_FEY_MEAT.get())
+                .requires(ModItems.COOKED_FEY_PIECE.get(), 4)
+                .unlockedBy(getHasName(ModItems.COOKED_FEY_PIECE.get()), has(ModItems.COOKED_FEY_PIECE.get()))
+                .save(recipeOutput, new ResourceLocation(SemppisMythicalLegendsMod.MOD_ID, "piece_to_cooked_fey_meat"));
+
+        // Shapeless recipe crafting 4 Raw Fey Meat to a Raw Fey Chunk
+        ShapelessRecipeBuilder.shapeless(RecipeCategory.FOOD, ModItems.RAW_FEY_CHUNK.get())
+                .requires(ModItems.RAW_FEY_MEAT.get(), 4)
+                .unlockedBy(getHasName(ModItems.RAW_FEY_MEAT.get()), has(ModItems.RAW_FEY_MEAT.get()))
+                .save(recipeOutput, new ResourceLocation(SemppisMythicalLegendsMod.MOD_ID, "raw_fey_meat_to_chunk"));
+
+        // Shapeless recipe crafting 4 Cooked Fey Meat to a Cooked Fey Chunk
+        ShapelessRecipeBuilder.shapeless(RecipeCategory.FOOD, ModItems.COOKED_FEY_CHUNK.get())
+                .requires(ModItems.COOKED_FEY_MEAT.get(), 4)
+                .unlockedBy(getHasName(ModItems.COOKED_FEY_MEAT.get()), has(ModItems.COOKED_FEY_MEAT.get()))
+                .save(recipeOutput, new ResourceLocation(SemppisMythicalLegendsMod.MOD_ID, "cooked_fey_meat_to_chunk"));
+
+        // Shapeless recipe crafting a Raw Fey Chunk to 4 Raw Fey Meat
+        ShapelessRecipeBuilder.shapeless(RecipeCategory.FOOD, ModItems.RAW_FEY_MEAT.get(), 4)
+                .requires(ModItems.RAW_FEY_CHUNK.get())
+                .unlockedBy(getHasName(ModItems.RAW_FEY_CHUNK.get()), has(ModItems.RAW_FEY_CHUNK.get()))
+                .save(recipeOutput, new ResourceLocation(SemppisMythicalLegendsMod.MOD_ID, "chunk_to_raw_fey_meat"));
+
+        // Shapeless recipe crafting a Cooked Fey Chunk to 4 Cooked Fey Meat
+        ShapelessRecipeBuilder.shapeless(RecipeCategory.FOOD, ModItems.COOKED_FEY_MEAT.get(), 4)
+                .requires(ModItems.COOKED_FEY_CHUNK.get())
+                .unlockedBy(getHasName(ModItems.COOKED_FEY_CHUNK.get()), has(ModItems.COOKED_FEY_CHUNK.get()))
+                .save(recipeOutput, new ResourceLocation(SemppisMythicalLegendsMod.MOD_ID, "chunk_to_cooked_fey_meat"));
+
+        /////////////////////////////////////////////////////////////////////////////////
+
+        // Shapeless recipe crafting a Draconic Flesh to 4 Draconic Flesh Piece
+        ShapelessRecipeBuilder.shapeless(RecipeCategory.FOOD, ModItems.DRACONIC_FLESH_PIECE.get(), 4)
+                .requires(ModItems.DRACONIC_FLESH.get())
+                .unlockedBy(getHasName(ModItems.DRACONIC_FLESH.get()), has(ModItems.DRACONIC_FLESH.get()))
+                .save(recipeOutput, new ResourceLocation(SemppisMythicalLegendsMod.MOD_ID, "draconic_flesh_to_piece"));
+
+        // Shapeless recipe crafting a Draconic Steak to 4 Draconic Steak Piece
+        ShapelessRecipeBuilder.shapeless(RecipeCategory.FOOD, ModItems.DRACONIC_STEAK_PIECE.get(), 4)
+                .requires(ModItems.DRACONIC_STEAK.get())
+                .unlockedBy(getHasName(ModItems.DRACONIC_STEAK.get()), has(ModItems.DRACONIC_STEAK.get()))
+                .save(recipeOutput, new ResourceLocation(SemppisMythicalLegendsMod.MOD_ID, "draconic_steak_to_piece"));
+
+        // Shapeless recipe crafting 4 Draconic Flesh Piece to a Draconic Flesh
+        ShapelessRecipeBuilder.shapeless(RecipeCategory.FOOD, ModItems.DRACONIC_FLESH.get())
+                .requires(ModItems.DRACONIC_FLESH_PIECE.get(), 4)
+                .unlockedBy(getHasName(ModItems.DRACONIC_FLESH_PIECE.get()), has(ModItems.DRACONIC_FLESH_PIECE.get()))
+                .save(recipeOutput, new ResourceLocation(SemppisMythicalLegendsMod.MOD_ID, "piece_to_draconic_flesh"));
+
+        // Shapeless recipe crafting 4 Draconic Steak Piece to a Draconic Steak
+        ShapelessRecipeBuilder.shapeless(RecipeCategory.FOOD, ModItems.DRACONIC_STEAK.get())
+                .requires(ModItems.DRACONIC_STEAK_PIECE.get(), 4)
+                .unlockedBy(getHasName(ModItems.DRACONIC_STEAK_PIECE.get()), has(ModItems.DRACONIC_STEAK_PIECE.get()))
+                .save(recipeOutput, new ResourceLocation(SemppisMythicalLegendsMod.MOD_ID, "piece_to_draconic_steak"));
+
+        // Shapeless recipe crafting 4 Draconic Flesh to a Draconic Flesh Chunk
+        ShapelessRecipeBuilder.shapeless(RecipeCategory.FOOD, ModItems.DRACONIC_FLESH_CHUNK.get())
+                .requires(ModItems.DRACONIC_FLESH.get(), 4)
+                .unlockedBy(getHasName(ModItems.DRACONIC_FLESH.get()), has(ModItems.DRACONIC_FLESH.get()))
+                .save(recipeOutput, new ResourceLocation(SemppisMythicalLegendsMod.MOD_ID, "draconic_flesh_to_chunk"));
+
+        // Shapeless recipe crafting 4 Draconic Steak to a Draconic Steak Chunk
+        ShapelessRecipeBuilder.shapeless(RecipeCategory.FOOD, ModItems.DRACONIC_STEAK_CHUNK.get())
+                .requires(ModItems.DRACONIC_STEAK.get(), 4)
+                .unlockedBy(getHasName(ModItems.DRACONIC_STEAK.get()), has(ModItems.DRACONIC_STEAK.get()))
+                .save(recipeOutput, new ResourceLocation(SemppisMythicalLegendsMod.MOD_ID, "draconic_steak_to_chunk"));
+
+        // Shapeless recipe crafting a Draconic Flesh Chunk to 4 Draconic Flesh
+        ShapelessRecipeBuilder.shapeless(RecipeCategory.FOOD, ModItems.DRACONIC_FLESH.get(), 4)
+                .requires(ModItems.DRACONIC_FLESH_CHUNK.get())
+                .unlockedBy(getHasName(ModItems.DRACONIC_FLESH_CHUNK.get()), has(ModItems.DRACONIC_FLESH_CHUNK.get()))
+                .save(recipeOutput, new ResourceLocation(SemppisMythicalLegendsMod.MOD_ID, "chunk_to_draconic_flesh"));
+
+        // Shapeless recipe crafting a Draconic Steak Chunk to 4 Draconic Steak
+        ShapelessRecipeBuilder.shapeless(RecipeCategory.FOOD, ModItems.DRACONIC_STEAK.get(), 4)
+                .requires(ModItems.DRACONIC_STEAK_CHUNK.get())
+                .unlockedBy(getHasName(ModItems.DRACONIC_STEAK_CHUNK.get()), has(ModItems.DRACONIC_STEAK_CHUNK.get()))
+                .save(recipeOutput, new ResourceLocation(SemppisMythicalLegendsMod.MOD_ID, "chunk_to_draconic_steak"));
+
+        /////////////////////////////////////////////////////////////////////////////////
+
+        // Shapeless recipe crafting Aberrant Flesh to 4 Aberrant Flesh Piece
+        ShapelessRecipeBuilder.shapeless(RecipeCategory.FOOD, ModItems.ABERRANT_FLESH_PIECE.get(), 4)
+                .requires(ModItems.ABERRANT_FLESH.get())
+                .unlockedBy(getHasName(ModItems.ABERRANT_FLESH.get()), has(ModItems.ABERRANT_FLESH.get()))
+                .save(recipeOutput, new ResourceLocation(SemppisMythicalLegendsMod.MOD_ID, "aberrant_flesh_to_piece"));
+
+        // Shapeless recipe crafting Cooked Aberrant Meat to 4 Cooked Aberrant Piece
+        ShapelessRecipeBuilder.shapeless(RecipeCategory.FOOD, ModItems.COOKED_ABERRANT_PIECE.get(), 4)
+                .requires(ModItems.COOKED_ABERRANT_MEAT.get())
+                .unlockedBy(getHasName(ModItems.COOKED_ABERRANT_MEAT.get()), has(ModItems.COOKED_ABERRANT_MEAT.get()))
+                .save(recipeOutput, new ResourceLocation(SemppisMythicalLegendsMod.MOD_ID, "cooked_aberrant_meat_to_piece"));
+
+        // Shapeless recipe crafting 4 Aberrant Flesh Piece to Aberrant Flesh
+        ShapelessRecipeBuilder.shapeless(RecipeCategory.FOOD, ModItems.ABERRANT_FLESH.get())
+                .requires(ModItems.ABERRANT_FLESH_PIECE.get(), 4)
+                .unlockedBy(getHasName(ModItems.ABERRANT_FLESH_PIECE.get()), has(ModItems.ABERRANT_FLESH_PIECE.get()))
+                .save(recipeOutput, new ResourceLocation(SemppisMythicalLegendsMod.MOD_ID, "piece_to_aberrant_flesh"));
+
+        // Shapeless recipe crafting 4 Cooked Aberrant Piece to Cooked Aberrant Meat
+        ShapelessRecipeBuilder.shapeless(RecipeCategory.FOOD, ModItems.COOKED_ABERRANT_MEAT.get())
+                .requires(ModItems.COOKED_ABERRANT_PIECE.get(), 4)
+                .unlockedBy(getHasName(ModItems.COOKED_ABERRANT_PIECE.get()), has(ModItems.COOKED_ABERRANT_PIECE.get()))
+                .save(recipeOutput, new ResourceLocation(SemppisMythicalLegendsMod.MOD_ID, "piece_to_cooked_aberrant_meat"));
+
+        // Shapeless recipe crafting 4 Aberrant Flesh to Aberrant Flesh Chunk
+        ShapelessRecipeBuilder.shapeless(RecipeCategory.FOOD, ModItems.ABERRANT_FLESH_CHUNK.get())
+                .requires(ModItems.ABERRANT_FLESH.get(), 4)
+                .unlockedBy(getHasName(ModItems.ABERRANT_FLESH.get()), has(ModItems.ABERRANT_FLESH.get()))
+                .save(recipeOutput, new ResourceLocation(SemppisMythicalLegendsMod.MOD_ID, "aberrant_flesh_to_chunk"));
+
+        // Shapeless recipe crafting 4 Cooked Aberrant Meat to Cooked Aberrant Chunk
+        ShapelessRecipeBuilder.shapeless(RecipeCategory.FOOD, ModItems.COOKED_ABERRANT_CHUNK.get())
+                .requires(ModItems.COOKED_ABERRANT_MEAT.get(), 4)
+                .unlockedBy(getHasName(ModItems.COOKED_ABERRANT_MEAT.get()), has(ModItems.COOKED_ABERRANT_MEAT.get()))
+                .save(recipeOutput, new ResourceLocation(SemppisMythicalLegendsMod.MOD_ID, "cooked_aberrant_meat_to_chunk"));
+
+        // Shapeless recipe crafting Aberrant Flesh Chunk to 4 Aberrant Flesh
+        ShapelessRecipeBuilder.shapeless(RecipeCategory.FOOD, ModItems.ABERRANT_FLESH.get(), 4)
+                .requires(ModItems.ABERRANT_FLESH_CHUNK.get())
+                .unlockedBy(getHasName(ModItems.ABERRANT_FLESH_CHUNK.get()), has(ModItems.ABERRANT_FLESH_CHUNK.get()))
+                .save(recipeOutput, new ResourceLocation(SemppisMythicalLegendsMod.MOD_ID, "chunk_to_aberrant_flesh"));
+
+        // Shapeless recipe crafting Cooked Aberrant Chunk to 4 Cooked Aberrant Meat
+        ShapelessRecipeBuilder.shapeless(RecipeCategory.FOOD, ModItems.COOKED_ABERRANT_MEAT.get(), 4)
+                .requires(ModItems.COOKED_ABERRANT_CHUNK.get())
+                .unlockedBy(getHasName(ModItems.COOKED_ABERRANT_CHUNK.get()), has(ModItems.COOKED_ABERRANT_CHUNK.get()))
+                .save(recipeOutput, new ResourceLocation(SemppisMythicalLegendsMod.MOD_ID, "chunk_to_cooked_aberrant_meat"));
+
+        /////////////////////////////////////////////////////////////////////////////////
+
+        // Shapeless recipe crafting Fiend Flesh to 4 Fiend Flesh Piece
+        ShapelessRecipeBuilder.shapeless(RecipeCategory.FOOD, ModItems.FIEND_FLESH_PIECE.get(), 4)
+                .requires(ModItems.FIEND_FLESH.get())
+                .unlockedBy(getHasName(ModItems.FIEND_FLESH.get()), has(ModItems.FIEND_FLESH.get()))
+                .save(recipeOutput, new ResourceLocation(SemppisMythicalLegendsMod.MOD_ID, "fiend_flesh_to_piece"));
+
+        // Shapeless recipe crafting Cooked Fiend Meat to 4 Cooked Fiend Piece
+        ShapelessRecipeBuilder.shapeless(RecipeCategory.FOOD, ModItems.COOKED_FIEND_PIECE.get(), 4)
+                .requires(ModItems.COOKED_FIEND_MEAT.get())
+                .unlockedBy(getHasName(ModItems.COOKED_FIEND_MEAT.get()), has(ModItems.COOKED_FIEND_MEAT.get()))
+                .save(recipeOutput, new ResourceLocation(SemppisMythicalLegendsMod.MOD_ID, "cooked_fiend_meat_to_piece"));
+
+        // Shapeless recipe crafting 4 Fiend Flesh Piece to Fiend Flesh
+        ShapelessRecipeBuilder.shapeless(RecipeCategory.FOOD, ModItems.FIEND_FLESH.get())
+                .requires(ModItems.FIEND_FLESH_PIECE.get(), 4)
+                .unlockedBy(getHasName(ModItems.FIEND_FLESH_PIECE.get()), has(ModItems.FIEND_FLESH_PIECE.get()))
+                .save(recipeOutput, new ResourceLocation(SemppisMythicalLegendsMod.MOD_ID, "piece_to_fiend_flesh"));
+
+        // Shapeless recipe crafting 4 Cooked Fiend Piece to Cooked Fiend Meat
+        ShapelessRecipeBuilder.shapeless(RecipeCategory.FOOD, ModItems.COOKED_FIEND_MEAT.get())
+                .requires(ModItems.COOKED_FIEND_PIECE.get(), 4)
+                .unlockedBy(getHasName(ModItems.COOKED_FIEND_PIECE.get()), has(ModItems.COOKED_FIEND_PIECE.get()))
+                .save(recipeOutput, new ResourceLocation(SemppisMythicalLegendsMod.MOD_ID, "piece_to_cooked_fiend_meat"));
+
+        // Shapeless recipe crafting 4 Fiend Flesh to Fiend Flesh Chunk
+        ShapelessRecipeBuilder.shapeless(RecipeCategory.FOOD, ModItems.FIEND_FLESH_CHUNK.get())
+                .requires(ModItems.FIEND_FLESH.get(), 4)
+                .unlockedBy(getHasName(ModItems.FIEND_FLESH.get()), has(ModItems.FIEND_FLESH.get()))
+                .save(recipeOutput, new ResourceLocation(SemppisMythicalLegendsMod.MOD_ID, "fiend_flesh_to_chunk"));
+
+        // Shapeless recipe crafting 4 Cooked Fiend Meat to Cooked Fiend Chunk
+        ShapelessRecipeBuilder.shapeless(RecipeCategory.FOOD, ModItems.COOKED_FIEND_CHUNK.get())
+                .requires(ModItems.COOKED_FIEND_MEAT.get(), 4)
+                .unlockedBy(getHasName(ModItems.COOKED_FIEND_MEAT.get()), has(ModItems.COOKED_FIEND_MEAT.get()))
+                .save(recipeOutput, new ResourceLocation(SemppisMythicalLegendsMod.MOD_ID, "cooked_fiend_meat_to_chunk"));
+
+        // Shapeless recipe crafting Fiend Flesh Chunk to 4 Fiend Flesh
+        ShapelessRecipeBuilder.shapeless(RecipeCategory.FOOD, ModItems.FIEND_FLESH.get(), 4)
+                .requires(ModItems.FIEND_FLESH_CHUNK.get())
+                .unlockedBy(getHasName(ModItems.FIEND_FLESH_CHUNK.get()), has(ModItems.FIEND_FLESH_CHUNK.get()))
+                .save(recipeOutput, new ResourceLocation(SemppisMythicalLegendsMod.MOD_ID, "chunk_to_fiend_flesh"));
+
+        // Shapeless recipe crafting Cooked Fiend Chunk to 4 Cooked Fiend Meat
+        ShapelessRecipeBuilder.shapeless(RecipeCategory.FOOD, ModItems.COOKED_FIEND_MEAT.get(), 4)
+                .requires(ModItems.COOKED_FIEND_CHUNK.get())
+                .unlockedBy(getHasName(ModItems.COOKED_FIEND_CHUNK.get()), has(ModItems.COOKED_FIEND_CHUNK.get()))
+                .save(recipeOutput, new ResourceLocation(SemppisMythicalLegendsMod.MOD_ID, "chunk_to_cooked_fiend_meat"));
 
         /////////////////////////////////////////////////////////////////////////////////
 

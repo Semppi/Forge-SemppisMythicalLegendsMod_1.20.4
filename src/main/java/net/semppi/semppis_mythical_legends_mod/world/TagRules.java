@@ -437,7 +437,7 @@ public final class TagRules {
     private static void add(Continent c, SubDir d, String... ids) {
         Map<SubDir, Set<ResourceLocation>> perDir = BY_DIR.computeIfAbsent(c, k -> new EnumMap<>(SubDir.class));
         Set<ResourceLocation> set = perDir.computeIfAbsent(d, k -> new HashSet<>());
-        for (String s : ids) set.add(ResourceLocation.parse(s));
+        for (String s : ids) set.add(new ResourceLocation(s));
     }
 
     private static void rebuildMerged() {
@@ -451,7 +451,7 @@ public final class TagRules {
 
     private static void putOcean(Ocean o, String... ids) {
         Set<ResourceLocation> set = OCEAN_ALLOW.computeIfAbsent(o, k -> new HashSet<>());
-        for (String s : ids) set.add(ResourceLocation.parse(s));
+        for (String s : ids) set.add(new ResourceLocation(s));
     }
 
     // ---- API used by RegionSampler ----
