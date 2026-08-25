@@ -9,7 +9,7 @@ package net.semppi.semppis_mythical_legends_mod.world;
  * and must never create a second layout.</p>
  */
 public final class AuthoritativeRegionSampler {
-    public static final int ALGORITHM_VERSION = 2;
+    public static final int ALGORITHM_VERSION = 3;
 
     /**
      * Continents are intentionally enormous. The protected origin lies near
@@ -17,23 +17,24 @@ public final class AuthoritativeRegionSampler {
      */
     public static final int CONTINENT_SCALE = 24_576;
 
-    /**
-     * Thematic direction cells inside a continent. Direction names are labels,
-     * not promises about Minecraft compass position.
-     */
-    public static final int SUBREGION_SCALE = 9_216;
+    public static final int MIN_SUBREGIONS = 3;
+    public static final int MAX_SUBREGIONS = 8;
 
     private static final double JITTER = 0.22;
     private static final double WARP = 0.08;
+    private static final double CHILD_RING_MIN = 0.28;
+    private static final double CHILD_RING_VARIATION = 0.10;
 
     private static final long SALT_CONTINENT_SITE = 0x5C4A7D39B821E60FL;
     private static final long SALT_CONTINENT_PICK = 0x19E3B6C74A502D8FL;
-    private static final long SALT_SUBREGION_SITE = 0x73D91A46C2E85B0FL;
-    private static final long SALT_SUBREGION_PICK = 0x2A8F50D1E7634CB9L;
+    private static final long SALT_SUBREGION_COUNT = 0x73D91A46C2E85B0FL;
+    private static final long SALT_SUBREGION_POSITION = 0x2A8F50D1E7634CB9L;
+    private static final long SALT_SUBREGION_PICK = 0x41C7E95A2B603D8FL;
     private static final long SALT_OCEAN_SITE = 0x64B2F907D13A5CE8L;
     private static final long SALT_OCEAN_PICK = 0x3D75A9C1E60B42F8L;
     private static final long SALT_WARP_X = 0x7A2C91E5D40B63F8L;
     private static final long SALT_WARP_Z = 0x16E8B34F9A70C25DL;
+    private static final long SITE_KEY_SALT = 0x6A09E667F3BCC909L;
 
     private AuthoritativeRegionSampler() {}
 
@@ -46,17 +47,9 @@ public final class AuthoritativeRegionSampler {
                 mix64(continentSite.key() ^ SALT_CONTINENT_PICK)
         );
 
-        Site subregionSite = nearestSite(
-                worldSeed, x, z, SUBREGION_SCALE,
-                SALT_SUBREGION_SITE, true
-        );
         SubDir direction = continent == Continent.ANTARCTICA
                 ? SubDir.CENTRAL
-                : pickDirection(mix64(
-                        continentSite.key()
-                                ^ Long.rotateLeft(subregionSite.key(), 21)
-                                ^ SALT_SUBREGION_PICK
-                ));
+                : directionForChild(continentSite, nearestChildIndex(worldSeed, continentSite));
 
         return Region.land(continent, direction);
     }
@@ -68,6 +61,79 @@ public final class AuthoritativeRegionSampler {
         );
         Ocean ocean = pickOcean(mix64(oceanSite.key() ^ SALT_OCEAN_PICK));
         return Region.sea(ocean);
+    }
+
+    /**
+     * Selects one of the owning continent's explicit child sites. Each
+     * continent creates exactly three to eight children; there is no global
+     * direction grid and children can never belong to a neighboring parent.
+     */
+    private static int nearestChildIndex(long seed, Site parent) {
+        int count = MIN_SUBREGIONS + (int) Math.floorMod(
+                mix64(parent.key() ^ SALT_SUBREGION_COUNT),
+                MAX_SUBREGIONS - MIN_SUBREGIONS + 1
+        );
+
+        long originParentKey = hash(
+                seed, 0, 0, SALT_CONTINENT_SITE ^ SITE_KEY_SALT
+        );
+        boolean protectsOrigin = parent.key() == originParentKey;
+
+        double clusterCenterX = protectsOrigin
+                ? CONTINENT_SCALE * 0.5
+                : parent.centerX();
+        double clusterCenterZ = protectsOrigin
+                ? CONTINENT_SCALE * 0.5
+                : parent.centerZ();
+
+        double bestDistance = Double.POSITIVE_INFINITY;
+        int bestIndex = 0;
+
+        for (int child = 0; child < count; child++) {
+            double childX = clusterCenterX;
+            double childZ = clusterCenterZ;
+
+            if (child > 0) {
+                int ringCount = count - 1;
+                long childHash = hash(
+                        parent.key(), child, count, SALT_SUBREGION_POSITION
+                );
+                double phase = unit(mix64(parent.key() ^ SALT_SUBREGION_POSITION))
+                        * Math.PI * 2.0;
+                double angularJitter = signedUnit(childHash)
+                        * (Math.PI / Math.max(3, ringCount)) * 0.35;
+                double angle = phase
+                        + Math.PI * 2.0 * (child - 1) / ringCount
+                        + angularJitter;
+                double radius = CONTINENT_SCALE * (
+                        CHILD_RING_MIN
+                                + unit(mix64(childHash))
+                                * CHILD_RING_VARIATION
+                );
+
+                childX += Math.cos(angle) * radius;
+                childZ += Math.sin(angle) * radius;
+            }
+
+            double deltaX = parent.sampleX() - childX;
+            double deltaZ = parent.sampleZ() - childZ;
+            double distance = deltaX * deltaX + deltaZ * deltaZ;
+
+            if (distance < bestDistance) {
+                bestDistance = distance;
+                bestIndex = child;
+            }
+        }
+
+        return bestIndex;
+    }
+
+    private static SubDir directionForChild(Site parent, int childIndex) {
+        long value = hash(
+                parent.key(), childIndex, ALGORITHM_VERSION,
+                SALT_SUBREGION_PICK
+        );
+        return pickDirection(value);
     }
 
     /**
@@ -88,6 +154,8 @@ public final class AuthoritativeRegionSampler {
 
         double bestDistance = Double.POSITIVE_INFINITY;
         long bestKey = 0L;
+        double bestCenterX = 0.0;
+        double bestCenterZ = 0.0;
 
         for (int dz = -1; dz <= 1; dz++) {
             for (int dx = -1; dx <= 1; dx++) {
@@ -106,12 +174,14 @@ public final class AuthoritativeRegionSampler {
 
                 if (distance < bestDistance) {
                     bestDistance = distance;
-                    bestKey = hash(seed, cellX, cellZ, siteSalt ^ 0x6A09E667F3BCC909L);
+                    bestKey = hash(seed, cellX, cellZ, siteSalt ^ SITE_KEY_SALT);
+                    bestCenterX = siteX;
+                    bestCenterZ = siteZ;
                 }
             }
         }
 
-        return new Site(bestKey);
+        return new Site(bestKey, bestCenterX, bestCenterZ, sampleX, sampleZ);
     }
 
     private static double[] warp(long seed, double x, double z, int scale) {
@@ -172,5 +242,6 @@ public final class AuthoritativeRegionSampler {
         return value;
     }
 
-    private record Site(long key) {}
+    private record Site(long key, double centerX, double centerZ,
+                        double sampleX, double sampleZ) {}
 }
