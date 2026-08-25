@@ -57,10 +57,16 @@ public final class RegionSurfaceClassifier {
             return new Sample(SurfaceKind.OCEAN, SAMPLER.seaRegion(seed, x, z));
         }
 
-        // Rivers use the local land overlay under their own coordinates. This
-        // lets a long river change labels at continental boundaries instead of
-        // carrying one continent through the entire river.
-        return new Sample(kind, SAMPLER.landRegion(seed, x, z));
+        // Rivers use the unmodified local land overlay under their own
+        // coordinates. A surface land biome may nudge a nearby existing
+        // boundary, but it can never select a region from scratch.
+        Region landRegion = SAMPLER.landRegion(seed, x, z);
+        if (kind == SurfaceKind.LAND) {
+            landRegion = BoundedBiomeBorderAttractor.attract(
+                    level, seed, x, z, biome, landRegion
+            );
+        }
+        return new Sample(kind, landRegion);
     }
 
     public static SurfaceKind classify(Holder<Biome> biome) {
