@@ -21,7 +21,7 @@ public final class AuthoritativeRegionSampler {
      * Thematic direction cells inside a continent. Direction names are labels,
      * not promises about Minecraft compass position.
      */
-    public static final int SUBREGION_SCALE = 4_096;
+    public static final int SUBREGION_SCALE = 9_216;
 
     private static final double JITTER = 0.22;
     private static final double WARP = 0.08;
