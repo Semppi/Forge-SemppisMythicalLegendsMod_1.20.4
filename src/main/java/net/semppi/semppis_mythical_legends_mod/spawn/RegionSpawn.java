@@ -48,10 +48,8 @@ public final class RegionSpawn {
 
             boolean allowed;
             if (level instanceof net.minecraft.world.level.WorldGenLevel) {
-                int sampleX = ((pos.getX() >> 4) << 4) + 8;
-                int sampleZ = ((pos.getZ() >> 4) << 4) + 8;
                 Region region = RegionSurfaceClassifier
-                        .sample(level, sampleX, sampleZ)
+                        .sample(level, pos.getX(), pos.getZ())
                         .region();
                 allowed = allowedInRegion(type, region);
             } else {
