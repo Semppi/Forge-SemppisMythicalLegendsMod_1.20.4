@@ -10,77 +10,76 @@ import net.minecraft.world.entity.SpawnPlacements;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.ServerLevelAccessor;
 import net.semppi.semppis_mythical_legends_mod.rules.SMLRules;
-import net.semppi.semppis_mythical_legends_mod.world.*;
+import net.semppi.semppis_mythical_legends_mod.world.Region;
+import net.semppi.semppis_mythical_legends_mod.world.RegionSurfaceClassifier;
 
 public final class RegionSpawn {
     private RegionSpawn() {}
 
-    private static final RegionSampler SAMPLER = new RegionSampler();
+    public static <T extends Mob> SpawnPlacements.SpawnPredicate<T> gatedLand(
+            SpawnPlacements.SpawnPredicate<T> base) {
+        return gated(base);
+    }
 
-    public static <T extends Mob> SpawnPlacements.SpawnPredicate<T> gatedLand(SpawnPlacements.SpawnPredicate<T> base) {
-        return (EntityType<T> type, ServerLevelAccessor level, MobSpawnType reason, BlockPos pos, RandomSource rnd) -> {
-            // vanilla-bypass reasons (keep as-is)
-            if (reason == MobSpawnType.SPAWN_EGG || reason == MobSpawnType.COMMAND
-                    || reason == MobSpawnType.DISPENSER || reason == MobSpawnType.CONVERSION
-                    || reason == MobSpawnType.SPAWNER
-                    || (reason == MobSpawnType.BREEDING && !RegionMobAllow.isBreedingRestricted(type))) {
-                return base.test(type, level, reason, pos, rnd);
+    public static <T extends Mob> SpawnPlacements.SpawnPredicate<T> gatedSea(
+            SpawnPlacements.SpawnPredicate<T> base) {
+        return gated(base);
+    }
+
+    /**
+     * Land and sea placement predicates intentionally share this path. The
+     * surface biome classifier—not entity category or wrapper name—decides
+     * whether the coordinate belongs to land, a river, or an ocean.
+     */
+    private static <T extends Mob> SpawnPlacements.SpawnPredicate<T> gated(
+            SpawnPlacements.SpawnPredicate<T> base) {
+        return (EntityType<T> type, ServerLevelAccessor level,
+                MobSpawnType reason, BlockPos pos, RandomSource random) -> {
+            if (bypassesRegionGate(type, reason)) {
+                return base.test(type, level, reason, pos, random);
             }
 
-            final ServerLevel sl = level.getLevel();
-            if (sl.dimension() != Level.OVERWORLD || !sl.getGameRules().getBoolean(SMLRules.CONTINENTAL_SPAWNING)) {
-                return base.test(type, level, reason, pos, rnd);
+            ServerLevel serverLevel = level.getLevel();
+            if (serverLevel.dimension() != Level.OVERWORLD
+                    || !serverLevel.getGameRules().getBoolean(
+                            SMLRules.CONTINENTAL_SPAWNING)) {
+                return base.test(type, level, reason, pos, random);
             }
-
-            // Align to chunk center to be stable & cheap
-            final int sx = ((pos.getX() >> 4) << 4) + 8;
-            final int sz = ((pos.getZ() >> 4) << 4) + 8;
 
             boolean allowed;
             if (level instanceof net.minecraft.world.level.WorldGenLevel) {
-                // WORLDGEN LANE: seed/noise only — never loads neighbors
-                final Region r = SAMPLER.landRegion(sl.getSeed(), sx, sz);
-                allowed = !r.ocean() && RegionMobAllow.isAllowedForLand(type, r.continent(), r.dir());
-                // no RegionCompat here — keep worldgen path minimal & safe
+                int sampleX = ((pos.getX() >> 4) << 4) + 8;
+                int sampleZ = ((pos.getZ() >> 4) << 4) + 8;
+                Region region = RegionSurfaceClassifier
+                        .sample(level, sampleX, sampleZ)
+                        .region();
+                allowed = allowedInRegion(type, region);
             } else {
-                // RUNTIME LANE: cached & biome-aware, but amortized
-                allowed = net.semppi.semppis_mythical_legends_mod.spawn.RegionGateCached
-                        .allows(sl, type, pos, reason);
+                allowed = RegionGateCached.allows(
+                        serverLevel, type, pos, reason
+                );
             }
 
-            return allowed && base.test(type, level, reason, pos, rnd);
+            return allowed && base.test(type, level, reason, pos, random);
         };
     }
 
-    public static <T extends Mob> SpawnPlacements.SpawnPredicate<T> gatedSea(SpawnPlacements.SpawnPredicate<T> base) {
-        return (EntityType<T> type, ServerLevelAccessor level, MobSpawnType reason, BlockPos pos, RandomSource rnd) -> {
-            if (reason == MobSpawnType.SPAWN_EGG || reason == MobSpawnType.COMMAND
-                    || reason == MobSpawnType.DISPENSER || reason == MobSpawnType.CONVERSION
-                    || reason == MobSpawnType.SPAWNER
-                    || (reason == MobSpawnType.BREEDING && !RegionMobAllow.isBreedingRestricted(type))) {
-                return base.test(type, level, reason, pos, rnd);
-            }
+    private static boolean allowedInRegion(EntityType<?> type, Region region) {
+        return region.ocean()
+                ? RegionMobAllow.isAllowedForSea(type, region.sea())
+                : RegionMobAllow.isAllowedForLand(
+                        type, region.continent(), region.dir()
+                );
+    }
 
-            final ServerLevel sl = level.getLevel();
-            if (sl.dimension() != Level.OVERWORLD || !sl.getGameRules().getBoolean(SMLRules.CONTINENTAL_SPAWNING)) {
-                return base.test(type, level, reason, pos, rnd);
-            }
-
-            final int sx = ((pos.getX() >> 4) << 4) + 8;
-            final int sz = ((pos.getZ() >> 4) << 4) + 8;
-
-            boolean allowed;
-            if (level instanceof net.minecraft.world.level.WorldGenLevel) {
-                // WORLDGEN LANE: seed/noise only
-                final Region r = SAMPLER.seaRegion(sl.getSeed(), sx, sz);
-                allowed = RegionMobAllow.isAllowedForSea(type, r.sea());
-            } else {
-                // RUNTIME LANE: cached
-                allowed = net.semppi.semppis_mythical_legends_mod.spawn.RegionGateCached
-                        .allows(sl, type, pos, reason);
-            }
-
-            return allowed && base.test(type, level, reason, pos, rnd);
-        };
+    private static boolean bypassesRegionGate(EntityType<?> type,
+                                              MobSpawnType reason) {
+        return reason == MobSpawnType.SPAWN_EGG
+                || reason == MobSpawnType.COMMAND
+                || reason == MobSpawnType.DISPENSER
+                || reason == MobSpawnType.CONVERSION
+                || reason == MobSpawnType.SPAWNER
+                || (reason == MobSpawnType.BREEDING
+                && !RegionMobAllow.isBreedingRestricted(type));
     }
 }
