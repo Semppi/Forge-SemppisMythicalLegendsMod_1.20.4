@@ -29,6 +29,7 @@ import net.semppi.semppis_mythical_legends_mod.block.entity.ModBlockEntities;
 import net.semppi.semppis_mythical_legends_mod.client.hud.InteractionHudOverlay;
 import net.semppi.semppis_mythical_legends_mod.client.screen.CraftingOvenScreen;
 import net.semppi.semppis_mythical_legends_mod.commands.CancelTransformCommand;
+import net.semppi.semppis_mythical_legends_mod.commands.RegionDebugCommands;
 import net.semppi.semppis_mythical_legends_mod.commands.TransformCommand;
 import net.semppi.semppis_mythical_legends_mod.datagen.DataGenerators;
 import net.semppi.semppis_mythical_legends_mod.entity.ModEntities;
@@ -138,6 +139,7 @@ public class SemppisMythicalLegendsMod {
     private void onRegisterCommands(RegisterCommandsEvent event) {
         TransformCommand.register(event.getDispatcher());
         CancelTransformCommand.register(event.getDispatcher());
+        RegionDebugCommands.register(event.getDispatcher());
     }
 
     @Mod.EventBusSubscriber(modid = MOD_ID, bus = Mod.EventBusSubscriber.Bus.MOD, value = Dist.CLIENT)

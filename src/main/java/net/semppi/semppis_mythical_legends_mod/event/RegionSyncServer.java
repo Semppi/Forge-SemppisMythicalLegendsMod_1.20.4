@@ -60,9 +60,7 @@ public final class RegionSyncServer {
 
         // The classifier samples the surface biome. A player standing in a
         // cave therefore sees the same region as the surface above.
-        Region region = RegionGate.sampleNow(
-                level, pos.getX(), pos.getZ()
-        );
+        Region region = RegionGate.resolve(level, pos.getX(), pos.getZ()).region();
 
         Region previous = LAST_REGION.get(player.getUUID());
         if (!force && same(previous, region)) return;

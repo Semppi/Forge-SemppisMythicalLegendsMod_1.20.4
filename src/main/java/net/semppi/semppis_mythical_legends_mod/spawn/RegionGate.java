@@ -6,10 +6,11 @@ import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.MobSpawnType;
 import net.minecraft.world.level.Level;
+import net.minecraft.world.level.ServerLevelAccessor;
+import net.minecraft.world.level.WorldGenLevel;
 import net.semppi.semppis_mythical_legends_mod.SemppisMythicalLegendsMod;
 import net.semppi.semppis_mythical_legends_mod.rules.SMLRules;
 import net.semppi.semppis_mythical_legends_mod.world.Region;
-import net.semppi.semppis_mythical_legends_mod.world.RegionCompat;
 import net.semppi.semppis_mythical_legends_mod.world.RegionSurfaceClassifier;
 
 import java.util.Map;
@@ -33,20 +34,22 @@ public final class RegionGate {
         }
     }
 
-    public static boolean allows(ServerLevel level, EntityType<?> type, BlockPos pos) {
+    public static boolean allows(ServerLevelAccessor level, EntityType<?> type, BlockPos pos) {
         return allows(level, type, pos, null);
     }
 
-    public static boolean allows(ServerLevel level, EntityType<?> type, BlockPos pos,
+    public static boolean allows(ServerLevelAccessor level, EntityType<?> type, BlockPos pos,
                                  MobSpawnType reason) {
-        if (level.dimension() != Level.OVERWORLD) return true;
-        if (!level.getGameRules().getBoolean(SMLRules.CONTINENTAL_SPAWNING)) return true;
+        ServerLevel serverLevel = level.getLevel();
+        if (serverLevel.dimension() != Level.OVERWORLD) return true;
+        if (!serverLevel.getGameRules().getBoolean(SMLRules.CONTINENTAL_SPAWNING)) return true;
         if (!isOurMob(type)) return true;
 
         if (reason == MobSpawnType.SPAWN_EGG
                 || reason == MobSpawnType.COMMAND
                 || reason == MobSpawnType.DISPENSER
-                || reason == MobSpawnType.CONVERSION) {
+                || reason == MobSpawnType.CONVERSION
+                || reason == MobSpawnType.SPAWNER) {
             return true;
         }
 
@@ -55,15 +58,14 @@ public final class RegionGate {
             return true;
         }
 
-        Region region = cachedSample(level, pos.getX(), pos.getZ()).region();
+        Region region = resolve(level, pos.getX(), pos.getZ()).region();
         if (region.ocean()) {
             return RegionMobAllow.isAllowedForSea(type, region.sea());
         }
 
-        return RegionCompat.isAllowedForBiome(level.getBiome(pos), region)
-                && RegionMobAllow.isAllowedForLand(
-                        type, region.continent(), region.dir()
-                );
+        return RegionMobAllow.isAllowedForLand(
+                type, region.continent(), region.dir()
+        );
     }
 
     private static RegionSurfaceClassifier.Sample cachedSample(
@@ -84,8 +86,20 @@ public final class RegionGate {
         return sample;
     }
 
+    /**
+     * One shared resolved sample for runtime spawning, F3 and commands.
+     * Worldgen access deliberately skips the runtime cache and samples its
+     * WorldGenLevel directly, without asking the server to load a chunk.
+     */
+    public static RegionSurfaceClassifier.Sample resolve(
+            ServerLevelAccessor level, int x, int z) {
+        return level instanceof WorldGenLevel
+                ? RegionSurfaceClassifier.sample(level, x, z)
+                : cachedSample(level.getLevel(), x, z);
+    }
+
     public static Region peekRegion(ServerLevel level, int x, int z) {
-        return cachedSample(level, x, z).region();
+        return resolve(level, x, z).region();
     }
 
     /**
@@ -117,6 +131,11 @@ public final class RegionGate {
 
     public static Region sampleNow(ServerLevel level, int x, int z) {
         return RegionSurfaceClassifier.sample(level, x, z).region();
+    }
+
+    public static RegionSurfaceClassifier.Sample resolveNow(
+            ServerLevelAccessor level, int x, int z) {
+        return RegionSurfaceClassifier.sample(level, x, z);
     }
 
     /**

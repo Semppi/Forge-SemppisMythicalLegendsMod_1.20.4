@@ -3,7 +3,6 @@ package net.semppi.semppis_mythical_legends_mod.event;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.Mob;
-import net.minecraft.world.entity.MobSpawnType;
 import net.minecraftforge.event.entity.EntityJoinLevelEvent;
 import net.minecraftforge.event.entity.living.MobSpawnEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
@@ -16,13 +15,6 @@ public final class SpawnGate {
 
     // Keep the safety nets on; we prefilter aggressively so cost is tiny.
     private static final boolean EXTRA_SAFETY_GATES = false;
-
-    private static boolean explicitBypass(MobSpawnType t) {
-        return t == MobSpawnType.COMMAND
-                // || t == MobSpawnType.SPAWN_EGG
-                || t == MobSpawnType.DISPENSER
-                || t == MobSpawnType.CONVERSION;
-    }
 
     private static boolean isOurMob(EntityType<?> type) {
         var id = type.builtInRegistryHolder().key().location();
@@ -42,8 +34,6 @@ public final class SpawnGate {
         if (!(e.getLevel() instanceof ServerLevel sl)) return;
         if (!sl.getGameRules().getBoolean(
                 net.semppi.semppis_mythical_legends_mod.rules.SMLRules.CONTINENTAL_SPAWNING)) return;
-        if (explicitBypass(e.getSpawnType())) return;
-
         // e.getEntity() is already a Mob here — no instanceof pattern needed.
         Mob mob = e.getEntity();
         if (!isOurMob(mob.getType())) return;
