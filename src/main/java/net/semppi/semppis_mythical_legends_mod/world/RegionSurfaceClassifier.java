@@ -42,6 +42,33 @@ public final class RegionSurfaceClassifier {
         y = Math.max(level.getMinBuildHeight(), Math.min(y, level.getMaxBuildHeight() - 1));
 
         Holder<Biome> biome = level.getBiome(new BlockPos(x, y, z));
+        return sampleBiome(level, x, z, biome);
+    }
+
+    /**
+     * Diagnostic-map lookup of the pristine generated surface. This uses the
+     * chunk generator and biome source directly, so mapping distant positions
+     * does not load or generate those chunks.
+     */
+    public static Sample sampleGenerated(ServerLevelAccessor level, int x, int z) {
+        var chunkSource = level.getLevel().getChunkSource();
+        var generator = chunkSource.getGenerator();
+        var randomState = chunkSource.randomState();
+        int y = generator.getBaseHeight(
+                x, z, Heightmap.Types.WORLD_SURFACE,
+                level, randomState
+        );
+        y = Math.max(level.getMinBuildHeight(), Math.min(y, level.getMaxBuildHeight() - 1));
+
+        Holder<Biome> biome = generator.getBiomeSource().getNoiseBiome(
+                QuartPos.fromBlock(x), QuartPos.fromBlock(y),
+                QuartPos.fromBlock(z), randomState.sampler()
+        );
+        return sampleBiome(level, x, z, biome);
+    }
+
+    private static Sample sampleBiome(ServerLevelAccessor level, int x, int z,
+                                      Holder<Biome> biome) {
         SurfaceKind kind = classify(biome);
         long seed = level.getLevel().getSeed();
 

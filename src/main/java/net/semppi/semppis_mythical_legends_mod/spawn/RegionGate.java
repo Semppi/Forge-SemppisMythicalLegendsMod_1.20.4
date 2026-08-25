@@ -138,6 +138,11 @@ public final class RegionGate {
         return RegionSurfaceClassifier.sample(level, x, z);
     }
 
+    public static RegionSurfaceClassifier.Sample resolveGenerated(
+            ServerLevelAccessor level, int x, int z) {
+        return RegionSurfaceClassifier.sampleGenerated(level, x, z);
+    }
+
     /**
      * Compatibility overload. Surface biome tags now decide land versus sea.
      */
