@@ -4,14 +4,13 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.EntityType;
-import net.minecraft.world.entity.MobCategory;
 import net.minecraft.world.entity.MobSpawnType;
 import net.minecraft.world.level.Level;
 import net.semppi.semppis_mythical_legends_mod.SemppisMythicalLegendsMod;
 import net.semppi.semppis_mythical_legends_mod.rules.SMLRules;
 import net.semppi.semppis_mythical_legends_mod.world.Region;
 import net.semppi.semppis_mythical_legends_mod.world.RegionCompat;
-import net.semppi.semppis_mythical_legends_mod.world.RegionSampler;
+import net.semppi.semppis_mythical_legends_mod.world.RegionSurfaceClassifier;
 
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -20,37 +19,30 @@ import java.util.concurrent.atomic.AtomicInteger;
 public final class RegionGate {
     private RegionGate() {}
 
-    // ----- sampling & cache -----
-    private static final RegionSampler SAMPLER = new RegionSampler();
-
-    // 1200 ticks ≈ 60 seconds at 20 TPS
     private static final int CACHE_TTL_TICKS = 600;
-
     private static final Map<Long, CacheEntry> CACHE = new ConcurrentHashMap<>();
     private static final AtomicInteger PUTS = new AtomicInteger(0);
 
     private static final class CacheEntry {
         final long expireAtTick;
-        final Region region;
+        final RegionSurfaceClassifier.Sample sample;
 
-        CacheEntry(long expireAtTick, Region region) {
+        CacheEntry(long expireAtTick, RegionSurfaceClassifier.Sample sample) {
             this.expireAtTick = expireAtTick;
-            this.region = region;
+            this.sample = sample;
         }
     }
 
-    /** Back-compat: reasonless call. */
     public static boolean allows(ServerLevel level, EntityType<?> type, BlockPos pos) {
         return allows(level, type, pos, null);
     }
 
-    /** Gate *our* mobs in Overworld if gamerule is ON. BREEDING bypasses unless picky. */
-    public static boolean allows(ServerLevel level, EntityType<?> type, BlockPos pos, MobSpawnType reason) {
+    public static boolean allows(ServerLevel level, EntityType<?> type, BlockPos pos,
+                                 MobSpawnType reason) {
         if (level.dimension() != Level.OVERWORLD) return true;
         if (!level.getGameRules().getBoolean(SMLRules.CONTINENTAL_SPAWNING)) return true;
         if (!isOurMob(type)) return true;
 
-        // BYPASS here as well
         if (reason == MobSpawnType.SPAWN_EGG
                 || reason == MobSpawnType.COMMAND
                 || reason == MobSpawnType.DISPENSER
@@ -58,71 +50,80 @@ public final class RegionGate {
             return true;
         }
 
-        // Breeding allowed anywhere by default, unless the species opted-in to picky breeding
         if (reason == MobSpawnType.BREEDING
                 && !RegionMobAllow.isBreedingRestricted(type)) {
             return true;
         }
 
-        boolean aquatic = isAquatic(type);
-        Region r = cachedRegion(level, pos.getX(), pos.getZ(), aquatic);
-
-        if (r.ocean()) {
-            return RegionMobAllow.isAllowedForSea(type, r.sea());
-        } else {
-            return RegionCompat.isAllowedForBiome(level.getBiome(pos), r)
-                    && RegionMobAllow.isAllowedForLand(type, r.continent(), r.dir());
+        Region region = cachedSample(level, pos.getX(), pos.getZ()).region();
+        if (region.ocean()) {
+            return RegionMobAllow.isAllowedForSea(type, region.sea());
         }
+
+        return RegionCompat.isAllowedForBiome(level.getBiome(pos), region)
+                && RegionMobAllow.isAllowedForLand(
+                        type, region.continent(), region.dir()
+                );
     }
 
-    // ----- cache helpers -----
-    private static Region cachedRegion(ServerLevel level, int x, int z, boolean aquatic) {
+    private static RegionSurfaceClassifier.Sample cachedSample(
+            ServerLevel level, int x, int z) {
         long now = level.getGameTime();
-        long key = cacheKey(level, x, z, aquatic);   // pass block coords
+        long key = cacheKey(level, x, z);
 
-        CacheEntry ce = CACHE.get(key);
-        if (ce != null && now <= ce.expireAtTick) return ce.region;
+        CacheEntry cached = CACHE.get(key);
+        if (cached != null && now <= cached.expireAtTick) {
+            return cached.sample;
+        }
 
-        Region r = aquatic ? SAMPLER.seaRegion(level, x, z) : SAMPLER.landRegion(level, x, z);
-        CACHE.put(key, new CacheEntry(now + CACHE_TTL_TICKS, r));
+        RegionSurfaceClassifier.Sample sample =
+                RegionSurfaceClassifier.sample(level, x, z);
+        CACHE.put(key, new CacheEntry(now + CACHE_TTL_TICKS, sample));
+
         if ((PUTS.incrementAndGet() & 0xFFF) == 0) sweep(now);
-        return r;
+        return sample;
     }
 
-    /** For HUD/network sync to peek the cached decision. */
+    public static Region peekRegion(ServerLevel level, int x, int z) {
+        return cachedSample(level, x, z).region();
+    }
+
+    /**
+     * Compatibility overload for callers from before surface classification.
+     * The old aquatic guess is intentionally ignored.
+     */
     public static Region peekRegion(ServerLevel level, int x, int z, boolean aquatic) {
-        return cachedRegion(level, x, z, aquatic);
+        return peekRegion(level, x, z);
     }
 
     private static void sweep(long now) {
-        CACHE.entrySet().removeIf(e -> e.getValue().expireAtTick < now);
+        CACHE.entrySet().removeIf(entry -> entry.getValue().expireAtTick < now);
     }
 
-    private static long cacheKey(ServerLevel level, int x, int z, boolean aquatic) {
+    private static long cacheKey(ServerLevel level, int x, int z) {
         long seed = level.getSeed();
-        int dimHash = level.dimension().location().hashCode();
+        int dimensionHash = level.dimension().location().hashCode();
 
-        // Region ownership is seed/X/Z deterministic. A biome lookup here
-        // would only create duplicate cache entries and unnecessary world access.
-        int chunkX = x >> 4, chunkZ = z >> 4;
+        // Four-block cells follow vanilla biome sampling more accurately than
+        // one cache entry for an entire mixed coastline chunk.
+        int cellX = x >> 2;
+        int cellZ = z >> 2;
 
-        long k = seed ^ (long)dimHash * 0x9E3779B97F4A7C15L;
-        k ^= (long)chunkX * 0xC2B2AE3D27D4EB4FL;
-        k ^= (long)chunkZ * 0x165667B19E3779F9L;
-        k ^= aquatic ? 0xA5A5A5A5A5A5A5A5L : 0x5A5A5A5A5A5A5A5AL;
-        return k;
+        long key = seed ^ (long) dimensionHash * 0x9E3779B97F4A7C15L;
+        key ^= (long) cellX * 0xC2B2AE3D27D4EB4FL;
+        key ^= (long) cellZ * 0x165667B19E3779F9L;
+        return key;
     }
 
-    public static Region sampleNow(ServerLevel lvl, int x, int z, boolean aquatic) {
-        return aquatic ? SAMPLER.seaRegion(lvl, x, z) : SAMPLER.landRegion(lvl, x, z);
+    public static Region sampleNow(ServerLevel level, int x, int z) {
+        return RegionSurfaceClassifier.sample(level, x, z).region();
     }
 
-    // ----- type helpers -----
-    private static boolean isAquatic(EntityType<?> type) {
-        MobCategory c = type.getCategory();
-        return c == MobCategory.WATER_AMBIENT
-                || c == MobCategory.WATER_CREATURE
-                || c == MobCategory.UNDERGROUND_WATER_CREATURE;
+    /**
+     * Compatibility overload. Surface biome tags now decide land versus sea.
+     */
+    public static Region sampleNow(ServerLevel level, int x, int z, boolean aquatic) {
+        return sampleNow(level, x, z);
     }
 
     private static boolean isOurMob(EntityType<?> type) {
