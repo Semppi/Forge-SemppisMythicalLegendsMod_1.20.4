@@ -11,9 +11,7 @@ import net.minecraftforge.registries.DeferredRegister;
 import net.minecraftforge.registries.ForgeRegistries;
 import net.minecraftforge.registries.RegistryObject;
 import net.semppi.semppis_mythical_legends_mod.SemppisMythicalLegendsMod;
-import net.semppi.semppis_mythical_legends_mod.block.custom.MediumHumanoidDropBlock;
-import net.semppi.semppis_mythical_legends_mod.block.custom.PukisEgg;
-import net.semppi.semppis_mythical_legends_mod.block.custom.WendigoSkull;
+import net.semppi.semppis_mythical_legends_mod.block.custom.*;
 import net.semppi.semppis_mythical_legends_mod.item.ModItems;
 
 import java.util.function.Supplier;
@@ -45,6 +43,34 @@ public class ModBlocks {
                                     .strength(0.8F)
                                     .sound(SoundType.BONE_BLOCK)
                                     .noOcclusion()
+                    )
+            );
+
+    public static final RegistryObject<Block> CRAFTING_OVEN =
+            BLOCKS.register(
+                    "crafting_oven",
+                    () -> new CraftingOvenBlock(
+                            BlockBehaviour.Properties.of()
+                                    .mapColor(MapColor.COLOR_RED)
+                                    .strength(3.5F)
+                                    .sound(SoundType.STONE)
+                                    .requiresCorrectToolForDrops()
+                                    .lightLevel(
+                                            state -> state.getValue(CraftingOvenBlock.LIT)
+                                                    ? 13
+                                                    : 0
+                                    )
+                                    .noOcclusion()
+                    )
+            );
+    public static final RegistryObject<Block> CRAFTING_OVEN_PART =
+            BLOCKS.register(
+                    "crafting_oven_part",
+                    () -> new CraftingOvenPartBlock(
+                            BlockBehaviour.Properties.of()
+                                    .strength(3.5F)
+                                    .noOcclusion()
+                                    .noLootTable()
                     )
             );
 

@@ -66,24 +66,16 @@ public class WendigoEntity extends TamableAnimal implements GeoEntity, PlayerRid
     private float playerJumpPendingScale;
     protected boolean allowStandSliding;
     private boolean isTransformed = false;
-    private boolean attackAnimationTrigger = false;
 
     @Override
     public boolean doHurtTarget(Entity target) {
-        boolean success = super.doHurtTarget(target);
-        if (success && !this.level().isClientSide) {
-            // Broadcast an entity event with a unique id (we use 5 here) so the client sets the flag.
-            this.level().broadcastEntityEvent(this, (byte) 5);
-        }
-        return success;
-    }
+        boolean didHurt = super.doHurtTarget(target);
 
-    @Override
-    public void handleEntityEvent(byte id) {
-        super.handleEntityEvent(id);
-        if (id == 5) {
-            this.attackAnimationTrigger = true;
+        if (didHurt && !this.level().isClientSide) {
+            this.triggerAnim("attackController", "attack");
         }
+
+        return didHurt;
     }
 
     public WendigoEntity(EntityType<? extends TamableAnimal> entityType, Level level) {
@@ -162,9 +154,22 @@ public class WendigoEntity extends TamableAnimal implements GeoEntity, PlayerRid
 
     @Override
     public void registerControllers(AnimatableManager.ControllerRegistrar controllerRegistrar) {
-        controllerRegistrar.add(new AnimationController<>(this, "attackController", 0, this::attackPredicate));
-        controllerRegistrar.add(new AnimationController<>(this, "controller", 10, this::predicate));
-        controllerRegistrar.add(new AnimationController<>(this, "sitController", 0, this::sitPredicate));
+        controllerRegistrar.add(
+                new AnimationController<>(this, "attackController", 0, state -> PlayState.STOP)
+                        .triggerableAnim(
+                                "attack",
+                                RawAnimation.begin()
+                                        .then("animation.wendigo.attack", Animation.LoopType.PLAY_ONCE)
+                        )
+        );
+
+        controllerRegistrar.add(
+                new AnimationController<>(this, "controller", 10, this::predicate)
+        );
+
+        controllerRegistrar.add(
+                new AnimationController<>(this, "sitController", 0, this::sitPredicate)
+        );
     }
 
     private <T extends GeoAnimatable> PlayState predicate(AnimationState<T> tAnimationState) {
@@ -180,18 +185,6 @@ public class WendigoEntity extends TamableAnimal implements GeoEntity, PlayerRid
     private <T extends GeoAnimatable> PlayState sitPredicate(AnimationState<T> tAnimationState) {
         if (this.isSitting()) {
             tAnimationState.getController().setAnimation(RawAnimation.begin().then("animation.wendigo.sit", Animation.LoopType.LOOP));
-            return PlayState.CONTINUE;
-        }
-        return PlayState.STOP;
-    }
-
-    private <T extends GeoAnimatable> PlayState attackPredicate(AnimationState<T> state) {
-        if (this.attackAnimationTrigger) {
-            state.getController().setAnimation(
-                    RawAnimation.begin().then("animation.wendigo.attack", Animation.LoopType.PLAY_ONCE)
-            );
-            // Clear the flag so the next attack can trigger it.
-            this.attackAnimationTrigger = false;
             return PlayState.CONTINUE;
         }
         return PlayState.STOP;

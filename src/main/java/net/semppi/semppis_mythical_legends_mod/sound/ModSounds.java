@@ -14,6 +14,10 @@ public class ModSounds {
 
     public static final RegistryObject<SoundEvent> LARGE_CROW = registerSoundEvent("large_crow");
     public static final RegistryObject<SoundEvent> LARGE_CROW_HURT = registerSoundEvent("large_crow_hurt");
+    public static final RegistryObject<SoundEvent> MANDRAKE_SCREAM1 = registerSoundEvent("mandrake_scream1");
+    public static final RegistryObject<SoundEvent> MANDRAKE_SCREAM2 = registerSoundEvent("mandrake_scream2");
+    public static final RegistryObject<SoundEvent> MANDRAKE_SCREAM3 = registerSoundEvent("mandrake_scream3");
+    public static final RegistryObject<SoundEvent> MANDRAKE_UPSET = registerSoundEvent("mandrake_upset");
 
     private static RegistryObject<SoundEvent> registerSoundEvent(String name) {
         ResourceLocation id = new ResourceLocation(SemppisMythicalLegendsMod.MOD_ID, name);

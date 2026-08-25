@@ -1,5 +1,6 @@
 package net.semppi.semppis_mythical_legends_mod;
 
+import net.minecraft.client.gui.screens.MenuScreens;
 import net.minecraft.client.renderer.blockentity.BlockEntityRenderers;
 import net.minecraft.client.renderer.entity.EntityRenderers;
 import net.minecraft.world.entity.SpawnPlacements;
@@ -7,6 +8,7 @@ import net.minecraft.world.entity.animal.Animal;
 import net.minecraft.world.entity.animal.WaterAnimal;
 import net.minecraft.world.level.levelgen.Heightmap;
 import net.minecraftforge.api.distmarker.Dist;
+import net.minecraftforge.client.event.RegisterColorHandlersEvent;
 import net.minecraftforge.client.event.RegisterGuiOverlaysEvent;
 import net.minecraftforge.client.gui.overlay.VanillaGuiOverlay;
 import net.minecraftforge.common.MinecraftForge;
@@ -19,11 +21,13 @@ import net.minecraftforge.fml.event.lifecycle.FMLClientSetupEvent;
 import net.minecraftforge.fml.event.lifecycle.FMLCommonSetupEvent;
 import net.minecraftforge.fml.javafmlmod.FMLJavaModLoadingContext;
 import net.semppi.semppis_mythical_legends_mod.block.ModBlocks;
+import net.semppi.semppis_mythical_legends_mod.block.client.CraftingOvenRenderer;
 import net.semppi.semppis_mythical_legends_mod.block.client.PukisEggRenderer;
 import net.semppi.semppis_mythical_legends_mod.block.client.WendigoSkullRenderer;
 import net.semppi.semppis_mythical_legends_mod.block.client.MediumHumanoidDropRenderer;
 import net.semppi.semppis_mythical_legends_mod.block.entity.ModBlockEntities;
 import net.semppi.semppis_mythical_legends_mod.client.hud.InteractionHudOverlay;
+import net.semppi.semppis_mythical_legends_mod.client.screen.CraftingOvenScreen;
 import net.semppi.semppis_mythical_legends_mod.commands.CancelTransformCommand;
 import net.semppi.semppis_mythical_legends_mod.commands.TransformCommand;
 import net.semppi.semppis_mythical_legends_mod.datagen.DataGenerators;
@@ -37,6 +41,9 @@ import net.semppi.semppis_mythical_legends_mod.event.*;
 import net.semppi.semppis_mythical_legends_mod.item.ModCreativeModeTabs;
 import net.semppi.semppis_mythical_legends_mod.item.ModItems;
 import net.semppi.semppis_mythical_legends_mod.loot.ModLootModifiers;
+import net.semppi.semppis_mythical_legends_mod.menu.ModMenuTypes;
+import net.semppi.semppis_mythical_legends_mod.recipe.ModRecipeTypes;
+import net.semppi.semppis_mythical_legends_mod.season.SeasonManager;
 import net.semppi.semppis_mythical_legends_mod.sound.ModSounds;
 import net.semppi.semppis_mythical_legends_mod.spawn.RegionSpawn;
 import org.apache.logging.log4j.LogManager;
@@ -57,6 +64,8 @@ public class SemppisMythicalLegendsMod {
         ModBlocks.register(modEventBus);
         ModLootModifiers.register(modEventBus);
         ModBlockEntities.register(modEventBus);
+        ModMenuTypes.register(modEventBus);
+        ModRecipeTypes.register(modEventBus);
         ModEntities.register(modEventBus);
         ModSounds.register(modEventBus);
 
@@ -149,9 +158,31 @@ public class SemppisMythicalLegendsMod {
             EntityRenderers.register(ModEntities.WENDIGO.get(), WendigoRenderer::new);
 
             event.enqueueWork(() -> {
-                BlockEntityRenderers.register(ModBlockEntities.WENDIGO_SKULL_BLOCK_ENTITY.get(), WendigoSkullRenderer::new);
-                BlockEntityRenderers.register(ModBlockEntities.PUKIS_EGG_BLOCK_ENTITY.get(), PukisEggRenderer::new);
-                BlockEntityRenderers.register(ModBlockEntities.MEDIUM_HUMANOID_DROP_BLOCK_ENTITY.get(), MediumHumanoidDropRenderer::new);
+
+                BlockEntityRenderers.register(
+                        ModBlockEntities.WENDIGO_SKULL_BLOCK_ENTITY.get(),
+                        WendigoSkullRenderer::new
+                );
+
+                BlockEntityRenderers.register(
+                        ModBlockEntities.PUKIS_EGG_BLOCK_ENTITY.get(),
+                        PukisEggRenderer::new
+                );
+
+                BlockEntityRenderers.register(
+                        ModBlockEntities.MEDIUM_HUMANOID_DROP_BLOCK_ENTITY.get(),
+                        MediumHumanoidDropRenderer::new
+                );
+
+                BlockEntityRenderers.register(
+                        ModBlockEntities.CRAFTING_OVEN_BLOCK_ENTITY.get(),
+                        CraftingOvenRenderer::new
+                );
+
+                MenuScreens.register(
+                        ModMenuTypes.CRAFTING_OVEN_MENU.get(),
+                        CraftingOvenScreen::new
+                );
             });
         }
 
@@ -163,6 +194,32 @@ public class SemppisMythicalLegendsMod {
                     VanillaGuiOverlay.HOTBAR.id(),
                     "interaction_hud",
                     InteractionHudOverlay.OVERLAY
+            );
+        }
+        @SubscribeEvent
+        public static void registerItemColors(
+                RegisterColorHandlersEvent.Item event
+        ) {
+
+            event.register(
+                    (stack, tintIndex) -> {
+
+                        /*
+                         * Only tint layer0.
+                         *
+                         * Returning white for any other layer leaves
+                         * those layers unchanged.
+                         */
+                        if (tintIndex != 0) {
+                            return 0xFFFFFF;
+                        }
+
+                        return SeasonManager
+                                .getCurrentSeasonPhase()
+                                .getColor();
+                    },
+
+                    ModItems.SEASON.get()
             );
         }
     }

@@ -40,11 +40,11 @@ public class ModGlobalLootModifiersProvider extends GlobalLootModifierProvider {
 
         add("edible_leaf_from_jungle_leaves", new AddItemModifier(new LootItemCondition[] {
                 LootItemBlockStatePropertyCondition.hasBlockStateProperties(Blocks.JUNGLE_LEAVES).build(),
-                LootItemRandomChanceCondition.randomChance(0.16f).build()}, ModItems.EDIBLE_LEAF.get()));
+                LootItemRandomChanceCondition.randomChance(0.11f).build()}, ModItems.EDIBLE_LEAF.get()));
 
         add("edible_leaf_from_acacia_leaves", new AddItemModifier(new LootItemCondition[] {
                 LootItemBlockStatePropertyCondition.hasBlockStateProperties(Blocks.ACACIA_LEAVES).build(),
-                LootItemRandomChanceCondition.randomChance(0.11f).build()}, ModItems.EDIBLE_LEAF.get()));
+                LootItemRandomChanceCondition.randomChance(0.07f).build()}, ModItems.EDIBLE_LEAF.get()));
 
         add("edible_leaf_from_mangrove_leaves", new AddItemModifier(new LootItemCondition[] {
                 LootItemBlockStatePropertyCondition.hasBlockStateProperties(Blocks.MANGROVE_LEAVES).build(),
@@ -52,7 +52,19 @@ public class ModGlobalLootModifiersProvider extends GlobalLootModifierProvider {
 
         add("edible_leaf_from_cherry_leaves", new AddItemModifier(new LootItemCondition[] {
                 LootItemBlockStatePropertyCondition.hasBlockStateProperties(Blocks.CHERRY_LEAVES).build(),
-                LootItemRandomChanceCondition.randomChance(0.11f).build()}, ModItems.EDIBLE_LEAF.get()));
+                LootItemRandomChanceCondition.randomChance(0.07f).build()}, ModItems.EDIBLE_LEAF.get()));
+
+        add("tropical_leaf_from_jungle_leaves", new AddItemModifier(new LootItemCondition[] {
+                LootItemBlockStatePropertyCondition.hasBlockStateProperties(Blocks.JUNGLE_LEAVES).build(),
+                LootItemRandomChanceCondition.randomChance(0.11f).build()}, ModItems.TROPICAL_LEAF.get()));
+
+        add("tropical_leaf_from_acacia_leaves", new AddItemModifier(new LootItemCondition[] {
+                LootItemBlockStatePropertyCondition.hasBlockStateProperties(Blocks.ACACIA_LEAVES).build(),
+                LootItemRandomChanceCondition.randomChance(0.11f).build()}, ModItems.TROPICAL_LEAF.get()));
+
+        add("tropical_leaf_from_mangrove_leaves", new AddItemModifier(new LootItemCondition[] {
+                LootItemBlockStatePropertyCondition.hasBlockStateProperties(Blocks.MANGROVE_LEAVES).build(),
+                LootItemRandomChanceCondition.randomChance(0.11f).build()}, ModItems.TROPICAL_LEAF.get()));
 
         add("ghastly_teeth_from_ghast", new AddItemModifier(
                 new LootItemCondition[] {

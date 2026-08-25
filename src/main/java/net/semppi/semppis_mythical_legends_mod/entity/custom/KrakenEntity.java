@@ -49,7 +49,7 @@ public class KrakenEntity extends Animal implements GeoEntity {
     public static AttributeSupplier setAttributes() {
         return Animal.createMobAttributes()
                 .add(Attributes.MAX_HEALTH, 470D)
-                .add(Attributes.ATTACK_DAMAGE, 13.0f)
+                .add(Attributes.ATTACK_DAMAGE, 36.0f)
                 .add(Attributes.ATTACK_SPEED, 0.5f)
                 .add(Attributes.MOVEMENT_SPEED, 0.2f)
                 .add(Attributes.KNOCKBACK_RESISTANCE, 0.95D)

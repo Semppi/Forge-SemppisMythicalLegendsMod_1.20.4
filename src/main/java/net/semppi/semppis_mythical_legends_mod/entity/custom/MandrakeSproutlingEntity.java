@@ -63,11 +63,11 @@ public class MandrakeSproutlingEntity extends Animal implements GeoEntity {
 
     private <T extends GeoAnimatable> PlayState predicate(AnimationState<T> tAnimationState) {
         if(tAnimationState.isMoving()) {
-            tAnimationState.getController().setAnimation(RawAnimation.begin().then("animation.mandrake.crawl", Animation.LoopType.LOOP));
+            tAnimationState.getController().setAnimation(RawAnimation.begin().then("animation.mandrake_sprout.crawl", Animation.LoopType.LOOP));
             return PlayState.CONTINUE;
         }
 
-        tAnimationState.getController().setAnimation(RawAnimation.begin().then("animation.mandrake.idle", Animation.LoopType.LOOP));
+        tAnimationState.getController().setAnimation(RawAnimation.begin().then("animation.mandrake_sprout.idle", Animation.LoopType.LOOP));
         return PlayState.CONTINUE;
     }
 

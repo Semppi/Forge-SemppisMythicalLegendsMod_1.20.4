@@ -9,7 +9,7 @@
   ],
   "spawners": {
     "type": "semppis_mythical_legends_mod:mandrake",
-    "weight": 40,
+    "weight": 2,
     "minCount": 1,
     "maxCount": 1
   }

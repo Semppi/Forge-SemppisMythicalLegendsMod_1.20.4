@@ -95,6 +95,17 @@ public class PukisEntity extends TamableAnimal implements GeoEntity {
         this.targetSelector.addGoal(4, new NearestAttackableTargetGoal<>(this, Bat.class, true));
     }
 
+    @Override
+    public boolean doHurtTarget(Entity target) {
+        boolean didHurt = super.doHurtTarget(target);
+
+        if (didHurt && !this.level().isClientSide) {
+            this.triggerAnim("attackController", "attack");
+        }
+
+        return didHurt;
+    }
+
     private void applyOpenDoorsAbility() {
         if (GoalUtils.hasGroundPathNavigation(this)) {
             ((GroundPathNavigation) this.getNavigation()).setCanOpenDoors(true);
@@ -131,9 +142,22 @@ public class PukisEntity extends TamableAnimal implements GeoEntity {
 
     @Override
     public void registerControllers(AnimatableManager.ControllerRegistrar controllerRegistrar) {
-        controllerRegistrar.add(new AnimationController<>(this, "controller", 0, this::walkingPredicate));
-        controllerRegistrar.add(new AnimationController<>(this, "sitController", 0, this::sitPredicate));
-        controllerRegistrar.add(new AnimationController<>(this, "attackController", 0, this::attackingPredicate));
+        controllerRegistrar.add(
+                new AnimationController<>(this, "controller", 0, this::walkingPredicate)
+        );
+
+        controllerRegistrar.add(
+                new AnimationController<>(this, "sitController", 0, this::sitPredicate)
+        );
+
+        controllerRegistrar.add(
+                new AnimationController<>(this, "attackController", 0, state -> PlayState.STOP)
+                        .triggerableAnim(
+                                "attack",
+                                RawAnimation.begin()
+                                        .then("animation.pukis.bite", Animation.LoopType.PLAY_ONCE)
+                        )
+        );
     }
 
     private <T extends GeoAnimatable> PlayState walkingPredicate(AnimationState<T> tAnimationState) {
@@ -149,14 +173,6 @@ public class PukisEntity extends TamableAnimal implements GeoEntity {
     private <T extends GeoAnimatable> PlayState sitPredicate(AnimationState<T> tAnimationState) {
         if (this.isSitting()) {
             tAnimationState.getController().setAnimation(RawAnimation.begin().then("animation.pukis.sleep", Animation.LoopType.LOOP));
-            return PlayState.CONTINUE;
-        }
-        return PlayState.STOP;
-    }
-
-    private <T extends GeoAnimatable> PlayState attackingPredicate(AnimationState<T> tAnimationState) {
-        if (this.swinging) {
-            tAnimationState.getController().setAnimation(RawAnimation.begin().then("animation.pukis.bite", Animation.LoopType.PLAY_ONCE));
             return PlayState.CONTINUE;
         }
         return PlayState.STOP;

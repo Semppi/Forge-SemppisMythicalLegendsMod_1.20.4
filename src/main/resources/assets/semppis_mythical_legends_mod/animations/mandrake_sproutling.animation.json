@@ -1,11 +1,11 @@
 {
 	"format_version": "1.8.0",
 	"animations": {
-		"animation.mandrake.rooted": {
+		"animation.mandrake_sprout.rooted": {
 			"loop": true,
 			"override_previous_animation": true,
 			"bones": {
-				"mandrake": {
+				"entity": {
 					"position": {
 						"vector": [0, -10.525, 0]
 					}
@@ -107,12 +107,12 @@
 				}
 			}
 		},
-		"animation.mandrake.pop_out": {
+		"animation.mandrake_sprout.pop_out": {
 			"loop": "hold_on_last_frame",
 			"animation_length": 1.5,
 			"override_previous_animation": true,
 			"bones": {
-				"mandrake": {
+				"entity": {
 					"rotation": {
 						"0.0": {
 							"vector": [0, 0, 0]
@@ -277,7 +277,7 @@
 				}
 			}
 		},
-		"animation.mandrake.scream": {
+		"animation.mandrake_sprout.scream": {
 			"loop": true,
 			"animation_length": 1,
 			"override_previous_animation": true,
@@ -387,19 +387,6 @@
 						},
 						"1.0": {
 							"vector": [1, 1, 1]
-						}
-					}
-				},
-				"l_stem_end": {
-					"rotation": {
-						"0.0": {
-							"vector": [0, 0, 0]
-						},
-						"0.5": {
-							"vector": [0, 0, 7.5]
-						},
-						"1.0": {
-							"vector": [0, 0, 0]
 						}
 					}
 				},
@@ -582,19 +569,6 @@
 						"vector": [0, 0, 0]
 					}
 				},
-				"l_stem_end2": {
-					"rotation": {
-						"0.0": {
-							"vector": [0, 0, 0]
-						},
-						"0.6667": {
-							"vector": [5, 0, 0]
-						},
-						"1.0": {
-							"vector": [0, 0, 0]
-						}
-					}
-				},
 				"head_leaf_2": {
 					"rotation": {
 						"0.0": {
@@ -686,7 +660,7 @@
 						}
 					}
 				},
-				"mandrake": {
+				"entity": {
 					"rotation": {
 						"0.0": {
 							"vector": [0, 0, 0]
@@ -707,7 +681,7 @@
 				}
 			}
 		},
-		"animation.mandrake.idle": {
+		"animation.mandrake_sprout.idle": {
 			"loop": true,
 			"animation_length": 1,
 			"bones": {
@@ -786,19 +760,6 @@
 						},
 						"1.0": {
 							"vector": [1, 1, 1]
-						}
-					}
-				},
-				"l_stem_end": {
-					"rotation": {
-						"0.0": {
-							"vector": [0, 0, 0]
-						},
-						"0.5": {
-							"vector": [0, 0, 7.5]
-						},
-						"1.0": {
-							"vector": [0, 0, 0]
 						}
 					}
 				},
@@ -997,19 +958,6 @@
 						}
 					}
 				},
-				"l_stem_end2": {
-					"rotation": {
-						"0.0": {
-							"vector": [0, 0, 0]
-						},
-						"0.6667": {
-							"vector": [5, 0, 0]
-						},
-						"1.0": {
-							"vector": [0, 0, 0]
-						}
-					}
-				},
 				"head_leaf_2": {
 					"rotation": {
 						"0.0": {
@@ -1101,7 +1049,7 @@
 						}
 					}
 				},
-				"mandrake": {
+				"entity": {
 					"rotation": {
 						"vector": [0, 0, 0]
 					},
@@ -1111,11 +1059,11 @@
 				}
 			}
 		},
-		"animation.mandrake.crawl": {
+		"animation.mandrake_sprout.crawl": {
 			"loop": true,
-			"animation_length": 1.70833,
+			"animation_length": 1.7083,
 			"bones": {
-				"mandrake": {
+				"entity": {
 					"rotation": {
 						"0.0": {
 							"vector": [50, 0, 0]
@@ -1309,7 +1257,7 @@
 				}
 			}
 		},
-		"animation.mandrake.dig_under": {
+		"animation.mandrake_sprout.dig_under": {
 			"loop": "hold_on_last_frame",
 			"animation_length": 1.875,
 			"override_previous_animation": true,
@@ -1396,19 +1344,6 @@
 						},
 						"0.6667": {
 							"vector": [0.725, 0.48, 1]
-						}
-					}
-				},
-				"l_stem_end": {
-					"rotation": {
-						"0.0": {
-							"vector": [0, 0, 0]
-						},
-						"0.5": {
-							"vector": [0, 0, 7.5]
-						},
-						"1.0": {
-							"vector": [0, 0, 0]
 						}
 					}
 				},
@@ -1530,19 +1465,6 @@
 						}
 					}
 				},
-				"l_stem_end2": {
-					"rotation": {
-						"0.0": {
-							"vector": [0, 0, 0]
-						},
-						"0.6667": {
-							"vector": [5, 0, 0]
-						},
-						"1.0": {
-							"vector": [0, 0, 0]
-						}
-					}
-				},
 				"head_leaf_2": {
 					"rotation": {
 						"0.0": {
@@ -1634,7 +1556,7 @@
 						}
 					}
 				},
-				"mandrake": {
+				"entity": {
 					"rotation": {
 						"0.4583": {
 							"vector": [0, 0, 0]
@@ -1728,6 +1650,5 @@
 				}
 			}
 		}
-	},
-	"geckolib_format_version": 2
+	}
 }

@@ -4,6 +4,9 @@ import net.minecraft.data.PackOutput;
 import net.minecraft.data.recipes.*;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.tags.ItemTags;
+import net.minecraft.core.NonNullList;
+import net.minecraft.world.item.ItemStack;
+import net.semppi.semppis_mythical_legends_mod.recipe.CraftingOvenRecipe;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.item.crafting.*;
 import net.minecraft.world.level.ItemLike;
@@ -25,6 +28,27 @@ public class ModRecipeProvider extends RecipeProvider implements IConditionBuild
     @Override
     protected void buildRecipes(RecipeOutput recipeOutput) {
         System.out.println("Generating recipes...");
+
+        // Crafting Oven recipe: Pepes Telur Kodok
+        createCraftingOvenRecipe(recipeOutput, "pepes_telur_kodok",
+                ModItems.PEPES_TELUR_KODOK.get(), 0.35F, 100,
+                Ingredient.of(ModItems.TROPICAL_LEAF.get()),
+                Ingredient.of(ModItems.EDIBLE_LEAF.get()),
+                Ingredient.of(Items.FROGSPAWN)
+        );
+
+        // Crafting Oven recipe: Rabbit Stew
+        createCraftingOvenRecipe(recipeOutput, "rabbit_stew",
+                Items.RABBIT_STEW, 0.35F, 100,
+                Ingredient.of(Items.BOWL),
+                Ingredient.of(Items.RABBIT),
+                Ingredient.of(
+                        Items.BROWN_MUSHROOM,
+                        Items.RED_MUSHROOM),
+                Ingredient.of(Items.POTATO),
+                Ingredient.of(Items.CARROT)
+        );
+
 
         // Cooking recipes
         createCookingRecipe(recipeOutput, ModItems.RAW_BEEF_PIECE.get(), ModItems.COOKED_STEAK_PIECE.get(), 0.1f, 200, "cooked_steak_piece");
@@ -109,6 +133,19 @@ public class ModRecipeProvider extends RecipeProvider implements IConditionBuild
                 .define('W', ItemTags.WOOL)
                 .unlockedBy(getHasName(Items.OAK_SLAB), has(Items.OAK_SLAB))
                 .save(recipeOutput, new ResourceLocation(SemppisMythicalLegendsMod.MOD_ID, "stamp"));
+
+        // Shaped recipe for Crafting Oven
+        ShapedRecipeBuilder.shaped(RecipeCategory.MISC, ModItems.CRAFTING_OVEN.get())
+                .pattern(" B ")
+                .pattern("BSW")
+                .pattern("BIC")
+                .define('B', Items.BRICKS)
+                .define('W', ItemTags.WOODEN_SLABS)
+                .define('I', Items.IRON_INGOT)
+                .define('C', Items.CRAFTING_TABLE)
+                .define('S', Items.SMOKER)
+                .unlockedBy(getHasName(Items.SMOKER), has(Items.SMOKER))
+                .save(recipeOutput, new ResourceLocation(SemppisMythicalLegendsMod.MOD_ID, "crafting_oven"));
 
         // Shapeless recipe for Cod Soup
         ShapelessRecipeBuilder.shapeless(RecipeCategory.FOOD, ModItems.COD_SOUP.get())
@@ -1412,46 +1449,216 @@ public class ModRecipeProvider extends RecipeProvider implements IConditionBuild
 
     }
 
-    private void createCookingRecipe(RecipeOutput recipeOutput, ItemLike input, ItemLike output, float experience, int cookingTime, String group) {
-        // Smelting
-        SimpleCookingRecipeBuilder.smelting(Ingredient.of(input), RecipeCategory.FOOD, output, experience, cookingTime)
-                .group(group)
-                .unlockedBy(getHasName(input), has(input))
-                .save(recipeOutput, new ResourceLocation(SemppisMythicalLegendsMod.MOD_ID, getItemName(input) + "_smelting"));
+    private void createCookingRecipe(
+            RecipeOutput recipeOutput,
+            ItemLike input,
+            ItemLike output,
+            float experience,
+            int cookingTime,
+            String group
+    ) {
 
-//        // Blasting
-//        SimpleCookingRecipeBuilder.blasting(Ingredient.of(input), RecipeCategory.FOOD, output, experience, cookingTime / 2)
-//                .group(group)
-//                .unlockedBy(getHasName(input), has(input))
-//                .save(recipeOutput, new ResourceLocation(SemppisMythicalLegendsMod.MOD_ID, getItemName(input) + "_blasting"));
-
-        // Smoking
-        SimpleCookingRecipeBuilder.smoking(Ingredient.of(input), RecipeCategory.FOOD, output, experience, cookingTime / 2)
+        /*
+         * FURNACE
+         */
+        SimpleCookingRecipeBuilder.smelting(
+                        Ingredient.of(input),
+                        RecipeCategory.FOOD,
+                        output,
+                        experience,
+                        cookingTime
+                )
                 .group(group)
-                .unlockedBy(getHasName(input), has(input))
-                .save(recipeOutput, new ResourceLocation(SemppisMythicalLegendsMod.MOD_ID, getItemName(input) + "_smoking"));
+                .unlockedBy(
+                        getHasName(input),
+                        has(input)
+                )
+                .save(
+                        recipeOutput,
+                        new ResourceLocation(
+                                SemppisMythicalLegendsMod.MOD_ID,
+                                getItemName(input)
+                                        + "_smelting"
+                        )
+                );
 
-        // Campfire Cooking
-        SimpleCookingRecipeBuilder.campfireCooking(Ingredient.of(input), RecipeCategory.FOOD, output, experience, cookingTime * 3)
+        /*
+         * SMOKER
+         */
+        SimpleCookingRecipeBuilder.smoking(
+                        Ingredient.of(input),
+                        RecipeCategory.FOOD,
+                        output,
+                        experience,
+                        cookingTime / 2
+                )
                 .group(group)
-                .unlockedBy(getHasName(input), has(input))
-                .save(recipeOutput, new ResourceLocation(SemppisMythicalLegendsMod.MOD_ID, getItemName(input) + "_campfire_cooking"));
+                .unlockedBy(
+                        getHasName(input),
+                        has(input)
+                )
+                .save(
+                        recipeOutput,
+                        new ResourceLocation(
+                                SemppisMythicalLegendsMod.MOD_ID,
+                                getItemName(input)
+                                        + "_smoking"
+                        )
+                );
+
+        /*
+         * CAMPFIRE
+         */
+        SimpleCookingRecipeBuilder.campfireCooking(
+                        Ingredient.of(input),
+                        RecipeCategory.FOOD,
+                        output,
+                        experience,
+                        cookingTime * 3
+                )
+                .group(group)
+                .unlockedBy(
+                        getHasName(input),
+                        has(input)
+                )
+                .save(
+                        recipeOutput,
+                        new ResourceLocation(
+                                SemppisMythicalLegendsMod.MOD_ID,
+                                getItemName(input)
+                                        + "_campfire_cooking"
+                        )
+                );
     }
 
-    protected static void oreSmelting(RecipeOutput pRecipeOutput, List<ItemLike> pIngredients, RecipeCategory pCategory, ItemLike pResult, float pExperience, int pCookingTime, String pGroup) {
-        oreCooking(pRecipeOutput, RecipeSerializer.SMELTING_RECIPE, SmeltingRecipe::new, pIngredients, pCategory, pResult, pExperience, pCookingTime, pGroup, "_from_smelting");
+
+    protected static void oreSmelting(
+            RecipeOutput pRecipeOutput,
+            List<ItemLike> pIngredients,
+            RecipeCategory pCategory,
+            ItemLike pResult,
+            float pExperience,
+            int pCookingTime,
+            String pGroup
+    ) {
+
+        oreCooking(
+                pRecipeOutput,
+                RecipeSerializer.SMELTING_RECIPE,
+                SmeltingRecipe::new,
+                pIngredients,
+                pCategory,
+                pResult,
+                pExperience,
+                pCookingTime,
+                pGroup,
+                "_from_smelting"
+        );
     }
 
-//    protected static void oreBlasting(RecipeOutput pRecipeOutput, List<ItemLike> pIngredients, RecipeCategory pCategory, ItemLike pResult, float pExperience, int pCookingTime, String pGroup) {
-//        oreCooking(pRecipeOutput, RecipeSerializer.BLASTING_RECIPE, BlastingRecipe::new, pIngredients, pCategory, pResult, pExperience, pCookingTime, pGroup, "_from_blasting");
-//    }
 
-    private static <T extends AbstractCookingRecipe> void oreCooking(RecipeOutput pRecipeOutput, RecipeSerializer<T> pSerializer, AbstractCookingRecipe.Factory<T> pRecipeFactory, List<ItemLike> pIngredients, RecipeCategory pCategory, ItemLike pResult, float pExperience, int pCookingTime, String pGroup, String pSuffix) {
+    protected static void oreBlasting(
+            RecipeOutput pRecipeOutput,
+            List<ItemLike> pIngredients,
+            RecipeCategory pCategory,
+            ItemLike pResult,
+            float pExperience,
+            int pCookingTime,
+            String pGroup
+    ) {
+
+        oreCooking(
+                pRecipeOutput,
+                RecipeSerializer.BLASTING_RECIPE,
+                BlastingRecipe::new,
+                pIngredients,
+                pCategory,
+                pResult,
+                pExperience,
+                pCookingTime,
+                pGroup,
+                "_from_blasting"
+        );
+    }
+
+
+    private void createCraftingOvenRecipe(
+            RecipeOutput recipeOutput,
+            String recipeName,
+            ItemLike result,
+            float experience,
+            int cookingTime,
+            Ingredient... ingredients
+    ) {
+
+        NonNullList<Ingredient> ingredientList =
+                NonNullList.create();
+
+        for (Ingredient ingredient : ingredients) {
+            ingredientList.add(
+                    ingredient
+            );
+        }
+
+        CraftingOvenRecipe recipe =
+                new CraftingOvenRecipe(
+                        ingredientList,
+                        new ItemStack(
+                                result
+                        ),
+                        experience,
+                        cookingTime
+                );
+
+        recipeOutput.accept(
+                new ResourceLocation(
+                        SemppisMythicalLegendsMod.MOD_ID,
+                        recipeName
+                ),
+                recipe,
+                null
+        );
+    }
+
+
+    private static <T extends AbstractCookingRecipe>
+    void oreCooking(
+            RecipeOutput pRecipeOutput,
+            RecipeSerializer<T> pSerializer,
+            AbstractCookingRecipe.Factory<T> pRecipeFactory,
+            List<ItemLike> pIngredients,
+            RecipeCategory pCategory,
+            ItemLike pResult,
+            float pExperience,
+            int pCookingTime,
+            String pGroup,
+            String pSuffix
+    ) {
+
         for (ItemLike itemlike : pIngredients) {
-            SimpleCookingRecipeBuilder.generic(Ingredient.of(itemlike), pCategory, pResult, pExperience, pCookingTime, pSerializer, pRecipeFactory)
+
+            SimpleCookingRecipeBuilder.generic(
+                            Ingredient.of(itemlike),
+                            pCategory,
+                            pResult,
+                            pExperience,
+                            pCookingTime,
+                            pSerializer,
+                            pRecipeFactory
+                    )
                     .group(pGroup)
-                    .unlockedBy(getHasName(itemlike), has(itemlike))
-                    .save(pRecipeOutput, new ResourceLocation(SemppisMythicalLegendsMod.MOD_ID, getItemName(itemlike) + pSuffix));
+                    .unlockedBy(
+                            getHasName(itemlike),
+                            has(itemlike)
+                    )
+                    .save(
+                            pRecipeOutput,
+                            new ResourceLocation(
+                                    SemppisMythicalLegendsMod.MOD_ID,
+                                    getItemName(itemlike)
+                                            + pSuffix
+                            )
+                    );
         }
     }
 }

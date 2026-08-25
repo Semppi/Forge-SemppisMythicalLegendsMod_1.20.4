@@ -1,10 +1,13 @@
 package net.semppi.semppis_mythical_legends_mod.entity.custom;
 
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.registries.Registries;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.sounds.SoundEvent;
 import net.minecraft.sounds.SoundEvents;
 import net.minecraft.world.damagesource.DamageSource;
+import net.minecraft.world.effect.MobEffectInstance;
+import net.minecraft.world.effect.MobEffects;
 import net.minecraft.world.entity.AgeableMob;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.ai.attributes.AttributeSupplier;
@@ -16,6 +19,7 @@ import net.minecraft.world.entity.ai.util.GoalUtils;
 import net.minecraft.world.entity.animal.Animal;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.phys.AABB;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.entity.EntityDimensions;
 import net.minecraft.world.entity.Pose;
@@ -28,6 +32,7 @@ import net.minecraft.world.entity.MobSpawnType;
 import net.minecraft.world.level.ServerLevelAccessor;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.sounds.SoundSource;
+import net.semppi.semppis_mythical_legends_mod.damage.ModDamageTypes;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
 import org.jetbrains.annotations.Nullable;
@@ -37,15 +42,16 @@ import net.minecraft.network.syncher.SynchedEntityData;
 import software.bernie.geckolib.animatable.GeoEntity;
 import software.bernie.geckolib.core.animatable.GeoAnimatable;
 import software.bernie.geckolib.core.animatable.instance.AnimatableInstanceCache;
-import software.bernie.geckolib.core.animatable.instance.SingletonAnimatableInstanceCache;
+import software.bernie.geckolib.util.GeckoLibUtil;
 import software.bernie.geckolib.core.animation.*;
+import net.semppi.semppis_mythical_legends_mod.sound.ModSounds;
 import software.bernie.geckolib.core.object.PlayState;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.world.DifficultyInstance;
 import net.minecraft.world.entity.SpawnGroupData;
 
 public class MandrakeEntity extends Animal implements GeoEntity {
-    private AnimatableInstanceCache cache = new SingletonAnimatableInstanceCache(this);
+    private AnimatableInstanceCache cache = GeckoLibUtil.createInstanceCache(this);
 
     @Nullable
     private BlockPos rootPos;
@@ -53,6 +59,12 @@ public class MandrakeEntity extends Animal implements GeoEntity {
     private boolean pendingInitialRoot = false;
 
     private int rootingCooldown = 600;
+
+    private int screamCooldown = 0;
+
+    private int screamAnimationTicks = 0;
+
+    private int upsetSoundCooldown = 0;
 
     private boolean upperRootBlockWasPresent = true;
     private boolean lowerRootBlockWasPresent = true;
@@ -444,40 +456,91 @@ public class MandrakeEntity extends Animal implements GeoEntity {
     }
 
     @Override
-    public void registerControllers(AnimatableManager.ControllerRegistrar controllerRegistrar) {
-        controllerRegistrar.add(new AnimationController<>(this, "controller", 0, this::predicate));
+    public void registerControllers(
+            AnimatableManager.ControllerRegistrar controllerRegistrar
+    ) {
+        controllerRegistrar.add(
+                new AnimationController<>(
+                        this,
+                        "controller",
+                        0,
+                        this::predicate
+                )
+        );
     }
 
-    private <T extends GeoAnimatable> PlayState predicate(AnimationState<T> tAnimationState) {
+    private <T extends GeoAnimatable> PlayState predicate(
+            AnimationState<T> animationState
+    ) {
+        /*
+         * IMPORTANT:
+         * Get the exact Mandrake instance this animation controller
+         * is currently evaluating.
+         */
+        MandrakeEntity mandrake =
+                (MandrakeEntity) animationState.getAnimatable();
 
         /*
-         * Rooted Mandrakes always use their sleeping/rooted idle animation.
-         * This covers both FULLY_ROOTED and PARTIALLY_EXPOSED.
+         * Highest priority: this individual Mandrake's scream state.
          */
-        if (isRooted()) {
-            tAnimationState.getController().setAnimation(
-                    RawAnimation.begin().then("rooted", Animation.LoopType.LOOP)
+        if (mandrake.getScreamState() == ScreamState.ROOTED) {
+            animationState.getController().setAnimation(
+                    RawAnimation.begin().then(
+                            "rooted_scream",
+                            Animation.LoopType.PLAY_ONCE
+                    )
+            );
+
+            return PlayState.CONTINUE;
+        }
+
+        if (mandrake.getScreamState() == ScreamState.UPROOTED) {
+            animationState.getController().setAnimation(
+                    RawAnimation.begin().then(
+                            "uprooted_scream",
+                            Animation.LoopType.PLAY_ONCE
+                    )
             );
 
             return PlayState.CONTINUE;
         }
 
         /*
-         * Uprooted Mandrake walking.
+         * This individual Mandrake is rooted but not screaming.
          */
-        if (tAnimationState.isMoving()) {
-            tAnimationState.getController().setAnimation(
-                    RawAnimation.begin().then("walk", Animation.LoopType.LOOP)
+        if (mandrake.isRooted()) {
+            animationState.getController().setAnimation(
+                    RawAnimation.begin().then(
+                            "rooted",
+                            Animation.LoopType.LOOP
+                    )
             );
 
             return PlayState.CONTINUE;
         }
 
         /*
-         * Uprooted Mandrake standing still.
+         * This individual Mandrake is walking.
          */
-        tAnimationState.getController().setAnimation(
-                RawAnimation.begin().then("idle", Animation.LoopType.LOOP)
+        if (animationState.isMoving()) {
+            animationState.getController().setAnimation(
+                    RawAnimation.begin().then(
+                            "walk",
+                            Animation.LoopType.LOOP
+                    )
+            );
+
+            return PlayState.CONTINUE;
+        }
+
+        /*
+         * Normal standing idle.
+         */
+        animationState.getController().setAnimation(
+                RawAnimation.begin().then(
+                        "idle",
+                        Animation.LoopType.LOOP
+                )
         );
 
         return PlayState.CONTINUE;
@@ -512,6 +575,216 @@ public class MandrakeEntity extends Animal implements GeoEntity {
 
     protected float getSoundVolume() {
         return 0.1F;
+    }
+
+    @Override
+    public boolean hurt(DamageSource source, float amount) {
+        boolean wasRooted = this.isRooted();
+
+        boolean damaged = super.hurt(source, amount);
+
+        /*
+         * Only rooted / partially rooted Mandrakes use the scream system.
+         */
+        if (damaged
+                && wasRooted
+                && !this.level().isClientSide) {
+
+            /*
+             * Real scream is available.
+             */
+            if (this.screamCooldown <= 0) {
+
+                this.setScreamState(
+                        ScreamState.ROOTED
+                );
+
+                this.screamAnimationTicks = 50;
+
+                this.playRandomMandrakeScream();
+
+                /*
+                 * Damage EVERY player inside the scream zones.
+                 */
+                if (this.rootPos != null) {
+                    this.applyMandrakeScreamDamage(
+                            this.rootPos
+                    );
+                }
+
+                /*
+                 * Half a Minecraft day 12000.
+                 */
+                this.screamCooldown = 12000;
+            }
+
+            /*
+             * Real scream is on cooldown.
+             * Harmless upset sound instead.
+             */
+            else {
+                this.playMandrakeUpsetSound();
+            }
+        }
+
+        return damaged;
+    }
+
+    private void playRandomMandrakeScream() {
+        SoundEvent screamSound;
+
+        switch (this.random.nextInt(3)) {
+            case 0:
+                screamSound = ModSounds.MANDRAKE_SCREAM1.get();
+                break;
+
+            case 1:
+                screamSound = ModSounds.MANDRAKE_SCREAM2.get();
+                break;
+
+            default:
+                screamSound = ModSounds.MANDRAKE_SCREAM3.get();
+                break;
+        }
+
+        float screamPitch =
+                1.20F + this.random.nextFloat() * 0.15F;
+
+        this.playSound(
+                screamSound,
+                1.0F,
+                screamPitch
+        );
+    }
+
+    private void applyMandrakeScreamDamage(BlockPos screamRootPos) {
+
+        /*
+         * The rooted block itself is our origin.
+         *
+         * We expand this one-block box outward in X, Y and Z,
+         * creating the same nested zones as the test area.
+         */
+        AABB rootBlockBox = new AABB(
+                screamRootPos.getX(),
+                screamRootPos.getY(),
+                screamRootPos.getZ(),
+                screamRootPos.getX() + 1.0D,
+                screamRootPos.getY() + 1.0D,
+                screamRootPos.getZ() + 1.0D
+        );
+
+        /*
+         * Cumulative zone sizes:
+         *
+         * black  = 3
+         * red    = 3 + 5 = 8
+         * orange = 8 + 5 = 13
+         * yellow = 13 + 3 = 16
+         */
+        AABB blackZone =
+                rootBlockBox.inflate(3.0D);
+
+        AABB redZone =
+                rootBlockBox.inflate(8.0D);
+
+        AABB orangeZone =
+                rootBlockBox.inflate(12.0D);
+
+        AABB yellowZone =
+                rootBlockBox.inflate(15.0D);
+
+        /*
+         * We only need to search as far as the outer yellow boundary.
+         */
+        for (Player player :
+                this.level().getEntitiesOfClass(
+                        Player.class,
+                        yellowZone
+                )) {
+
+            /*
+             * Spectators aren't physically participating in gameplay.
+             */
+            if (player.isSpectator()) {
+                continue;
+            }
+
+            float damage;
+
+            /*
+             * Check strongest/closest zone first.
+             *
+             * We use the player's bounding box rather than only their feet,
+             * so if any part of the player enters the zone, that zone counts.
+             */
+            if (player.getBoundingBox().intersects(blackZone)) {
+
+                damage = 1060.0F;
+
+            } else if (player.getBoundingBox().intersects(redZone)) {
+
+                damage = 600.0F;
+
+            } else if (player.getBoundingBox().intersects(orangeZone)) {
+
+                damage = 250.0F;
+
+            } else if (player.getBoundingBox().intersects(yellowZone)) {
+
+                damage = 18.0F;
+
+            } else {
+
+                /*
+                 * Green / safe zone.
+                 */
+                continue;
+            }
+
+            DamageSource screamSource =
+                    new DamageSource(
+                            this.level()
+                                    .registryAccess()
+                                    .registryOrThrow(Registries.DAMAGE_TYPE)
+                                    .getHolderOrThrow(ModDamageTypes.SOUND)
+                    );
+
+            boolean hurtPlayer = player.hurt(
+                    screamSource,
+                    damage
+            );
+
+            if (hurtPlayer) {
+                player.addEffect(
+                        new MobEffectInstance(
+                                MobEffects.CONFUSION,
+                                8 * 20,
+                                2
+                        )
+                );
+            }
+        }
+    }
+
+    private void playMandrakeUpsetSound() {
+        if (this.upsetSoundCooldown > 0) {
+            return;
+        }
+
+        this.playSound(
+                ModSounds.MANDRAKE_UPSET.get(),
+                1.0F,
+                1.0F
+        );
+
+        /*
+         * Prevent repeated hits from stacking multiple upset sounds.
+         *
+         * Start with 60 ticks = 3 seconds.
+         * Adjust this to roughly match the actual length of mandrake_upset.ogg.
+         */
+        this.upsetSoundCooldown = 60;
     }
 
     /// ToDo: Add the looting enchantment effect to mandrakes drop for roots if killed with the looting enchant
@@ -600,16 +873,17 @@ public class MandrakeEntity extends Animal implements GeoEntity {
                 "HasBerries",
                 this.hasBerries()
         );
-        tag.putBoolean(
-                "HasBerries",
-                this.hasBerries()
-        );
 
         tag.putBoolean("Female", this.isFemale());
 
         tag.putBoolean(
                 "PendingInitialRoot",
                 this.pendingInitialRoot
+        );
+
+        tag.putInt(
+                "ScreamCooldown",
+                this.screamCooldown
         );
     }
 
@@ -668,6 +942,11 @@ public class MandrakeEntity extends Animal implements GeoEntity {
             );
         }
 
+        if (tag.contains("ScreamCooldown")) {
+            this.screamCooldown =
+                    tag.getInt("ScreamCooldown");
+        }
+
         applyRootState();
     }
 
@@ -688,6 +967,11 @@ public class MandrakeEntity extends Animal implements GeoEntity {
         this.entityData.define(
                 FEMALE,
                 false
+        );
+
+        this.entityData.define(
+                SCREAM_STATE,
+                (byte) ScreamState.NONE.ordinal()
         );
     }
 
@@ -710,6 +994,41 @@ public class MandrakeEntity extends Animal implements GeoEntity {
                     MandrakeEntity.class,
                     EntityDataSerializers.BOOLEAN
             );
+
+    private static final EntityDataAccessor<Byte> SCREAM_STATE =
+            SynchedEntityData.defineId(
+                    MandrakeEntity.class,
+                    EntityDataSerializers.BYTE
+            );
+
+    public enum ScreamState {
+        NONE,
+        ROOTED,
+        UPROOTED
+    }
+
+    public ScreamState getScreamState() {
+        int index = this.entityData.get(SCREAM_STATE);
+
+        ScreamState[] states = ScreamState.values();
+
+        if (index < 0 || index >= states.length) {
+            return ScreamState.NONE;
+        }
+
+        return states[index];
+    }
+
+    public void setScreamState(ScreamState state) {
+        this.entityData.set(
+                SCREAM_STATE,
+                (byte) state.ordinal()
+        );
+    }
+
+    public boolean isScreaming() {
+        return getScreamState() != ScreamState.NONE;
+    }
 
     private void rootAtSpawnPosition() {
         BlockPos surfacePos = this.blockPosition();
@@ -937,12 +1256,57 @@ public class MandrakeEntity extends Animal implements GeoEntity {
             return;
         }
 
+        /*
+         * Remember the original root block before clearing rootPos.
+         * The scream originates from here.
+         */
+        BlockPos oldRootPos = this.rootPos;
+
         setRootState(RootState.UPROOTED);
 
         this.rootPos = null;
 
+        if (!this.level().isClientSide) {
+
+            /*
+             * Real scream is available.
+             */
+            if (this.screamCooldown <= 0) {
+
+                this.setScreamState(
+                        ScreamState.UPROOTED
+                );
+
+                this.screamAnimationTicks = 50;
+
+                this.playRandomMandrakeScream();
+
+                /*
+                 * Apply damage around the block from which the
+                 * Mandrake was just uprooted.
+                 */
+                if (oldRootPos != null) {
+                    this.applyMandrakeScreamDamage(
+                            oldRootPos
+                    );
+                }
+
+                /*
+                 * Half a Minecraft day.
+                 */
+                this.screamCooldown = 12000;
+            }
+
+            /*
+             * It wanted to scream, but its real scream is on cooldown.
+             */
+            else {
+                this.playMandrakeUpsetSound();
+            }
+        }
+
         /*
-         * Wait 30–60 seconds before trying to settle somewhere else.
+         * Wait 30–60 seconds before searching for a new rooting site.
          */
         this.rootingCooldown =
                 600 + this.random.nextInt(601);
@@ -954,14 +1318,43 @@ public class MandrakeEntity extends Animal implements GeoEntity {
 
         if (!this.level().isClientSide) {
 
+            /*
+             * Mandrakes created during chunk generation root themselves
+             * once normal server ticking has begun.
+             */
             if (this.pendingInitialRoot) {
                 rootAtSpawnPosition();
             }
 
+            /*
+             * Count down until an uprooted Mandrake is ready
+             * to search for a new rooting location.
+             */
             if (this.isUprooted() && this.rootingCooldown > 0) {
                 this.rootingCooldown--;
             }
 
+            if (this.screamCooldown > 0) {
+                this.screamCooldown--;
+            }
+
+            if (this.upsetSoundCooldown > 0) {
+                this.upsetSoundCooldown--;
+            }
+
+            if (this.screamAnimationTicks > 0) {
+                this.screamAnimationTicks--;
+
+                if (this.screamAnimationTicks == 0) {
+                    this.setScreamState(
+                            ScreamState.NONE
+                    );
+                }
+            }
+
+            /*
+             * Existing rooted behavior.
+             */
             if (this.isRooted()) {
                 this.getNavigation().stop();
                 this.setDeltaMovement(0.0D, 0.0D, 0.0D);

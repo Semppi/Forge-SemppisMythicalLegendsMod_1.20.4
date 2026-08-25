@@ -28,8 +28,10 @@ public class ModCreativeModeTabs {
                         pOutput.accept(ModItems.GRASS_BUNDLE.get());
                         pOutput.accept(ModItems.SEAGRASS_BUNDLE.get());
                         pOutput.accept(ModItems.EDIBLE_LEAF.get());
+                        pOutput.accept(ModItems.TROPICAL_LEAF.get());
                         pOutput.accept(ModItems.SPRUCE_TIPS.get());
                         pOutput.accept(ModItems.CUCUMBER.get());
+                        pOutput.accept(ModItems.GARLIC.get());
                         pOutput.accept(ModItems.COOKED_MUSHROOM.get());
                         pOutput.accept(ModItems.CHEESE.get());
                         pOutput.accept(ModItems.FRIED_EGG.get());
@@ -47,6 +49,7 @@ public class ModCreativeModeTabs {
                         pOutput.accept(ModItems.PORK_AND_RABBIT_PIE.get());
                         pOutput.accept(ModItems.HONEYED_MEAT_PIE.get());
                         pOutput.accept(ModItems.HONEYED_BERRY_TREAT.get());
+                        pOutput.accept(ModItems.PEPES_TELUR_KODOK.get());
                         pOutput.accept(ModItems.FISHY_KELP_TREAT.get());
                         pOutput.accept(ModItems.COOKED_FISHY_KELP_TREAT.get());
                         pOutput.accept(ModItems.VEGGIE_KELP_TREAT.get());
@@ -175,6 +178,7 @@ public class ModCreativeModeTabs {
             () -> CreativeModeTab.builder().icon(() -> new ItemStack(ModItems.SATYR_HORN.get()))
                     .title(Component.translatable("creativetab.smlitemtab"))
                     .displayItems((pParameters, pOutput) -> {
+                        pOutput.accept(ModBlocks.CRAFTING_OVEN.get());
                         pOutput.accept(ModItems.MANDRAKE_ROOT.get());
                         pOutput.accept(ModItems.MANDRAKE_LEAF.get());
                         pOutput.accept(ModItems.SATYR_HORN.get());

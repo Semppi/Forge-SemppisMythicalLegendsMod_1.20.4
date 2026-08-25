@@ -25,6 +25,7 @@ public class ModBlockLootTables extends BlockLootSubProvider {
         this.add(ModBlocks.WENDIGO_SKULL.get(), block -> createWendigoSkullDrop());
 
         this.add(ModBlocks.MEDIUM_HUMANOID_DROP.get(), noDrop());
+        this.dropSelf(ModBlocks.CRAFTING_OVEN.get());
     }
 
     private LootTable.Builder createPukisEggDrop() {

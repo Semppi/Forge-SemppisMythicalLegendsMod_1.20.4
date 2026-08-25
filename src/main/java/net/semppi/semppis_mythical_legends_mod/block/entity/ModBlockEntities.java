@@ -30,6 +30,16 @@ public class ModBlockEntities {
                     ).build(null)
             );
 
+    public static final RegistryObject<BlockEntityType<CraftingOvenBlockEntity>>
+            CRAFTING_OVEN_BLOCK_ENTITY =
+            BLOCK_ENTITIES.register(
+                    "crafting_oven_block_entity",
+                    () -> BlockEntityType.Builder.of(
+                            CraftingOvenBlockEntity::new,
+                            ModBlocks.CRAFTING_OVEN.get()
+                    ).build(null)
+            );
+
     public static void register(IEventBus eventBus) {
         BLOCK_ENTITIES.register(eventBus);
     }

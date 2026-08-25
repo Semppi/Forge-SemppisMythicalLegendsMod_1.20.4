@@ -11,5 +11,26 @@
     "sounds": [
       "semppis_mythical_legends_mod:large_crow_hurt"
     ]
+  },
+
+  "mandrake_scream1": {
+    "sounds": [
+      "semppis_mythical_legends_mod:mandrake_scream1"
+    ]
+  },
+  "mandrake_scream2": {
+    "sounds": [
+      "semppis_mythical_legends_mod:mandrake_scream2"
+    ]
+  },
+  "mandrake_scream3": {
+    "sounds": [
+      "semppis_mythical_legends_mod:mandrake_scream3"
+    ]
+  },
+  "mandrake_upset": {
+    "sounds": [
+      "semppis_mythical_legends_mod:mandrake_upset"
+    ]
   }
 }

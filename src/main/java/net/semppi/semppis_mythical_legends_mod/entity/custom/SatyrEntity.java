@@ -1,6 +1,5 @@
 package net.semppi.semppis_mythical_legends_mod.entity.custom;
 
-import net.minecraft.core.BlockPos;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.syncher.EntityDataAccessor;
 import net.minecraft.network.syncher.EntityDataSerializers;
@@ -31,7 +30,6 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.ServerLevelAccessor;
-import net.minecraft.world.level.block.state.BlockState;
 import net.semppi.semppis_mythical_legends_mod.entity.ModEntities;
 import net.semppi.semppis_mythical_legends_mod.entity.variant.SatyrVariant;
 import net.semppi.semppis_mythical_legends_mod.item.ModItems;
@@ -61,7 +59,7 @@ public class SatyrEntity extends TamableAnimal implements GeoEntity {
     public static AttributeSupplier setAttributes() {
         return Animal.createMobAttributes()
                 .add(Attributes.MAX_HEALTH, 16D)
-                .add(Attributes.ATTACK_DAMAGE, 2.0f)
+                .add(Attributes.ATTACK_DAMAGE, 3.0f)
                 .add(Attributes.ATTACK_SPEED, 1.2f)
                 .add(Attributes.MOVEMENT_SPEED, 0.4f)
                 .build();
@@ -95,6 +93,18 @@ public class SatyrEntity extends TamableAnimal implements GeoEntity {
         this.targetSelector.addGoal(3, new NearestAttackableTargetGoal<>(this, Rabbit.class, true));
         this.targetSelector.addGoal(4, new NearestAttackableTargetGoal<>(this, AbstractVillager.class, false));
     }
+
+    @Override
+    public boolean doHurtTarget(Entity target) {
+        boolean didHurt = super.doHurtTarget(target);
+
+        if (didHurt && !this.level().isClientSide) {
+            this.triggerAnim("attackController", "attack");
+        }
+
+        return didHurt;
+    }
+
     private void applyOpenDoorsAbility() {
         if (GoalUtils.hasGroundPathNavigation(this)) {
             ((GroundPathNavigation)this.getNavigation()).setCanOpenDoors(true);
@@ -131,9 +141,22 @@ public class SatyrEntity extends TamableAnimal implements GeoEntity {
 
     @Override
     public void registerControllers(AnimatableManager.ControllerRegistrar controllerRegistrar) {
-        controllerRegistrar.add(new AnimationController<>(this, "controller", 10, this::predicate));
-        controllerRegistrar.add(new AnimationController<>(this, "sitController", 0, this::sitPredicate));
-        controllerRegistrar.add(new AnimationController<>(this, "attackController", 0, this::attackingPredicate));
+        controllerRegistrar.add(
+                new AnimationController<>(this, "controller", 10, this::predicate)
+        );
+
+        controllerRegistrar.add(
+                new AnimationController<>(this, "sitController", 0, this::sitPredicate)
+        );
+
+        controllerRegistrar.add(
+                new AnimationController<>(this, "attackController", 0, state -> PlayState.STOP)
+                        .triggerableAnim(
+                                "attack",
+                                RawAnimation.begin()
+                                        .then("animation.satyr.attack", Animation.LoopType.PLAY_ONCE)
+                        )
+        );
     }
 
     private <T extends GeoAnimatable> PlayState predicate(AnimationState<T> tAnimationState) {
@@ -149,14 +172,6 @@ public class SatyrEntity extends TamableAnimal implements GeoEntity {
     private <T extends GeoAnimatable> PlayState sitPredicate(AnimationState<T> tAnimationState) {
         if (this.isSitting()) {
             tAnimationState.getController().setAnimation(RawAnimation.begin().then("animation.satyr.sit", Animation.LoopType.LOOP));
-            return PlayState.CONTINUE;
-        }
-        return PlayState.STOP;
-    }
-
-    private <T extends GeoAnimatable> PlayState attackingPredicate(AnimationState<T> tAnimationState) {
-        if (this.swinging) {
-            tAnimationState.getController().setAnimation(RawAnimation.begin().then("animation.satyr.attack", Animation.LoopType.PLAY_ONCE));
             return PlayState.CONTINUE;
         }
         return PlayState.STOP;

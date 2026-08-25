@@ -33,8 +33,10 @@
   "item.semppis_mythical_legends_mod.grass_bundle": "Grass Bundle",
   "item.semppis_mythical_legends_mod.seagrass_bundle": "Seagrass Bundle",
   "item.semppis_mythical_legends_mod.edible_leaf": "Edible Leaf",
+  "item.semppis_mythical_legends_mod.tropical_leaf": "Tropical Leaf",
   "item.semppis_mythical_legends_mod.spruce_tips": "Spruce Tips",
   "item.semppis_mythical_legends_mod.cucumber": "Cucumber",
+  "item.semppis_mythical_legends_mod.garlic": "Garlic",
   "item.semppis_mythical_legends_mod.cooked_mushroom": "Cooked Mushroom",
   "item.semppis_mythical_legends_mod.cheese": "Cheese",
   "item.semppis_mythical_legends_mod.fried_egg": "Fried Egg",
@@ -52,6 +54,7 @@
   "item.semppis_mythical_legends_mod.pork_and_rabbit_pie": "Pork & Rabbit Pie",
   "item.semppis_mythical_legends_mod.honeyed_meat_pie": "Honeyed Meat Pie",
   "item.semppis_mythical_legends_mod.honeyed_berry_treat": "Honeyed Berry Treat",
+  "item.semppis_mythical_legends_mod.pepes_telur_kodok": "Pepes Telur Kodok",
   "item.semppis_mythical_legends_mod.fishy_kelp_treat": "Fishy Kelp Treat",
   "item.semppis_mythical_legends_mod.cooked_fishy_kelp_treat": "Cooked Fishy Kelp Treat",
   "item.semppis_mythical_legends_mod.veggie_kelp_treat": "Veggie Kelp Treat",
@@ -200,6 +203,7 @@
   "block.semppis_mythical_legends_mod.ricotta_cheese_wheel": "Ricotta Cheese Wheel",
   "block.semppis_mythical_legends_mod.sigil": "Sigil",
   "block.semppis_mythical_legends_mod.medium_humanoid_drop": "Medium Humanoid Remains",
+  "block.semppis_mythical_legends_mod.crafting_oven": "Crafting Oven",
 
   "entity.semppis_mythical_legends_mod.alicanto": "Alicanto",
   "entity.semppis_mythical_legends_mod.lesser_behemoth": "Lesser Behemoth",
@@ -231,6 +235,11 @@
   "hud.semppis_mythical_legends_mod.actions.group_0": "Call   Greet   Appease   Ward Off",
   "hud.semppis_mythical_legends_mod.actions.group_1": "Beckon   Signal   Yield   Bow",
   "hud.semppis_mythical_legends_mod.actions.group_2": "Compliment   Insult   Threaten   Look Bigger",
-  "hud.semppis_mythical_legends_mod.actions.group_3": "Comfort   Reconcile   Perform   Mimic"
+  "hud.semppis_mythical_legends_mod.actions.group_3": "Comfort   Reconcile   Perform   Mimic",
 
+  "death.attack.sound": "%1$s bled their ears out",
+
+  "tooltip.semppis_mythical_legends_mod.cooks_into": "Cooks into: %s",
+
+  "item.semppis_mythical_legends_mod.season": "Season"
 }

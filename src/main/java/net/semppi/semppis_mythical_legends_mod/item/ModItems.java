@@ -10,9 +10,7 @@ import net.minecraftforge.registries.RegistryObject;
 import net.semppi.semppis_mythical_legends_mod.SemppisMythicalLegendsMod;
 import net.semppi.semppis_mythical_legends_mod.block.ModBlocks;
 import net.semppi.semppis_mythical_legends_mod.entity.ModEntities;
-import net.semppi.semppis_mythical_legends_mod.item.custom.PukisEggItem;
-import net.semppi.semppis_mythical_legends_mod.item.custom.WendigoSkullItem;
-import net.semppi.semppis_mythical_legends_mod.item.custom.WrappedPukisItem;
+import net.semppi.semppis_mythical_legends_mod.item.custom.*;
 
 public class ModItems {
     public static final DeferredRegister<Item> ITEMS =
@@ -106,6 +104,9 @@ public class ModItems {
     public static final RegistryObject<Item> WENDIGO_SKULL_ITEM = ITEMS.register("wendigo_skull_item",
             () -> new WendigoSkullItem(ModBlocks.WENDIGO_SKULL.get(), new Item.Properties()));
 
+    public static final RegistryObject<Item> CRAFTING_OVEN = ITEMS.register("crafting_oven",
+                    () -> new CraftingOvenItem(ModBlocks.CRAFTING_OVEN.get(), new Item.Properties()));
+
 
     public static final RegistryObject<Item> COD_SOUP = ITEMS.register("cod_soup",
             () -> new CustomBowlFoodItem(new Item.Properties().food(ModFoods.COD_SOUP)));
@@ -134,11 +135,17 @@ public class ModItems {
     public static final RegistryObject<Item> EDIBLE_LEAF = ITEMS.register("edible_leaf",
             () -> new Item(new Item.Properties().food(ModFoods.EDIBLE_LEAF)));
 
+    public static final RegistryObject<Item> TROPICAL_LEAF = ITEMS.register("tropical_leaf",
+            () -> new Item(new Item.Properties().food(ModFoods.TROPICAL_LEAF)));
+
     public static final RegistryObject<Item> SPRUCE_TIPS = ITEMS.register("spruce_tips",
             () -> new Item(new Item.Properties().food(ModFoods.SPRUCE_TIPS)));
 
     public static final RegistryObject<Item> CUCUMBER = ITEMS.register("cucumber",
             () -> new Item(new Item.Properties().food(ModFoods.CUCUMBER)));
+
+    public static final RegistryObject<Item> GARLIC = ITEMS.register("garlic",
+            () -> new Item(new Item.Properties().food(ModFoods.GARLIC)));
 
     public static final RegistryObject<Item> COOKED_MUSHROOM = ITEMS.register("cooked_mushroom",
             () -> new Item(new Item.Properties().food(ModFoods.COOKED_MUSHROOM)));
@@ -190,6 +197,9 @@ public class ModItems {
 
     public static final RegistryObject<Item> HONEYED_BERRY_TREAT = ITEMS.register("honeyed_berry_treat",
             () -> new Item(new Item.Properties().food(ModFoods.HONEYED_BERRY_TREAT)));
+
+    public static final RegistryObject<Item> PEPES_TELUR_KODOK = ITEMS.register("pepes_telur_kodok",
+            () -> new Item(new Item.Properties().food(ModFoods.PEPES_TELUR_KODOK)));
 
     public static final RegistryObject<Item> FISHY_KELP_TREAT = ITEMS.register("fishy_kelp_treat",
             () -> new Item(new Item.Properties().food(ModFoods.FISHY_KELP_TREAT)));
@@ -532,6 +542,12 @@ public class ModItems {
 
     public static final RegistryObject<Item> COOKED_FIEND_CHUNK = ITEMS.register("cooked_fiend_chunk",
             () -> new Item(new Item.Properties().food(ModFoods.COOKED_FIEND_CHUNK)));
+
+    public static final RegistryObject<Item> GENERIC_UNCOOKED_FOOD = ITEMS.register("generic_uncooked_food",
+                    () -> new GenericUncookedFoodItem(new Item.Properties()));
+
+    public static final RegistryObject<Item> SEASON = ITEMS.register("season",
+            () -> new Item(new Item.Properties()));
 
     public static void register(IEventBus eventBus) {
         ITEMS.register(eventBus);

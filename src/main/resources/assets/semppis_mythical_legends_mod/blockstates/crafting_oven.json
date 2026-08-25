@@ -1,0 +1,31 @@
+{
+  "variants": {
+    "facing=north,waterlogged=false": {
+      "model": "semppis_mythical_legends_mod:block/crafting_oven"
+    },
+    "facing=north,waterlogged=true": {
+      "model": "semppis_mythical_legends_mod:block/crafting_oven"
+    },
+
+    "facing=east,waterlogged=false": {
+      "model": "semppis_mythical_legends_mod:block/crafting_oven"
+    },
+    "facing=east,waterlogged=true": {
+      "model": "semppis_mythical_legends_mod:block/crafting_oven"
+    },
+
+    "facing=south,waterlogged=false": {
+      "model": "semppis_mythical_legends_mod:block/crafting_oven"
+    },
+    "facing=south,waterlogged=true": {
+      "model": "semppis_mythical_legends_mod:block/crafting_oven"
+    },
+
+    "facing=west,waterlogged=false": {
+      "model": "semppis_mythical_legends_mod:block/crafting_oven"
+    },
+    "facing=west,waterlogged=true": {
+      "model": "semppis_mythical_legends_mod:block/crafting_oven"
+    }
+  }
+}

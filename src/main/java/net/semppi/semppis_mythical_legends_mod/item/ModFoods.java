@@ -20,9 +20,13 @@ public class ModFoods {
 
     public static final FoodProperties EDIBLE_LEAF = new FoodProperties.Builder().nutrition(1).saturationMod(0.4f).build();
 
+    public static final FoodProperties TROPICAL_LEAF = new FoodProperties.Builder().nutrition(1).saturationMod(0.4f).build();
+
     public static final FoodProperties SPRUCE_TIPS = new FoodProperties.Builder().nutrition(1).saturationMod(0.4f).build();
 
     public static final FoodProperties CUCUMBER = new FoodProperties.Builder().nutrition(3).saturationMod(1.1f).build();
+
+    public static final FoodProperties GARLIC = new FoodProperties.Builder().nutrition(1).saturationMod(0.2f).build();
 
     public static final FoodProperties COOKED_MUSHROOM = new FoodProperties.Builder().nutrition(3).saturationMod(3.6f).build();
 
@@ -57,6 +61,8 @@ public class ModFoods {
     public static final FoodProperties HONEYED_MEAT_PIE = new FoodProperties.Builder().nutrition(4).saturationMod(5f).build();
 
     public static final FoodProperties HONEYED_BERRY_TREAT = new FoodProperties.Builder().nutrition(14).saturationMod(2.8f).build();
+
+    public static final FoodProperties PEPES_TELUR_KODOK = new FoodProperties.Builder().nutrition(14).saturationMod(2.8f).build();
 
     public static final FoodProperties FISHY_KELP_TREAT = new FoodProperties.Builder().nutrition(9).saturationMod(3.1f).build();
 
