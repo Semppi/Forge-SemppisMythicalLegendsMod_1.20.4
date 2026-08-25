@@ -569,15 +569,9 @@ public final class TagRules {
             return Affinity.EXCELLENT_MATCH;
         }
 
-        // A biome researched for another subregion of the same continent is
-        // still a good match. Direction labels are cultural regions, not an
-        // obligation to follow Minecraft's compass.
-        Set<ResourceLocation> researchedForContinent = MERGED.get(continent);
-        if (researchedForContinent != null && researchedForContinent.contains(biomeId)) {
-            return Affinity.GOOD_MATCH;
-        }
-
-        return climateAffinity(continent, climateFamily(biomeId));
+        // A match in another direction is not inherited automatically. Large
+        // continents such as North America and Asia span incompatible climates.
+        return regionalClimateAffinity(continent, direction, climateFamily(biomeId));
     }
 
     public static Affinity continentAffinity(Continent continent, ResourceLocation biomeId) {
@@ -631,6 +625,127 @@ public final class TagRules {
             case "mushroom_fields" -> ClimateFamily.SPECIAL;
             default -> ClimateFamily.UNKNOWN;
         };
+    }
+
+    private static Affinity regionalClimateAffinity(Continent continent, SubDir direction,
+                                                      ClimateFamily climate) {
+        if (climate == ClimateFamily.UNKNOWN || climate == ClimateFamily.SPECIAL) {
+            return Affinity.NEUTRAL;
+        }
+
+        // High and cold mountains occur in nearly every world region. Exact
+        // researched entries remain excellent; otherwise mountains are good.
+        if (climate == ClimateFamily.COLD_MOUNTAIN
+                || climate == ClimateFamily.TEMPERATE_MOUNTAIN) {
+            if (continent == Continent.ANTARCTICA) {
+                return climate == ClimateFamily.COLD_MOUNTAIN
+                        ? Affinity.GOOD_MATCH
+                        : Affinity.UNUSUAL;
+            }
+            return Affinity.GOOD_MATCH;
+        }
+
+        Affinity directional = switch (continent) {
+            case N_AMERICA -> switch (direction) {
+                case NORTH -> switch (climate) {
+                    case ARID, SAVANNA, TROPICAL -> Affinity.UNUSUAL;
+                    case WETLAND -> Affinity.NEUTRAL;
+                    default -> null;
+                };
+                case SOUTH -> switch (climate) {
+                    case POLAR, BOREAL -> Affinity.UNUSUAL;
+                    case ARID, SAVANNA, TROPICAL, WETLAND -> Affinity.GOOD_MATCH;
+                    default -> null;
+                };
+                case EAST -> switch (climate) {
+                    case ARID, SAVANNA, TROPICAL -> Affinity.NEUTRAL;
+                    default -> null;
+                };
+                case WEST -> null; // Alaska, California, deserts and Hawaii make this intentionally broad.
+                case CENTRAL -> switch (climate) {
+                    case POLAR, TROPICAL -> Affinity.UNUSUAL;
+                    case ARID, SAVANNA -> Affinity.NEUTRAL;
+                    default -> null;
+                };
+            };
+            case ASIA -> switch (direction) {
+                case NORTH -> switch (climate) {
+                    case TROPICAL, SAVANNA, WETLAND -> Affinity.UNUSUAL;
+                    case ARID -> Affinity.NEUTRAL;
+                    default -> null;
+                };
+                case SOUTH -> switch (climate) {
+                    case POLAR, BOREAL -> Affinity.UNUSUAL;
+                    default -> null;
+                };
+                case EAST -> switch (climate) {
+                    case POLAR, ARID, SAVANNA -> Affinity.NEUTRAL;
+                    default -> null;
+                };
+                case WEST -> switch (climate) {
+                    case POLAR, BOREAL, TROPICAL -> Affinity.UNUSUAL;
+                    case SAVANNA, WETLAND -> Affinity.NEUTRAL;
+                    default -> null;
+                };
+                case CENTRAL -> switch (climate) {
+                    case TROPICAL, WETLAND -> Affinity.UNUSUAL;
+                    default -> null;
+                };
+            };
+            case EUROPE -> switch (direction) {
+                case NORTH -> switch (climate) {
+                    case ARID, SAVANNA, TROPICAL -> Affinity.UNUSUAL;
+                    default -> null;
+                };
+                case SOUTH -> switch (climate) {
+                    case POLAR, BOREAL -> Affinity.UNUSUAL;
+                    case ARID, SAVANNA -> Affinity.NEUTRAL;
+                    default -> null;
+                };
+                default -> null;
+            };
+            case AFRICA -> switch (direction) {
+                case NORTH -> switch (climate) {
+                    case TROPICAL, WETLAND -> Affinity.NEUTRAL;
+                    default -> null;
+                };
+                case CENTRAL -> switch (climate) {
+                    case TEMPERATE, BOREAL -> Affinity.UNUSUAL;
+                    default -> null;
+                };
+                case SOUTH -> switch (climate) {
+                    case BOREAL, POLAR -> Affinity.STRONGLY_UNSUITABLE;
+                    default -> null;
+                };
+                default -> null;
+            };
+            case S_AMERICA -> switch (direction) {
+                case NORTH -> switch (climate) {
+                    case POLAR, BOREAL -> Affinity.UNUSUAL;
+                    default -> null;
+                };
+                case SOUTH -> switch (climate) {
+                    case TROPICAL -> Affinity.NEUTRAL;
+                    default -> null;
+                };
+                default -> null;
+            };
+            case AUSTRALIA -> switch (direction) {
+                case NORTH -> switch (climate) {
+                    case POLAR -> Affinity.STRONGLY_UNSUITABLE;
+                    case BOREAL -> Affinity.UNUSUAL;
+                    default -> null;
+                };
+                case SOUTH -> switch (climate) {
+                    case TROPICAL, SAVANNA -> Affinity.NEUTRAL;
+                    default -> null;
+                };
+                default -> null;
+            };
+            case ANTARCTICA -> null;
+        };
+
+        return directional != null ? directional : climateAffinity(continent, climate);
     }
 
     private static Affinity climateAffinity(Continent continent, ClimateFamily climate) {
