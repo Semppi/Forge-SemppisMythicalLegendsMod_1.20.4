@@ -31,7 +31,21 @@ public final class TagRules {
         }
     }
 
-    // Per-(continent, direction) allow-lists for VANILLA biomes. Mod biomes allowed by default.
+    private enum ClimateFamily {
+        POLAR,
+        BOREAL,
+        TEMPERATE,
+        ARID,
+        SAVANNA,
+        TROPICAL,
+        WETLAND,
+        COLD_MOUNTAIN,
+        TEMPERATE_MOUNTAIN,
+        SPECIAL,
+        UNKNOWN
+    }
+
+    // Researched per-(continent, direction) excellent matches for vanilla biomes.
     private static final Map<Continent, Map<SubDir, Set<ResourceLocation>>> BY_DIR = new EnumMap<>(Continent.class);
     // Merged per-continent sets (for cluster scoring)
     private static final Map<Continent, Set<ResourceLocation>> MERGED = new EnumMap<>(Continent.class);
@@ -466,50 +480,13 @@ public final class TagRules {
     }
 
     private static void registerAffinityOverrides() {
-        // These are characteristic enough to influence a whole cluster.
-        affinity(Continent.AFRICA, Affinity.EXCELLENT_MATCH,
-                "minecraft:desert", "minecraft:savanna", "minecraft:savanna_plateau",
-                "minecraft:windswept_savanna");
-        affinity(Continent.ASIA, Affinity.EXCELLENT_MATCH,
-                "minecraft:cherry_grove", "minecraft:bamboo_jungle");
-        affinity(Continent.AUSTRALIA, Affinity.EXCELLENT_MATCH,
-                "minecraft:badlands", "minecraft:wooded_badlands", "minecraft:eroded_badlands",
-                "minecraft:savanna", "minecraft:savanna_plateau");
-        affinity(Continent.EUROPE, Affinity.EXCELLENT_MATCH,
-                "minecraft:forest", "minecraft:flower_forest", "minecraft:meadow");
-        affinity(Continent.N_AMERICA, Affinity.EXCELLENT_MATCH,
-                "minecraft:old_growth_pine_taiga", "minecraft:old_growth_spruce_taiga",
-                "minecraft:wooded_badlands");
-        affinity(Continent.S_AMERICA, Affinity.EXCELLENT_MATCH,
-                "minecraft:jungle", "minecraft:sparse_jungle", "minecraft:mangrove_swamp");
-        affinity(Continent.ANTARCTICA, Affinity.EXCELLENT_MATCH,
-                "minecraft:snowy_plains", "minecraft:ice_spikes", "minecraft:frozen_peaks",
-                "minecraft:snowy_slopes", "minecraft:frozen_ocean", "minecraft:deep_frozen_ocean");
+        // Regional maps remain the source of every excellent match. Overrides
+        // are reserved for exceptional clarifications that broad climate alone
+        // cannot express.
+        affinity(Continent.AFRICA, Affinity.NEUTRAL,
+                "minecraft:cherry_grove");
 
-        // Antarctica is the one continent with a deliberately firm climate boundary.
-        affinity(Continent.ANTARCTICA, Affinity.STRONGLY_UNSUITABLE,
-                "minecraft:desert", "minecraft:badlands", "minecraft:wooded_badlands",
-                "minecraft:eroded_badlands", "minecraft:savanna", "minecraft:savanna_plateau",
-                "minecraft:windswept_savanna", "minecraft:jungle", "minecraft:sparse_jungle",
-                "minecraft:bamboo_jungle", "minecraft:mangrove_swamp");
-
-        // Temperate and cold mountain biomes remain possible in warm continents.
-        // They are unusual evidence, never hard bans.
-        affinity(Continent.AFRICA, Affinity.UNUSUAL,
-                "minecraft:snowy_plains", "minecraft:snowy_taiga", "minecraft:ice_spikes");
-        affinity(Continent.AUSTRALIA, Affinity.UNUSUAL,
-                "minecraft:snowy_plains", "minecraft:snowy_taiga", "minecraft:ice_spikes");
-        affinity(Continent.EUROPE, Affinity.UNUSUAL,
-                "minecraft:desert", "minecraft:badlands", "minecraft:eroded_badlands");
-        affinity(Continent.N_AMERICA, Affinity.UNUSUAL,
-                "minecraft:bamboo_jungle");
-        affinity(Continent.S_AMERICA, Affinity.UNUSUAL,
-                "minecraft:snowy_plains", "minecraft:ice_spikes");
-
-        oceanAffinity(Ocean.ARCTIC, Affinity.EXCELLENT_MATCH,
-                "minecraft:frozen_ocean", "minecraft:deep_frozen_ocean");
-        oceanAffinity(Ocean.SOUTHERN, Affinity.EXCELLENT_MATCH,
-                "minecraft:frozen_ocean", "minecraft:deep_frozen_ocean");
+        // Ocean temperature is allowed to be flexible, except at the poles.
         oceanAffinity(Ocean.ARCTIC, Affinity.STRONGLY_UNSUITABLE,
                 "minecraft:warm_ocean");
         oceanAffinity(Ocean.SOUTHERN, Affinity.STRONGLY_UNSUITABLE,
@@ -586,19 +563,21 @@ public final class TagRules {
         Map<SubDir, Set<ResourceLocation>> perDirection = BY_DIR.get(continent);
         if (perDirection == null) return Affinity.UNUSUAL;
 
-        Set<ResourceLocation> preferred = perDirection.get(direction);
-        if (preferred != null && preferred.contains(biomeId)) return Affinity.GOOD_MATCH;
-
-        Set<ResourceLocation> somewhereOnContinent = MERGED.get(continent);
-        if (somewhereOnContinent != null && somewhereOnContinent.contains(biomeId)) {
-            return Affinity.NEUTRAL;
+        // The original researched regional maps define excellent matches.
+        Set<ResourceLocation> researchedForDirection = perDirection.get(direction);
+        if (researchedForDirection != null && researchedForDirection.contains(biomeId)) {
+            return Affinity.EXCELLENT_MATCH;
         }
 
-        // Unknown/modded biomes and normal mismatches are permitted. This is
-        // deliberately soft so small biome patches cannot create continents.
-        return "minecraft".equals(biomeId.getNamespace())
-                ? Affinity.UNUSUAL
-                : Affinity.NEUTRAL;
+        // A biome researched for another subregion of the same continent is
+        // still a good match. Direction labels are cultural regions, not an
+        // obligation to follow Minecraft's compass.
+        Set<ResourceLocation> researchedForContinent = MERGED.get(continent);
+        if (researchedForContinent != null && researchedForContinent.contains(biomeId)) {
+            return Affinity.GOOD_MATCH;
+        }
+
+        return climateAffinity(continent, climateFamily(biomeId));
     }
 
     public static Affinity continentAffinity(Continent continent, ResourceLocation biomeId) {
@@ -606,24 +585,132 @@ public final class TagRules {
         if (override != null) return override;
         if (isSurfaceIndependent(biomeId)) return Affinity.NEUTRAL;
 
-        Set<ResourceLocation> preferred = MERGED.get(continent);
-        if (preferred != null && preferred.contains(biomeId)) return Affinity.GOOD_MATCH;
+        // At continent scale every entry from the researched regional maps is
+        // excellent evidence, regardless of its subregion.
+        Set<ResourceLocation> researched = MERGED.get(continent);
+        if (researched != null && researched.contains(biomeId)) {
+            return Affinity.EXCELLENT_MATCH;
+        }
 
-        return "minecraft".equals(biomeId.getNamespace())
-                ? Affinity.UNUSUAL
-                : Affinity.NEUTRAL;
+        return climateAffinity(continent, climateFamily(biomeId));
     }
 
     public static Affinity oceanAffinity(Ocean ocean, ResourceLocation biomeId) {
         Affinity override = override(OCEAN_OVERRIDES, ocean, biomeId);
         if (override != null) return override;
 
-        Set<ResourceLocation> preferred = OCEAN_ALLOW.get(ocean);
-        if (preferred != null && preferred.contains(biomeId)) return Affinity.GOOD_MATCH;
+        Set<ResourceLocation> researched = OCEAN_ALLOW.get(ocean);
+        if (researched != null && researched.contains(biomeId)) {
+            return Affinity.EXCELLENT_MATCH;
+        }
 
-        return "minecraft".equals(biomeId.getNamespace())
-                ? Affinity.UNUSUAL
-                : Affinity.NEUTRAL;
+        return oceanClimateAffinity(ocean, biomeId);
+    }
+
+    private static ClimateFamily climateFamily(ResourceLocation biomeId) {
+        if (!"minecraft".equals(biomeId.getNamespace())) return ClimateFamily.UNKNOWN;
+
+        return switch (biomeId.getPath()) {
+            case "snowy_plains", "ice_spikes" -> ClimateFamily.POLAR;
+            case "taiga", "snowy_taiga", "old_growth_pine_taiga",
+                    "old_growth_spruce_taiga" -> ClimateFamily.BOREAL;
+            case "plains", "sunflower_plains", "forest", "flower_forest",
+                    "birch_forest", "old_growth_birch_forest", "dark_forest",
+                    "meadow", "cherry_grove" -> ClimateFamily.TEMPERATE;
+            case "desert", "badlands", "wooded_badlands",
+                    "eroded_badlands" -> ClimateFamily.ARID;
+            case "savanna", "savanna_plateau",
+                    "windswept_savanna" -> ClimateFamily.SAVANNA;
+            case "jungle", "sparse_jungle",
+                    "bamboo_jungle" -> ClimateFamily.TROPICAL;
+            case "swamp", "mangrove_swamp" -> ClimateFamily.WETLAND;
+            case "frozen_peaks", "jagged_peaks", "snowy_slopes",
+                    "grove" -> ClimateFamily.COLD_MOUNTAIN;
+            case "stony_peaks", "windswept_hills", "windswept_gravelly_hills",
+                    "windswept_forest" -> ClimateFamily.TEMPERATE_MOUNTAIN;
+            case "mushroom_fields" -> ClimateFamily.SPECIAL;
+            default -> ClimateFamily.UNKNOWN;
+        };
+    }
+
+    private static Affinity climateAffinity(Continent continent, ClimateFamily climate) {
+        if (climate == ClimateFamily.UNKNOWN || climate == ClimateFamily.SPECIAL) {
+            return Affinity.NEUTRAL;
+        }
+
+        return switch (continent) {
+            case AFRICA -> switch (climate) {
+                case ARID, SAVANNA, TROPICAL, WETLAND -> Affinity.GOOD_MATCH;
+                case TEMPERATE, TEMPERATE_MOUNTAIN -> Affinity.NEUTRAL;
+                case COLD_MOUNTAIN -> Affinity.UNUSUAL;
+                case BOREAL, POLAR -> Affinity.STRONGLY_UNSUITABLE;
+                default -> Affinity.NEUTRAL;
+            };
+            case ANTARCTICA -> switch (climate) {
+                case POLAR -> Affinity.EXCELLENT_MATCH;
+                case BOREAL, COLD_MOUNTAIN -> Affinity.GOOD_MATCH;
+                default -> Affinity.STRONGLY_UNSUITABLE;
+            };
+            case ASIA -> switch (climate) {
+                case POLAR, BOREAL, TEMPERATE, ARID, SAVANNA, TROPICAL, WETLAND,
+                        COLD_MOUNTAIN, TEMPERATE_MOUNTAIN -> Affinity.GOOD_MATCH;
+                default -> Affinity.NEUTRAL;
+            };
+            case EUROPE -> switch (climate) {
+                case BOREAL, TEMPERATE, WETLAND, COLD_MOUNTAIN,
+                        TEMPERATE_MOUNTAIN -> Affinity.GOOD_MATCH;
+                case POLAR -> Affinity.NEUTRAL;
+                case ARID, SAVANNA -> Affinity.UNUSUAL;
+                case TROPICAL -> Affinity.UNUSUAL;
+                default -> Affinity.NEUTRAL;
+            };
+            case N_AMERICA -> switch (climate) {
+                case POLAR, BOREAL, TEMPERATE, ARID, SAVANNA, TROPICAL, WETLAND,
+                        COLD_MOUNTAIN, TEMPERATE_MOUNTAIN -> Affinity.GOOD_MATCH;
+                default -> Affinity.NEUTRAL;
+            };
+            case S_AMERICA -> switch (climate) {
+                case TEMPERATE, ARID, SAVANNA, TROPICAL, WETLAND,
+                        COLD_MOUNTAIN, TEMPERATE_MOUNTAIN -> Affinity.GOOD_MATCH;
+                case BOREAL, POLAR -> Affinity.UNUSUAL;
+                default -> Affinity.NEUTRAL;
+            };
+            case AUSTRALIA -> switch (climate) {
+                case TEMPERATE, ARID, SAVANNA, TROPICAL, WETLAND,
+                        TEMPERATE_MOUNTAIN -> Affinity.GOOD_MATCH;
+                case COLD_MOUNTAIN, BOREAL -> Affinity.UNUSUAL;
+                case POLAR -> Affinity.STRONGLY_UNSUITABLE;
+                default -> Affinity.NEUTRAL;
+            };
+        };
+    }
+
+    private static Affinity oceanClimateAffinity(Ocean ocean, ResourceLocation biomeId) {
+        if (!"minecraft".equals(biomeId.getNamespace())) return Affinity.NEUTRAL;
+
+        String path = biomeId.getPath();
+        boolean frozen = path.equals("frozen_ocean") || path.equals("deep_frozen_ocean");
+        boolean cold = path.equals("cold_ocean") || path.equals("deep_cold_ocean");
+        boolean mild = path.equals("ocean") || path.equals("deep_ocean")
+                || path.equals("lukewarm_ocean") || path.equals("deep_lukewarm_ocean");
+        boolean warm = path.equals("warm_ocean");
+
+        if (!frozen && !cold && !mild && !warm) return Affinity.NEUTRAL;
+
+        return switch (ocean) {
+            case ARCTIC, SOUTHERN -> frozen
+                    ? Affinity.EXCELLENT_MATCH
+                    : cold ? Affinity.GOOD_MATCH
+                    : mild ? Affinity.UNUSUAL
+                    : Affinity.STRONGLY_UNSUITABLE;
+            case NORTH_ATLANTIC, NORTH_PACIFIC -> cold || mild
+                    ? Affinity.GOOD_MATCH
+                    : Affinity.NEUTRAL;
+            case SOUTH_ATLANTIC, SOUTH_PACIFIC, INDIAN -> warm || mild
+                    ? Affinity.GOOD_MATCH
+                    : frozen ? Affinity.UNUSUAL
+                    : Affinity.NEUTRAL;
+        };
     }
 
     private static <K extends Enum<K>> Affinity override(
