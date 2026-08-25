@@ -12,7 +12,7 @@ import java.util.Objects;
 
 /**
  * Very small per-tick cache around RegionGate.allows(...)
- * Keyed by (dimension, entity type, chunkX, chunkZ, spawn reason).
+ * Keyed by (dimension, entity type, biome-cell X/Z, spawn reason).
  * Clears itself each server tick.
  */
 public final class RegionGateCached {
@@ -29,9 +29,11 @@ public final class RegionGateCached {
             lastTick = tick;
         }
 
-        final int cx = pos.getX() >> 4;
-        final int cz = pos.getZ() >> 4;
-        final Key key = new Key(level.dimension(), type, cx, cz, reason);
+        // Vanilla biome resolution is four blocks. Chunk-wide caching can
+        // confuse land, river and ocean positions along the same coastline.
+        final int cellX = pos.getX() >> 2;
+        final int cellZ = pos.getZ() >> 2;
+        final Key key = new Key(level.dimension(), type, cellX, cellZ, reason);
 
         if (CACHE.containsKey(key)) {
             return CACHE.getBoolean(key);
@@ -47,17 +49,19 @@ public final class RegionGateCached {
         return allows(level, type, pos, MobSpawnType.NATURAL);
     }
 
-    private record Key(ResourceKey<Level> dim, EntityType<?> type, int cx, int cz, MobSpawnType reason) {
+    private record Key(ResourceKey<Level> dim, EntityType<?> type, int cellX, int cellZ, MobSpawnType reason) {
         @Override public boolean equals(Object o) {
             if (this == o) return true;
             if (!(o instanceof Key k)) return false;
-            return cx == k.cx && cz == k.cz && Objects.equals(dim, k.dim) && type == k.type && reason == k.reason;
+            return cellX == k.cellX && cellZ == k.cellZ
+                    && Objects.equals(dim, k.dim)
+                    && type == k.type && reason == k.reason;
         }
         @Override public int hashCode() {
             int h = dim.hashCode();
             h = 31*h + System.identityHashCode(type);
-            h = 31*h + cx;
-            h = 31*h + cz;
+            h = 31*h + cellX;
+            h = 31*h + cellZ;
             h = 31*h + reason.hashCode();
             return h;
         }
