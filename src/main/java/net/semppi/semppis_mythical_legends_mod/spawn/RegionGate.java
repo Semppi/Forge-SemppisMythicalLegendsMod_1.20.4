@@ -102,16 +102,13 @@ public final class RegionGate {
         long seed = level.getSeed();
         int dimHash = level.dimension().location().hashCode();
 
-        // correct: use *block* coords to get the local biome id, and
-        // optionally also mix the chunk coords once for cache locality
+        // Region ownership is seed/X/Z deterministic. A biome lookup here
+        // would only create duplicate cache entries and unnecessary world access.
         int chunkX = x >> 4, chunkZ = z >> 4;
-        var biomeId = RegionSampler.biomeIdIfLoaded(level, x, z);
-        int biomeHash = (biomeId != null ? biomeId.hashCode() : 0);
 
         long k = seed ^ (long)dimHash * 0x9E3779B97F4A7C15L;
         k ^= (long)chunkX * 0xC2B2AE3D27D4EB4FL;
         k ^= (long)chunkZ * 0x165667B19E3779F9L;
-        k ^= (long)biomeHash * 0x9E3779B97F4A7C15L;
         k ^= aquatic ? 0xA5A5A5A5A5A5A5A5L : 0x5A5A5A5A5A5A5A5AL;
         return k;
     }
