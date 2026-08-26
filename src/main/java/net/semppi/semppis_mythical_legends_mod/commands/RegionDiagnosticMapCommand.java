@@ -29,10 +29,12 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicBoolean;
 
-/** Exports a large no-chunk-load overview of the resolved region overlay. */
+/** Exports no-chunk-load overviews of the resolved region overlay. */
 public final class RegionDiagnosticMapCommand {
     private static final int DEFAULT_RADIUS = 4_096;
     private static final int DEFAULT_STEP = 64;
+    private static final int MINI_RADIUS = 512;
+    private static final int MINI_STEP = 8;
     private static final int MAX_PIXELS_PER_SIDE = 513;
     private static final AtomicBoolean RUNNING = new AtomicBoolean(false);
     private static final ExecutorService WORKER = Executors.newSingleThreadExecutor(task -> {
@@ -70,6 +72,11 @@ public final class RegionDiagnosticMapCommand {
                         .executes(context -> start(
                                 context.getSource(), DEFAULT_RADIUS, DEFAULT_STEP
                         ))
+                        .then(Commands.literal("mini")
+                                .executes(context -> start(
+                                        context.getSource(), MINI_RADIUS, MINI_STEP
+                                ))
+                        )
                         .then(Commands.argument(
                                         "radius", IntegerArgumentType.integer(512, 16_384)
                                 )
