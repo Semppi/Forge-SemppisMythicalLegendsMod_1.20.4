@@ -5,6 +5,8 @@ import net.minecraft.core.QuartPos;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.level.ServerLevelAccessor;
 import net.minecraft.world.level.biome.Biome;
+import net.minecraft.world.level.biome.BiomeSource;
+import net.minecraft.world.level.biome.Climate;
 
 /**
  * Allows biome suitability to nudge an existing land-region boundary without
@@ -14,6 +16,10 @@ public final class BoundedBiomeBorderAttractor {
     private static final int MAX_ATTRACTION = 192;
     private static final int BOUNDARY_PROBE = 256;
     private static final int BINARY_SEARCH_STEPS = 8;
+    private static final int NEIGHBOR_OFFSET = 48;
+    private static final int MIN_NEIGHBOR_SUPPORT = 6;
+    private static final int CORRIDOR_HALF_WIDTH = 32;
+    private static final int MIN_CORRIDOR_SUPPORT = 2;
 
     private static final double[][] DIRECTIONS = {
             { 1.0,  0.0}, { 0.70710678118,  0.70710678118},
@@ -84,9 +90,9 @@ public final class BoundedBiomeBorderAttractor {
     }
 
     /**
-     * Checks a short spine from this coordinate to the real neighboring cell.
-     * This prevents a detached biome patch near a boundary from becoming an
-     * isolated freckle of the neighboring region.
+     * Requires both a broad local neighborhood and a supported corridor back
+     * to the real neighboring cell. A thin spine or tiny biome patch can no
+     * longer create a bite into the original region.
      */
     private static boolean hasConnectedBiomePath(
             ServerLevelAccessor level, int x, int z, double[] direction,
@@ -96,32 +102,76 @@ public final class BoundedBiomeBorderAttractor {
         var biomeSource = generator.getBiomeSource();
         var climateSampler = chunkSource.randomState().sampler();
         int quartY = QuartPos.fromBlock(generator.getSeaLevel());
+        BiomeProbe probe = new BiomeProbe(
+                biomeSource, climateSampler, quartY
+        );
+
+        int neighborhoodSupport = 0;
+        for (int offsetZ = -NEIGHBOR_OFFSET;
+             offsetZ <= NEIGHBOR_OFFSET;
+             offsetZ += NEIGHBOR_OFFSET) {
+            for (int offsetX = -NEIGHBOR_OFFSET;
+                 offsetX <= NEIGHBOR_OFFSET;
+                 offsetX += NEIGHBOR_OFFSET) {
+                if (supportsCandidate(
+                        probe, x + offsetX, z + offsetZ,
+                        boundaryDistance, original, competitor
+                )) {
+                    neighborhoodSupport++;
+                }
+            }
+        }
+        if (neighborhoodSupport < MIN_NEIGHBOR_SUPPORT) {
+            return false;
+        }
+
+        double perpendicularX = -direction[1];
+        double perpendicularZ = direction[0];
 
         for (double distance = 32.0; distance < boundaryDistance; distance += 32.0) {
-            int sampleX = offset(x, direction[0], distance);
-            int sampleZ = offset(z, direction[1], distance);
-            Holder<Biome> sampleBiome = biomeSource.getNoiseBiome(
-                    QuartPos.fromBlock(sampleX), quartY,
-                    QuartPos.fromBlock(sampleZ), climateSampler
-            );
-            ResourceLocation sampleId = sampleBiome.unwrapKey()
-                    .map(key -> key.location())
-                    .orElse(null);
-            if (sampleId == null) {
-                return false;
-            }
-            if (!canAttractBoundary(sampleId)) {
-                return false;
-            }
-
-            int advantage = affinityScore(competitor, sampleId)
-                    - affinityScore(original, sampleId);
             double remainingToBoundary = boundaryDistance - distance;
-            if (attractionReach(advantage) < remainingToBoundary) {
+            int corridorSupport = 0;
+
+            for (int side = -1; side <= 1; side++) {
+                int sampleX = offset(x, direction[0], distance)
+                        + (int) Math.round(
+                        perpendicularX * CORRIDOR_HALF_WIDTH * side
+                );
+                int sampleZ = offset(z, direction[1], distance)
+                        + (int) Math.round(
+                        perpendicularZ * CORRIDOR_HALF_WIDTH * side
+                );
+                if (supportsCandidate(
+                        probe, sampleX, sampleZ, remainingToBoundary,
+                        original, competitor
+                )) {
+                    corridorSupport++;
+                }
+            }
+            if (corridorSupport < MIN_CORRIDOR_SUPPORT) {
                 return false;
             }
         }
         return true;
+    }
+
+    private static boolean supportsCandidate(
+            BiomeProbe probe, int x, int z, double requiredReach,
+            Region original, Region competitor) {
+        Holder<Biome> sampleBiome = probe.biomeSource().getNoiseBiome(
+                QuartPos.fromBlock(x), probe.quartY(),
+                QuartPos.fromBlock(z), probe.climateSampler()
+        );
+        ResourceLocation sampleId = sampleBiome.unwrapKey()
+                .map(key -> key.location())
+                .orElse(null);
+        if (sampleId == null || !canAttractBoundary(sampleId)) {
+            return false;
+        }
+
+        int advantage = affinityScore(competitor, sampleId)
+                - affinityScore(original, sampleId);
+        return attractionReach(advantage) >= requiredReach;
     }
 
     /**
@@ -173,6 +223,10 @@ public final class BoundedBiomeBorderAttractor {
     private static int offset(int origin, double direction, double distance) {
         return origin + (int) Math.round(direction * distance);
     }
+
+    private record BiomeProbe(BiomeSource biomeSource,
+                              Climate.Sampler climateSampler,
+                              int quartY) {}
 
     private record Candidate(Region region, double distance, int advantage) {}
 }
