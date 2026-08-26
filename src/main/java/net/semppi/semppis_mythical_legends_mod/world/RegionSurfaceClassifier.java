@@ -22,16 +22,12 @@ public final class RegionSurfaceClassifier {
     // generator's biome source, not neighboring chunks, so exploration order
     // and which chunks happen to be loaded cannot alter a result.
     private static final int[] COAST_STEPS = {32, 64, 96, 128, 160, 192};
-    private static final int[][] COAST_DIRECTIONS = {
-            { 1,  0}, { 1,  1}, { 0,  1}, {-1,  1},
-            {-1,  0}, {-1, -1}, { 0, -1}, { 1, -1}
-    };
 
     // Vanilla shores are normally narrow, so this deliberately stays much
     // tighter than the sea-coast search. Nearest rings vote first, allowing a
     // long beach to change territory when the adjacent inland region changes.
     private static final int[] SHORE_STEPS = {16, 32, 48, 64, 80, 96};
-    private static final double[][] SHORE_DIRECTIONS = {
+    private static final double[][] INHERITANCE_DIRECTIONS = {
             { 1.0,  0.0}, { 0.70710678118,  0.70710678118},
             { 0.0,  1.0}, {-0.70710678118,  0.70710678118},
             {-1.0,  0.0}, {-0.70710678118, -0.70710678118},
@@ -51,6 +47,12 @@ public final class RegionSurfaceClassifier {
     public record Sample(SurfaceKind kind, Region region) {}
 
     private record CoastMatch(Region region) {}
+
+    private record InheritanceVote(int score, int support) {
+        private InheritanceVote add(int weight) {
+            return new InheritanceVote(score + weight, support + 1);
+        }
+    }
 
     public static Sample sample(ServerLevelAccessor level, int x, int z) {
         int y = level.getHeight(Heightmap.Types.WORLD_SURFACE, x, z);
@@ -142,9 +144,9 @@ public final class RegionSurfaceClassifier {
     }
 
     /**
-     * Inherits a shore from the nearest ring containing genuine inland biome
-     * samples. All candidates on that ring vote, which avoids an arbitrary
-     * scan direction deciding a beach between two neighboring territories.
+     * Inherits a shore from a bounded nearest band of genuine inland samples.
+     * A region needs support from at least two probes, so one changing ray can
+     * no longer create a thin bite or isolated shore pixel.
      */
     private static Region findShoreLand(ServerLevelAccessor level, long seed,
                                         int shoreX, int shoreZ) {
@@ -154,10 +156,12 @@ public final class RegionSurfaceClassifier {
         var climateSampler = chunkSource.randomState().sampler();
         int quartY = QuartPos.fromBlock(generator.getSeaLevel());
 
-        for (int step : SHORE_STEPS) {
-            Map<Region, Integer> votes = new LinkedHashMap<>();
+        Map<Region, InheritanceVote> votes = new LinkedHashMap<>();
+        for (int ring = 0; ring < SHORE_STEPS.length; ring++) {
+            int step = SHORE_STEPS[ring];
+            int weight = SHORE_STEPS.length - ring;
 
-            for (double[] direction : SHORE_DIRECTIONS) {
+            for (double[] direction : INHERITANCE_DIRECTIONS) {
                 int landX = offset(shoreX, direction[0], step);
                 int landZ = offset(shoreZ, direction[1], step);
                 Holder<Biome> candidate = biomeSource.getNoiseBiome(
@@ -168,21 +172,13 @@ public final class RegionSurfaceClassifier {
                     continue;
                 }
 
-                Region landRegion = SAMPLER.landRegion(seed, landX, landZ);
-                landRegion = BoundedBiomeBorderAttractor.attract(
-                        level, seed, landX, landZ, candidate, landRegion
+                Region landRegion = resolveLandRegion(
+                        level, seed, landX, landZ, candidate
                 );
-                votes.merge(landRegion, 1, Integer::sum);
+                addVote(votes, landRegion, weight);
             }
 
-            Region winner = null;
-            int bestVotes = 0;
-            for (Map.Entry<Region, Integer> entry : votes.entrySet()) {
-                if (entry.getValue() > bestVotes) {
-                    winner = entry.getKey();
-                    bestVotes = entry.getValue();
-                }
-            }
+            Region winner = selectSupportedWinner(votes, 2);
             if (winner != null) {
                 return winner;
             }
@@ -197,13 +193,17 @@ public final class RegionSurfaceClassifier {
         var climateSampler = chunkSource.randomState().sampler();
         int quartY = QuartPos.fromBlock(generator.getSeaLevel());
 
-        // Rings are examined nearest first. A coastal tag therefore comes from
-        // the nearest sampled land, preventing one continent from projecting a
-        // coast across another continent's shore.
-        for (int step : COAST_STEPS) {
-            for (int[] direction : COAST_DIRECTIONS) {
-                int landX = waterX + direction[0] * step;
-                int landZ = waterZ + direction[1] * step;
+        // Nearer rings carry more voting weight, while two agreeing probes are
+        // required. This keeps a coast attached to nearby land without the old
+        // first-hit ray producing stripes, freckles or one-pixel islands.
+        Map<Region, InheritanceVote> votes = new LinkedHashMap<>();
+        for (int ring = 0; ring < COAST_STEPS.length; ring++) {
+            int step = COAST_STEPS[ring];
+            int weight = COAST_STEPS.length - ring;
+
+            for (double[] direction : INHERITANCE_DIRECTIONS) {
+                int landX = offset(waterX, direction[0], step);
+                int landZ = offset(waterZ, direction[1], step);
                 Holder<Biome> candidate = biomeSource.getNoiseBiome(
                         QuartPos.fromBlock(landX),
                         quartY,
@@ -215,16 +215,64 @@ public final class RegionSurfaceClassifier {
                     continue;
                 }
 
-                Region landRegion = SAMPLER.landRegion(seed, landX, landZ);
-                int reach = coastReach(seed, landX, landZ);
+                Region landRegion = resolveLandRegion(
+                        level, seed, landX, landZ, candidate
+                );
+                int reach = coastReach(seed, landRegion);
                 long dx = (long) landX - waterX;
                 long dz = (long) landZ - waterZ;
                 if (dx * dx + dz * dz <= (long) reach * reach) {
-                    return new CoastMatch(landRegion);
+                    addVote(votes, landRegion, weight);
                 }
+            }
+
+            Region winner = selectSupportedWinner(votes, 2);
+            if (winner != null) {
+                return new CoastMatch(winner);
             }
         }
         return null;
+    }
+
+    private static Region resolveLandRegion(
+            ServerLevelAccessor level, long seed, int x, int z,
+            Holder<Biome> biome) {
+        Region region = SAMPLER.landRegion(seed, x, z);
+        return BoundedBiomeBorderAttractor.attract(
+                level, seed, x, z, biome, region
+        );
+    }
+
+    private static void addVote(
+            Map<Region, InheritanceVote> votes, Region region, int weight) {
+        votes.compute(
+                region,
+                (ignored, vote) -> vote == null
+                        ? new InheritanceVote(weight, 1)
+                        : vote.add(weight)
+        );
+    }
+
+    /** Stable insertion order resolves an exact score/support tie. */
+    private static Region selectSupportedWinner(
+            Map<Region, InheritanceVote> votes, int minimumSupport) {
+        Region winner = null;
+        InheritanceVote best = null;
+
+        for (Map.Entry<Region, InheritanceVote> entry : votes.entrySet()) {
+            InheritanceVote vote = entry.getValue();
+            if (vote.support() < minimumSupport) {
+                continue;
+            }
+            if (best == null
+                    || vote.score() > best.score()
+                    || (vote.score() == best.score()
+                    && vote.support() > best.support())) {
+                winner = entry.getKey();
+                best = vote;
+            }
+        }
+        return winner;
     }
 
     private static boolean isLandCandidate(Holder<Biome> biome) {
@@ -239,14 +287,14 @@ public final class RegionSurfaceClassifier {
     }
 
     /**
-     * Stable small/medium/large coast widths. The 256-block anchor prevents
-     * noisy per-block width changes while still allowing different shores to
-     * have different buffers. Maximum reach stays below 200 blocks.
+     * Stable small/medium/large coast widths for each regional identity. A
+     * nearby probe can no longer change width merely by crossing an unrelated
+     * 256-block hash cell. Maximum reach stays below 200 blocks.
      */
-    private static int coastReach(long seed, int landX, int landZ) {
+    private static int coastReach(long seed, Region region) {
         long hash = seed
-                ^ ((long) (landX >> 8) * 0x9E3779B97F4A7C15L)
-                ^ ((long) (landZ >> 8) * 0xC2B2AE3D27D4EB4FL);
+                ^ ((long) region.continent().ordinal() * 0x9E3779B97F4A7C15L)
+                ^ ((long) region.dir().ordinal() * 0xC2B2AE3D27D4EB4FL);
         hash = mix64(hash);
         return switch ((int) Math.floorMod(hash, 3L)) {
             case 0 -> 96;
