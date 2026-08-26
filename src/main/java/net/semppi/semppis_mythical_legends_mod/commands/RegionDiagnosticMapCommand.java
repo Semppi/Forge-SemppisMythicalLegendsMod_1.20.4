@@ -218,6 +218,7 @@ public final class RegionDiagnosticMapCommand {
 
         return switch (sample.kind()) {
             case RIVER -> mix(color, 0x246FD1, 0.42);
+            case SHORE -> mix(color, 0xE8D49A, 0.32);
             case COAST -> mix(color, 0x55D4D0, 0.32);
             default -> color;
         };
@@ -255,7 +256,7 @@ public final class RegionDiagnosticMapCommand {
                 .append("Sample step: ").append(step).append(" blocks per pixel\n")
                 .append("Image: ").append(size).append("x").append(size).append(" pixels\n")
                 .append("North is up; the red cross is the command position.\n")
-                .append("Rivers are tinted blue and coasts cyan.\n\n");
+                .append("Rivers are tinted blue, shores sand, and coasts cyan.\n\n");
 
         for (Continent continent : Continent.values()) {
             if (continent == Continent.ANTARCTICA) {

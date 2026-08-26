@@ -8,6 +8,9 @@ import net.minecraft.world.level.ServerLevelAccessor;
 import net.minecraft.world.level.biome.Biome;
 import net.minecraft.world.level.levelgen.Heightmap;
 
+import java.util.LinkedHashMap;
+import java.util.Map;
+
 /**
  * Classifies the Overworld surface before choosing a continental or ocean
  * label. Player height and underground cave biomes never affect the result.
@@ -24,11 +27,23 @@ public final class RegionSurfaceClassifier {
             {-1,  0}, {-1, -1}, { 0, -1}, { 1, -1}
     };
 
+    // Vanilla shores are normally narrow, so this deliberately stays much
+    // tighter than the sea-coast search. Nearest rings vote first, allowing a
+    // long beach to change territory when the adjacent inland region changes.
+    private static final int[] SHORE_STEPS = {16, 32, 48, 64, 80, 96};
+    private static final double[][] SHORE_DIRECTIONS = {
+            { 1.0,  0.0}, { 0.70710678118,  0.70710678118},
+            { 0.0,  1.0}, {-0.70710678118,  0.70710678118},
+            {-1.0,  0.0}, {-0.70710678118, -0.70710678118},
+            { 0.0, -1.0}, { 0.70710678118, -0.70710678118}
+    };
+
     private RegionSurfaceClassifier() {}
 
     public enum SurfaceKind {
         LAND,
         RIVER,
+        SHORE,
         COAST,
         OCEAN
     }
@@ -84,6 +99,20 @@ public final class RegionSurfaceClassifier {
             return new Sample(SurfaceKind.OCEAN, SAMPLER.seaRegion(seed, x, z));
         }
 
+        if (kind == SurfaceKind.SHORE) {
+            Region inherited = findShoreLand(level, seed, x, z);
+            if (inherited != null) {
+                return new Sample(SurfaceKind.SHORE, inherited);
+            }
+
+            // Defensive fallback for unusually wide modded beaches. It keeps
+            // every coordinate deterministic without letting the shore itself
+            // pull a continental boundary.
+            return new Sample(
+                    SurfaceKind.SHORE, SAMPLER.landRegion(seed, x, z)
+            );
+        }
+
         // Rivers use the unmodified local land overlay under their own
         // coordinates. A surface land biome may nudge a nearby existing
         // boundary, but it can never select a region from scratch.
@@ -100,13 +129,65 @@ public final class RegionSurfaceClassifier {
         if (biome.is(BiomeTags.IS_RIVER)) {
             return SurfaceKind.RIVER;
         }
+        if (biome.is(BiomeTags.IS_BEACH)) {
+            return SurfaceKind.SHORE;
+        }
         if (biome.is(BiomeTags.IS_OCEAN) || biome.is(BiomeTags.IS_DEEP_OCEAN)) {
             return SurfaceKind.OCEAN;
         }
 
-        // Beaches, snowy beaches, stony shores, mushroom islands and unknown
-        // modded biomes remain land unless their biome tags say otherwise.
+        // Mushroom islands and unknown modded biomes remain land unless their
+        // biome tags say otherwise.
         return SurfaceKind.LAND;
+    }
+
+    /**
+     * Inherits a shore from the nearest ring containing genuine inland biome
+     * samples. All candidates on that ring vote, which avoids an arbitrary
+     * scan direction deciding a beach between two neighboring territories.
+     */
+    private static Region findShoreLand(ServerLevelAccessor level, long seed,
+                                        int shoreX, int shoreZ) {
+        var chunkSource = level.getLevel().getChunkSource();
+        var generator = chunkSource.getGenerator();
+        var biomeSource = generator.getBiomeSource();
+        var climateSampler = chunkSource.randomState().sampler();
+        int quartY = QuartPos.fromBlock(generator.getSeaLevel());
+
+        for (int step : SHORE_STEPS) {
+            Map<Region, Integer> votes = new LinkedHashMap<>();
+
+            for (double[] direction : SHORE_DIRECTIONS) {
+                int landX = offset(shoreX, direction[0], step);
+                int landZ = offset(shoreZ, direction[1], step);
+                Holder<Biome> candidate = biomeSource.getNoiseBiome(
+                        QuartPos.fromBlock(landX), quartY,
+                        QuartPos.fromBlock(landZ), climateSampler
+                );
+                if (!isLandCandidate(candidate)) {
+                    continue;
+                }
+
+                Region landRegion = SAMPLER.landRegion(seed, landX, landZ);
+                landRegion = BoundedBiomeBorderAttractor.attract(
+                        level, seed, landX, landZ, candidate, landRegion
+                );
+                votes.merge(landRegion, 1, Integer::sum);
+            }
+
+            Region winner = null;
+            int bestVotes = 0;
+            for (Map.Entry<Region, Integer> entry : votes.entrySet()) {
+                if (entry.getValue() > bestVotes) {
+                    winner = entry.getKey();
+                    bestVotes = entry.getValue();
+                }
+            }
+            if (winner != null) {
+                return winner;
+            }
+        }
+        return null;
     }
 
     private static CoastMatch findCoast(ServerLevelAccessor level, long seed, int waterX, int waterZ) {
@@ -148,8 +229,13 @@ public final class RegionSurfaceClassifier {
 
     private static boolean isLandCandidate(Holder<Biome> biome) {
         return !biome.is(BiomeTags.IS_RIVER)
+                && !biome.is(BiomeTags.IS_BEACH)
                 && !biome.is(BiomeTags.IS_OCEAN)
                 && !biome.is(BiomeTags.IS_DEEP_OCEAN);
+    }
+
+    private static int offset(int origin, double direction, int distance) {
+        return origin + (int) Math.round(direction * distance);
     }
 
     /**
