@@ -32,6 +32,9 @@ public final class BoundedBiomeBorderAttractor {
         if (biomeId == null || original.ocean()) {
             return original;
         }
+        if (!canAttractBoundary(biomeId)) {
+            return original;
+        }
 
         int originalScore = affinityScore(original, biomeId);
         Candidate best = null;
@@ -107,6 +110,9 @@ public final class BoundedBiomeBorderAttractor {
             if (sampleId == null) {
                 return false;
             }
+            if (!canAttractBoundary(sampleId)) {
+                return false;
+            }
 
             int advantage = affinityScore(competitor, sampleId)
                     - affinityScore(original, sampleId);
@@ -116,6 +122,15 @@ public final class BoundedBiomeBorderAttractor {
             }
         }
         return true;
+    }
+
+    /**
+     * Only biomes carrying real macro-placement evidence may move a boundary.
+     * Universal biomes, water/shore/cave context, mountains, special biomes
+     * and unknown modded biomes all have zero placement weight.
+     */
+    private static boolean canAttractBoundary(ResourceLocation biomeId) {
+        return TagRules.biomeProfile(biomeId).placementWeight() > 0;
     }
 
     private static double boundaryDistance(long seed, int x, int z,
