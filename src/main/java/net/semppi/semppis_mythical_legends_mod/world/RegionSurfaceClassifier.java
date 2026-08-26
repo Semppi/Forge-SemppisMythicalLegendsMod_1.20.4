@@ -123,6 +123,9 @@ public final class RegionSurfaceClassifier {
             landRegion = BoundedBiomeBorderAttractor.attract(
                     level, seed, x, z, biome, landRegion
             );
+            landRegion = BoundedBiomeComponentResolver.resolve(
+                    level, seed, x, z, biome, landRegion
+            );
         }
         return new Sample(kind, landRegion);
     }
@@ -145,7 +148,7 @@ public final class RegionSurfaceClassifier {
 
     /**
      * Inherits a shore from a bounded nearest band of genuine inland samples.
-     * A region needs support from at least two probes, so one changing ray can
+     * A region needs support from at least three probes, so one changing ray can
      * no longer create a thin bite or isolated shore pixel.
      */
     private static Region findShoreLand(ServerLevelAccessor level, long seed,
@@ -178,12 +181,15 @@ public final class RegionSurfaceClassifier {
                 addVote(votes, landRegion, weight);
             }
 
-            Region winner = selectSupportedWinner(votes, 2);
+            Region winner = selectSupportedWinner(votes, 3);
             if (winner != null) {
                 return winner;
             }
         }
-        return null;
+        // A very small island may never expose three inland probes. Two
+        // agreeing samples are still safer than falling back to an unrelated
+        // raw boundary beneath the beach.
+        return selectSupportedWinner(votes, 2);
     }
 
     private static CoastMatch findCoast(ServerLevelAccessor level, long seed, int waterX, int waterZ) {
@@ -193,7 +199,7 @@ public final class RegionSurfaceClassifier {
         var climateSampler = chunkSource.randomState().sampler();
         int quartY = QuartPos.fromBlock(generator.getSeaLevel());
 
-        // Nearer rings carry more voting weight, while two agreeing probes are
+        // Nearer rings carry more voting weight, while three agreeing probes are
         // required. This keeps a coast attached to nearby land without the old
         // first-hit ray producing stripes, freckles or one-pixel islands.
         Map<Region, InheritanceVote> votes = new LinkedHashMap<>();
@@ -226,7 +232,7 @@ public final class RegionSurfaceClassifier {
                 }
             }
 
-            Region winner = selectSupportedWinner(votes, 2);
+            Region winner = selectSupportedWinner(votes, 3);
             if (winner != null) {
                 return new CoastMatch(winner);
             }
@@ -238,7 +244,10 @@ public final class RegionSurfaceClassifier {
             ServerLevelAccessor level, long seed, int x, int z,
             Holder<Biome> biome) {
         Region region = SAMPLER.landRegion(seed, x, z);
-        return BoundedBiomeBorderAttractor.attract(
+        region = BoundedBiomeBorderAttractor.attract(
+                level, seed, x, z, biome, region
+        );
+        return BoundedBiomeComponentResolver.resolve(
                 level, seed, x, z, biome, region
         );
     }
