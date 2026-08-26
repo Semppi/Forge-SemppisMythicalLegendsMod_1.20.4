@@ -21,7 +21,13 @@ public final class AuthoritativeRegionSampler {
     public static final int MAX_SUBREGIONS = 8;
 
     private static final double JITTER = 0.22;
-    private static final double WARP = 0.08;
+    private static final double[] WARP_WAVELENGTHS = {1.80, 0.85, 0.40};
+    private static final double[] WARP_AMPLITUDES = {0.060, 0.030, 0.012};
+    private static final double[][] WARP_ROTATIONS = {
+            {1.0, 0.0},
+            {0.81915204429, 0.57357643635},
+            {0.37460659341, -0.92718385456}
+    };
     private static final double CHILD_RING_MIN = 0.28;
     private static final double CHILD_RING_VARIATION = 0.10;
 
@@ -34,6 +40,7 @@ public final class AuthoritativeRegionSampler {
     private static final long SALT_OCEAN_PICK = 0x3D75A9C1E60B42F8L;
     private static final long SALT_WARP_X = 0x7A2C91E5D40B63F8L;
     private static final long SALT_WARP_Z = 0x16E8B34F9A70C25DL;
+    private static final long SALT_WARP_OCTAVE = 0x4F1BBCDCBFA54001L;
     private static final long SITE_KEY_SALT = 0x6A09E667F3BCC909L;
 
     private AuthoritativeRegionSampler() {}
@@ -184,18 +191,81 @@ public final class AuthoritativeRegionSampler {
         return new Site(bestKey, bestCenterX, bestCenterZ, sampleX, sampleZ);
     }
 
+    /**
+     * Applies three continuous displacement scales before any Voronoi lookup:
+     * a broad continental bend, a regional lobe and a smaller rounded edge.
+     * Each octave uses a rotated noise field so no world axis becomes the
+     * preferred border direction. Conservative amplitudes keep the mapping
+     * from folding over itself and creating geometric islands.
+     */
     private static double[] warp(long seed, double x, double z, int scale) {
-        double frequency = 1.0 / (scale * 0.72);
-        double phaseX = unit(hash(seed, scale, 0, SALT_WARP_X)) * Math.PI * 2.0;
-        double phaseZ = unit(hash(seed, 0, scale, SALT_WARP_Z)) * Math.PI * 2.0;
+        double displacementX = 0.0;
+        double displacementZ = 0.0;
 
-        double waveX = Math.sin((x + z * 0.61) * frequency + phaseX)
-                - Math.sin(phaseX);
-        double waveZ = Math.sin((z - x * 0.57) * frequency + phaseZ)
-                - Math.sin(phaseZ);
+        for (int octave = 0; octave < WARP_WAVELENGTHS.length; octave++) {
+            double rotationX = WARP_ROTATIONS[octave][0];
+            double rotationZ = WARP_ROTATIONS[octave][1];
+            double sampleX = x * rotationX - z * rotationZ;
+            double sampleZ = x * rotationZ + z * rotationX;
+            double wavelength = scale * WARP_WAVELENGTHS[octave];
+            double amplitude = scale * WARP_AMPLITUDES[octave];
+            long octaveSalt = mix64(
+                    SALT_WARP_OCTAVE
+                            + octave * 0x9E3779B97F4A7C15L
+            );
 
-        double magnitude = scale * WARP;
-        return new double[]{x + waveX * magnitude, z + waveZ * magnitude};
+            // Subtracting the origin value makes the complete warp exactly
+            // zero at 0,0 while retaining the same smooth field elsewhere.
+            double originX = smoothNoise(
+                    seed, 0.0, 0.0, wavelength,
+                    SALT_WARP_X ^ octaveSalt
+            );
+            double originZ = smoothNoise(
+                    seed, 0.0, 0.0, wavelength,
+                    SALT_WARP_Z ^ octaveSalt
+            );
+            displacementX += (
+                    smoothNoise(
+                            seed, sampleX, sampleZ, wavelength,
+                            SALT_WARP_X ^ octaveSalt
+                    ) - originX
+            ) * amplitude;
+            displacementZ += (
+                    smoothNoise(
+                            seed, sampleX, sampleZ, wavelength,
+                            SALT_WARP_Z ^ octaveSalt
+                    ) - originZ
+            ) * amplitude;
+        }
+
+        return new double[]{x + displacementX, z + displacementZ};
+    }
+
+    private static double smoothNoise(long seed, double x, double z,
+                                      double wavelength, long salt) {
+        double gridX = x / wavelength;
+        double gridZ = z / wavelength;
+        int cellX = floorToInt(gridX);
+        int cellZ = floorToInt(gridZ);
+        double blendX = fade(gridX - cellX);
+        double blendZ = fade(gridZ - cellZ);
+
+        double northWest = signedUnit(hash(seed, cellX, cellZ, salt));
+        double northEast = signedUnit(hash(seed, cellX + 1, cellZ, salt));
+        double southWest = signedUnit(hash(seed, cellX, cellZ + 1, salt));
+        double southEast = signedUnit(hash(seed, cellX + 1, cellZ + 1, salt));
+        double north = lerp(northWest, northEast, blendX);
+        double south = lerp(southWest, southEast, blendX);
+        return lerp(north, south, blendZ);
+    }
+
+    private static double fade(double value) {
+        return value * value * value
+                * (value * (value * 6.0 - 15.0) + 10.0);
+    }
+
+    private static double lerp(double first, double second, double amount) {
+        return first + (second - first) * amount;
     }
 
     private static Continent pickContinent(long value) {
