@@ -7,6 +7,7 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.level.Level;
 import net.semppi.semppis_mythical_legends_mod.spawn.RegionGate;
+import net.semppi.semppis_mythical_legends_mod.world.AuthoritativeRegionSampler;
 import net.semppi.semppis_mythical_legends_mod.world.Region;
 import net.semppi.semppis_mythical_legends_mod.world.RegionSurfaceClassifier;
 
@@ -39,9 +40,47 @@ public final class RegionDebugCommands {
                             String message = "Region: " + region.display()
                                     + " | Surface: " + sample.kind()
                                     + " | X/Z: " + pos.getX() + "/" + pos.getZ();
-                            source.sendSuccess(() -> Component.literal(message), false);
+                            if (sample.kind()
+                                    == RegionSurfaceClassifier.SurfaceKind.LAND
+                                    || sample.kind()
+                                    == RegionSurfaceClassifier.SurfaceKind.RIVER) {
+                                AuthoritativeRegionSampler.ChildAdjacency adjacency =
+                                        AuthoritativeRegionSampler.childAdjacency(
+                                                source.getLevel().getSeed(),
+                                                pos.getX(), pos.getZ()
+                                );
+                                message += adjacencyText(adjacency);
+                            }
+                            String finalMessage = message;
+                            source.sendSuccess(
+                                    () -> Component.literal(finalMessage), false
+                            );
                             return 1;
                         })
         );
+    }
+
+    private static String adjacencyText(
+            AuthoritativeRegionSampler.ChildAdjacency adjacency) {
+        StringBuilder text = new StringBuilder()
+                .append(" | Geometry cluster: ")
+                .append(Long.toUnsignedString(adjacency.parentKey(), 16))
+                .append(" | Child: ")
+                .append(adjacency.childIndex() + 1)
+                .append('/')
+                .append(adjacency.childCount())
+                .append(" | Adjacent: ");
+
+        for (int index = 0; index < adjacency.neighbors().size(); index++) {
+            AuthoritativeRegionSampler.ChildNeighbor neighbor =
+                    adjacency.neighbors().get(index);
+            if (index > 0) {
+                text.append(", ");
+            }
+            text.append(neighbor.childIndex() + 1)
+                    .append(':')
+                    .append(neighbor.direction());
+        }
+        return text.toString();
     }
 }

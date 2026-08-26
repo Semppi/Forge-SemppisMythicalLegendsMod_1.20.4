@@ -1,5 +1,8 @@
 package net.semppi.semppis_mythical_legends_mod.world;
 
+import java.util.ArrayList;
+import java.util.List;
+
 /**
  * The single seed-and-coordinate authority for the continental overlay.
  *
@@ -53,12 +56,66 @@ public final class AuthoritativeRegionSampler {
         Continent continent = pickContinent(
                 mix64(continentSite.key() ^ SALT_CONTINENT_PICK)
         );
+        int childCount = childCount(continentSite);
+        int childIndex = nearestChildIndex(
+                worldSeed, continentSite, childCount
+        );
 
         SubDir direction = continent == Continent.ANTARCTICA
                 ? SubDir.CENTRAL
-                : directionForChild(continentSite, nearestChildIndex(worldSeed, continentSite));
+                : directionForChild(continentSite, childIndex);
 
         return Region.land(continent, direction);
+    }
+
+    /**
+     * Exposes the logical topology of the selected child without adding work
+     * to ordinary {@link #landRegion(long, int, int)} lookups. Child zero is
+     * the cluster centre; ring children connect to it and to their previous
+     * and next ring neighbors. The graph is always connected and remains
+     * entirely inside one parent continent.
+     */
+    public static ChildAdjacency childAdjacency(long worldSeed, int x, int z) {
+        Site parent = nearestSite(
+                worldSeed, x, z, CONTINENT_SCALE,
+                SALT_CONTINENT_SITE, true
+        );
+        Continent continent = pickContinent(
+                mix64(parent.key() ^ SALT_CONTINENT_PICK)
+        );
+        int count = childCount(parent);
+        int selected = nearestChildIndex(worldSeed, parent, count);
+        SubDir selectedDirection = directionFor(
+                continent, parent, selected
+        );
+        List<ChildNeighbor> neighbors = new ArrayList<>();
+
+        if (selected == 0) {
+            for (int child = 1; child < count; child++) {
+                neighbors.add(new ChildNeighbor(
+                        child, directionFor(continent, parent, child)
+                ));
+            }
+        } else {
+            neighbors.add(new ChildNeighbor(
+                    0, directionFor(continent, parent, 0)
+            ));
+            int previous = selected == 1 ? count - 1 : selected - 1;
+            int next = selected == count - 1 ? 1 : selected + 1;
+            neighbors.add(new ChildNeighbor(
+                    previous, directionFor(continent, parent, previous)
+            ));
+            if (next != previous) {
+                neighbors.add(new ChildNeighbor(
+                        next, directionFor(continent, parent, next)
+                ));
+            }
+        }
+
+        return new ChildAdjacency(
+                parent.key(), selected, count,
+                Region.land(continent, selectedDirection), neighbors
+        );
     }
 
     public static Region seaRegion(long worldSeed, int x, int z) {
@@ -70,16 +127,15 @@ public final class AuthoritativeRegionSampler {
         return Region.sea(ocean);
     }
 
-    /**
-     * Selects one of the owning continent's explicit child sites. Each
-     * continent creates exactly three to eight children; there is no global
-     * direction grid and children can never belong to a neighboring parent.
-     */
-    private static int nearestChildIndex(long seed, Site parent) {
-        int count = MIN_SUBREGIONS + (int) Math.floorMod(
+    /** Every owning continent creates exactly three to eight child sites. */
+    private static int childCount(Site parent) {
+        return MIN_SUBREGIONS + (int) Math.floorMod(
                 mix64(parent.key() ^ SALT_SUBREGION_COUNT),
                 MAX_SUBREGIONS - MIN_SUBREGIONS + 1
         );
+    }
+
+    private static int nearestChildIndex(long seed, Site parent, int count) {
 
         long originParentKey = hash(
                 seed, 0, 0, SALT_CONTINENT_SITE ^ SITE_KEY_SALT
@@ -141,6 +197,13 @@ public final class AuthoritativeRegionSampler {
                 SALT_SUBREGION_PICK
         );
         return pickDirection(value);
+    }
+
+    private static SubDir directionFor(Continent continent, Site parent,
+                                       int childIndex) {
+        return continent == Continent.ANTARCTICA
+                ? SubDir.CENTRAL
+                : directionForChild(parent, childIndex);
     }
 
     /**
@@ -314,4 +377,14 @@ public final class AuthoritativeRegionSampler {
 
     private record Site(long key, double centerX, double centerZ,
                         double sampleX, double sampleZ) {}
+
+    public record ChildNeighbor(int childIndex, SubDir direction) {}
+
+    public record ChildAdjacency(long parentKey, int childIndex,
+                                 int childCount, Region region,
+                                 List<ChildNeighbor> neighbors) {
+        public ChildAdjacency {
+            neighbors = List.copyOf(neighbors);
+        }
+    }
 }
