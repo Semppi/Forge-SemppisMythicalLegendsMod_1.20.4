@@ -31,6 +31,128 @@ public final class TagRules {
         }
     }
 
+    /**
+     * How strongly a biome should influence macro-region placement. The
+     * numeric value deliberately matches the design scale: 3 is portable and
+     * 0 is an unmistakable climate extreme.
+     */
+    public enum Portability {
+        EXTREME(0),
+        SPECIALIZED(1),
+        REGIONAL(2),
+        UNIVERSAL(3),
+        NOT_APPLICABLE(-1);
+
+        private final int value;
+
+        Portability(int value) {
+            this.value = value;
+        }
+
+        public int value() {
+            return value;
+        }
+    }
+
+    public enum TemperatureBand {
+        FROZEN(-3),
+        COLD(-2),
+        COOL(-1),
+        TEMPERATE(0),
+        WARM(1),
+        HOT(2),
+        NEUTRAL(0);
+
+        private final int value;
+
+        TemperatureBand(int value) {
+            this.value = value;
+        }
+
+        public int value() {
+            return value;
+        }
+    }
+
+    public enum MoistureBand {
+        ARID(-2),
+        DRY(-1),
+        BALANCED(0),
+        WET(1),
+        HUMID(2),
+        NEUTRAL(0);
+
+        private final int value;
+
+        MoistureBand(int value) {
+            this.value = value;
+        }
+
+        public int value() {
+            return value;
+        }
+    }
+
+    /**
+     * Context roles prevent water, caves and rare special biomes from voting
+     * as if they were ordinary continental lowlands. Mountains retain climate
+     * data but are explicitly available for the worldwide mountain exception.
+     */
+    public enum BiomeRole {
+        FOREST,
+        OPEN_LOWLAND,
+        BARREN_LOWLAND,
+        WETLAND,
+        MOUNTAIN,
+        RIVER_CONTEXT,
+        SHORE_CONTEXT,
+        OCEAN_CONTEXT,
+        CAVE_CONTEXT,
+        SPECIAL_NEUTRAL,
+        UNKNOWN
+    }
+
+    public record BiomeClimateProfile(
+            Portability portability,
+            TemperatureBand temperature,
+            MoistureBand moisture,
+            BiomeRole role
+    ) {
+        public boolean isPlacementContext() {
+            return role == BiomeRole.RIVER_CONTEXT
+                    || role == BiomeRole.SHORE_CONTEXT
+                    || role == BiomeRole.OCEAN_CONTEXT
+                    || role == BiomeRole.CAVE_CONTEXT
+                    || role == BiomeRole.SPECIAL_NEUTRAL
+                    || role == BiomeRole.UNKNOWN;
+        }
+
+        public boolean isMountain() {
+            return role == BiomeRole.MOUNTAIN;
+        }
+
+        /**
+         * Weight for a future area survey. Universal and contextual biomes do
+         * not steer placement; small extreme patches remain small because the
+         * survey accumulates this weight by sampled area rather than presence.
+         */
+        public int placementWeight() {
+            if (isPlacementContext() || isMountain()) return 0;
+            return switch (portability) {
+                case EXTREME -> 4;
+                case SPECIALIZED -> 2;
+                case REGIONAL -> 1;
+                case UNIVERSAL, NOT_APPLICABLE -> 0;
+            };
+        }
+
+        public boolean isLowlandExtreme() {
+            return portability == Portability.EXTREME
+                    && !isPlacementContext()
+                    && !isMountain();
+        }
+    }
+
     private enum ClimateFamily {
         POLAR,
         BOREAL,
@@ -57,8 +179,20 @@ public final class TagRules {
             new EnumMap<>(Continent.class);
     private static final Map<Ocean, Map<ResourceLocation, Affinity>> OCEAN_OVERRIDES =
             new EnumMap<>(Ocean.class);
+    private static final Map<ResourceLocation, BiomeClimateProfile> BIOME_PROFILES =
+            new HashMap<>();
+
+    private static final BiomeClimateProfile UNKNOWN_PROFILE =
+            new BiomeClimateProfile(
+                    Portability.NOT_APPLICABLE,
+                    TemperatureBand.NEUTRAL,
+                    MoistureBand.NEUTRAL,
+                    BiomeRole.UNKNOWN
+            );
 
     static {
+        registerBiomeProfiles();
+
         // --- the big tables (same as you pasted) ---
         // N_AMERICA
         add(Continent.N_AMERICA, SubDir.CENTRAL,
@@ -479,6 +613,121 @@ public final class TagRules {
         registerAffinityOverrides();
     }
 
+    private static void registerBiomeProfiles() {
+        // Broadly portable lowlands.
+        profile(Portability.UNIVERSAL, TemperatureBand.TEMPERATE,
+                MoistureBand.BALANCED, BiomeRole.FOREST,
+                "minecraft:forest", "minecraft:flower_forest",
+                "minecraft:dark_forest");
+        profile(Portability.UNIVERSAL, TemperatureBand.TEMPERATE,
+                MoistureBand.BALANCED, BiomeRole.OPEN_LOWLAND,
+                "minecraft:plains", "minecraft:sunflower_plains");
+        profile(Portability.UNIVERSAL, TemperatureBand.TEMPERATE,
+                MoistureBand.WET, BiomeRole.WETLAND,
+                "minecraft:swamp");
+
+        // Regionally characteristic vegetation.
+        profile(Portability.REGIONAL, TemperatureBand.COOL,
+                MoistureBand.BALANCED, BiomeRole.FOREST,
+                "minecraft:taiga", "minecraft:old_growth_pine_taiga");
+        profile(Portability.REGIONAL, TemperatureBand.COOL,
+                MoistureBand.WET, BiomeRole.FOREST,
+                "minecraft:old_growth_spruce_taiga");
+        profile(Portability.REGIONAL, TemperatureBand.TEMPERATE,
+                MoistureBand.BALANCED, BiomeRole.FOREST,
+                "minecraft:birch_forest", "minecraft:old_growth_birch_forest");
+
+        // Lowland extremes. These are the strongest future macro-placement
+        // evidence and must not be confused with worldwide cold mountains.
+        profile(Portability.EXTREME, TemperatureBand.COLD,
+                MoistureBand.BALANCED, BiomeRole.FOREST,
+                "minecraft:snowy_taiga");
+        profile(Portability.EXTREME, TemperatureBand.FROZEN,
+                MoistureBand.DRY, BiomeRole.BARREN_LOWLAND,
+                "minecraft:snowy_plains", "minecraft:ice_spikes");
+        profile(Portability.EXTREME, TemperatureBand.HOT,
+                MoistureBand.HUMID, BiomeRole.FOREST,
+                "minecraft:jungle", "minecraft:bamboo_jungle");
+        profile(Portability.EXTREME, TemperatureBand.HOT,
+                MoistureBand.WET, BiomeRole.FOREST,
+                "minecraft:sparse_jungle");
+        profile(Portability.EXTREME, TemperatureBand.HOT,
+                MoistureBand.ARID, BiomeRole.BARREN_LOWLAND,
+                "minecraft:desert", "minecraft:badlands",
+                "minecraft:wooded_badlands", "minecraft:eroded_badlands");
+        profile(Portability.EXTREME, TemperatureBand.HOT,
+                MoistureBand.DRY, BiomeRole.OPEN_LOWLAND,
+                "minecraft:savanna", "minecraft:savanna_plateau",
+                "minecraft:windswept_savanna");
+        profile(Portability.SPECIALIZED, TemperatureBand.HOT,
+                MoistureBand.HUMID, BiomeRole.WETLAND,
+                "minecraft:mangrove_swamp");
+
+        // Mountain climates are recorded but exempt from lowland vetoes.
+        profile(Portability.UNIVERSAL, TemperatureBand.COLD,
+                MoistureBand.BALANCED, BiomeRole.MOUNTAIN,
+                "minecraft:jagged_peaks");
+        profile(Portability.REGIONAL, TemperatureBand.FROZEN,
+                MoistureBand.DRY, BiomeRole.MOUNTAIN,
+                "minecraft:frozen_peaks");
+        profile(Portability.UNIVERSAL, TemperatureBand.TEMPERATE,
+                MoistureBand.DRY, BiomeRole.MOUNTAIN,
+                "minecraft:stony_peaks");
+        profile(Portability.UNIVERSAL, TemperatureBand.TEMPERATE,
+                MoistureBand.BALANCED, BiomeRole.MOUNTAIN,
+                "minecraft:meadow", "minecraft:windswept_hills",
+                "minecraft:windswept_gravelly_hills",
+                "minecraft:windswept_forest");
+        profile(Portability.REGIONAL, TemperatureBand.TEMPERATE,
+                MoistureBand.BALANCED, BiomeRole.MOUNTAIN,
+                "minecraft:cherry_grove");
+        profile(Portability.EXTREME, TemperatureBand.COLD,
+                MoistureBand.BALANCED, BiomeRole.MOUNTAIN,
+                "minecraft:grove");
+        profile(Portability.REGIONAL, TemperatureBand.COLD,
+                MoistureBand.BALANCED, BiomeRole.MOUNTAIN,
+                "minecraft:snowy_slopes");
+
+        // Rivers and shores inherit their surrounding territory. Their
+        // temperature remains useful for diagnostics but they do not vote.
+        profile(Portability.UNIVERSAL, TemperatureBand.NEUTRAL,
+                MoistureBand.NEUTRAL, BiomeRole.RIVER_CONTEXT,
+                "minecraft:river");
+        profile(Portability.EXTREME, TemperatureBand.FROZEN,
+                MoistureBand.NEUTRAL, BiomeRole.RIVER_CONTEXT,
+                "minecraft:frozen_river");
+        profile(Portability.UNIVERSAL, TemperatureBand.NEUTRAL,
+                MoistureBand.NEUTRAL, BiomeRole.SHORE_CONTEXT,
+                "minecraft:beach", "minecraft:stony_shore");
+        profile(Portability.EXTREME, TemperatureBand.FROZEN,
+                MoistureBand.NEUTRAL, BiomeRole.SHORE_CONTEXT,
+                "minecraft:snowy_beach");
+
+        // Oceans are classified for the sea layer and never vote as land.
+        profile(Portability.UNIVERSAL, TemperatureBand.TEMPERATE,
+                MoistureBand.NEUTRAL, BiomeRole.OCEAN_CONTEXT,
+                "minecraft:ocean", "minecraft:deep_ocean",
+                "minecraft:lukewarm_ocean", "minecraft:deep_lukewarm_ocean");
+        profile(Portability.REGIONAL, TemperatureBand.WARM,
+                MoistureBand.NEUTRAL, BiomeRole.OCEAN_CONTEXT,
+                "minecraft:warm_ocean");
+        profile(Portability.REGIONAL, TemperatureBand.COLD,
+                MoistureBand.NEUTRAL, BiomeRole.OCEAN_CONTEXT,
+                "minecraft:cold_ocean", "minecraft:deep_cold_ocean");
+        profile(Portability.EXTREME, TemperatureBand.FROZEN,
+                MoistureBand.NEUTRAL, BiomeRole.OCEAN_CONTEXT,
+                "minecraft:frozen_ocean", "minecraft:deep_frozen_ocean");
+
+        // These biomes must never determine surface continent placement.
+        profile(Portability.NOT_APPLICABLE, TemperatureBand.NEUTRAL,
+                MoistureBand.NEUTRAL, BiomeRole.CAVE_CONTEXT,
+                "minecraft:deep_dark", "minecraft:dripstone_caves",
+                "minecraft:lush_caves");
+        profile(Portability.NOT_APPLICABLE, TemperatureBand.NEUTRAL,
+                MoistureBand.NEUTRAL, BiomeRole.SPECIAL_NEUTRAL,
+                "minecraft:mushroom_fields");
+    }
+
     private static void registerAffinityOverrides() {
         // Regional maps remain the source of every excellent match. Overrides
         // are reserved for exceptional clarifications that broad climate alone
@@ -494,6 +743,19 @@ public final class TagRules {
     }
 
     // ---- helpers for building ----
+    private static void profile(Portability portability,
+                                TemperatureBand temperature,
+                                MoistureBand moisture,
+                                BiomeRole role,
+                                String... ids) {
+        BiomeClimateProfile profile = new BiomeClimateProfile(
+                portability, temperature, moisture, role
+        );
+        for (String id : ids) {
+            BIOME_PROFILES.put(new ResourceLocation(id), profile);
+        }
+    }
+
     private static void add(Continent c, SubDir d, String... ids) {
         Map<SubDir, Set<ResourceLocation>> perDir = BY_DIR.computeIfAbsent(c, k -> new EnumMap<>(SubDir.class));
         Set<ResourceLocation> set = perDir.computeIfAbsent(d, k -> new HashSet<>());
@@ -527,29 +789,16 @@ public final class TagRules {
     }
 
     private static boolean isSurfaceIndependent(ResourceLocation biomeId) {
-        if (!"minecraft".equals(biomeId.getNamespace())) return true;
-
-        String path = biomeId.getPath();
-        return path.equals("deep_dark")
-                || path.equals("dripstone_caves")
-                || path.equals("lush_caves")
-                || path.equals("river")
-                || path.equals("frozen_river")
-                || path.equals("beach")
-                || path.equals("snowy_beach")
-                || path.equals("stony_shore")
-                || path.equals("ocean")
-                || path.equals("deep_ocean")
-                || path.equals("warm_ocean")
-                || path.equals("lukewarm_ocean")
-                || path.equals("deep_lukewarm_ocean")
-                || path.equals("cold_ocean")
-                || path.equals("deep_cold_ocean")
-                || path.equals("frozen_ocean")
-                || path.equals("deep_frozen_ocean");
+        return biomeProfile(biomeId).isPlacementContext();
     }
 
-    // ---- weighted API used by the current and future samplers ----
+    // ---- descriptive climate API for macro surveys ----
+
+    public static BiomeClimateProfile biomeProfile(ResourceLocation biomeId) {
+        return BIOME_PROFILES.getOrDefault(biomeId, UNKNOWN_PROFILE);
+    }
+
+    // ---- compatibility score used by the current boundary layer ----
 
     public static Affinity directionAffinity(Continent continent, SubDir direction,
                                              ResourceLocation biomeId) {
@@ -602,29 +851,34 @@ public final class TagRules {
     }
 
     private static ClimateFamily climateFamily(ResourceLocation biomeId) {
-        if (!"minecraft".equals(biomeId.getNamespace())) return ClimateFamily.UNKNOWN;
-
-        return switch (biomeId.getPath()) {
-            case "snowy_plains", "ice_spikes" -> ClimateFamily.POLAR;
-            case "taiga", "snowy_taiga", "old_growth_pine_taiga",
-                    "old_growth_spruce_taiga" -> ClimateFamily.BOREAL;
-            case "plains", "sunflower_plains", "forest", "flower_forest",
-                    "birch_forest", "old_growth_birch_forest", "dark_forest",
-                    "meadow", "cherry_grove" -> ClimateFamily.TEMPERATE;
-            case "desert", "badlands", "wooded_badlands",
-                    "eroded_badlands" -> ClimateFamily.ARID;
-            case "savanna", "savanna_plateau",
-                    "windswept_savanna" -> ClimateFamily.SAVANNA;
-            case "jungle", "sparse_jungle",
-                    "bamboo_jungle" -> ClimateFamily.TROPICAL;
-            case "swamp", "mangrove_swamp" -> ClimateFamily.WETLAND;
-            case "frozen_peaks", "jagged_peaks", "snowy_slopes",
-                    "grove" -> ClimateFamily.COLD_MOUNTAIN;
-            case "stony_peaks", "windswept_hills", "windswept_gravelly_hills",
-                    "windswept_forest" -> ClimateFamily.TEMPERATE_MOUNTAIN;
-            case "mushroom_fields" -> ClimateFamily.SPECIAL;
-            default -> ClimateFamily.UNKNOWN;
-        };
+        BiomeClimateProfile profile = biomeProfile(biomeId);
+        if (profile.role() == BiomeRole.UNKNOWN) return ClimateFamily.UNKNOWN;
+        if (profile.isPlacementContext()
+                || profile.role() == BiomeRole.SPECIAL_NEUTRAL) {
+            return ClimateFamily.SPECIAL;
+        }
+        if (profile.isMountain()) {
+            return profile.temperature().value() <= TemperatureBand.COLD.value()
+                    ? ClimateFamily.COLD_MOUNTAIN
+                    : ClimateFamily.TEMPERATE_MOUNTAIN;
+        }
+        if (profile.role() == BiomeRole.WETLAND) return ClimateFamily.WETLAND;
+        if (profile.temperature() == TemperatureBand.FROZEN) {
+            return ClimateFamily.POLAR;
+        }
+        if (profile.temperature() == TemperatureBand.COLD
+                || profile.temperature() == TemperatureBand.COOL) {
+            return ClimateFamily.BOREAL;
+        }
+        if (profile.temperature() == TemperatureBand.HOT) {
+            return switch (profile.moisture()) {
+                case ARID -> ClimateFamily.ARID;
+                case DRY -> ClimateFamily.SAVANNA;
+                case WET, HUMID -> ClimateFamily.TROPICAL;
+                default -> ClimateFamily.TEMPERATE;
+            };
+        }
+        return ClimateFamily.TEMPERATE;
     }
 
     private static Affinity regionalClimateAffinity(Continent continent, SubDir direction,
