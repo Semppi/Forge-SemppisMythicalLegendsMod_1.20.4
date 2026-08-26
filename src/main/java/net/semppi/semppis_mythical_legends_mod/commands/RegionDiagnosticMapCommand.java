@@ -33,7 +33,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 public final class RegionDiagnosticMapCommand {
     private static final int DEFAULT_RADIUS = 4_096;
     private static final int DEFAULT_STEP = 64;
-    private static final int MINI_RADIUS = 256;
+    private static final int MINI_RADIUS = 64;
     private static final int MINI_STEP = 1;
     private static final int MAX_PIXELS_PER_SIDE = 513;
     private static final AtomicBoolean RUNNING = new AtomicBoolean(false);
