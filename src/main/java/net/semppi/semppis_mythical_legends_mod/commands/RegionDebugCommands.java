@@ -8,6 +8,7 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.world.level.Level;
 import net.semppi.semppis_mythical_legends_mod.spawn.RegionGate;
 import net.semppi.semppis_mythical_legends_mod.world.AuthoritativeRegionSampler;
+import net.semppi.semppis_mythical_legends_mod.world.MacroClimateSurvey;
 import net.semppi.semppis_mythical_legends_mod.world.Region;
 import net.semppi.semppis_mythical_legends_mod.world.RegionSurfaceClassifier;
 
@@ -58,6 +59,63 @@ public final class RegionDebugCommands {
                             return 1;
                         })
         );
+
+        dispatcher.register(
+                Commands.literal("smlclimatesurvey")
+                        .requires(source -> source.hasPermission(2))
+                        .executes(context -> runClimateSurvey(context.getSource()))
+        );
+    }
+
+    private static int runClimateSurvey(CommandSourceStack source) {
+        if (source.getLevel().dimension() != Level.OVERWORLD) {
+            source.sendFailure(Component.literal(
+                    "Climate survey is unavailable outside the Overworld"
+            ));
+            return 0;
+        }
+
+        BlockPos pos = BlockPos.containing(source.getPosition());
+        MacroClimateSurvey.ClusterSurvey survey = MacroClimateSurvey.survey(
+                source.getLevel(), pos.getX(), pos.getZ()
+        );
+        source.sendSuccess(() -> Component.literal(
+                "Climate cluster "
+                        + Long.toUnsignedString(survey.parentKey(), 16)
+                        + " | Center: " + survey.parentCenterX() + "/"
+                        + survey.parentCenterZ()
+                        + " | Step: " + survey.sampleStep()
+                        + " | Children sampled: " + survey.sampledChildren()
+                        + "/" + survey.children().size()
+        ), false);
+        source.sendSuccess(() -> Component.literal(
+                "Parent " + climateText(survey.parent())
+        ), false);
+
+        for (int index = 0; index < survey.children().size(); index++) {
+            int childNumber = index + 1;
+            MacroClimateSurvey.ClimateSummary child = survey.children().get(index);
+            source.sendSuccess(() -> Component.literal(
+                    "Child " + childNumber + " " + climateText(child)
+            ), false);
+        }
+        return 1;
+    }
+
+    private static String climateText(
+            MacroClimateSurvey.ClimateSummary summary) {
+        return "samples=" + summary.totalSamples()
+                + ", votes=" + summary.votingSamples()
+                + ", weight=" + summary.placementWeight()
+                + ", climate=" + summary.dominantTemperature()
+                + "/" + summary.dominantMoisture()
+                + ", terrain=" + summary.dominantRole()
+                + ", frozen-barren="
+                + Math.round(summary.frozenBarrenShare() * 100.0) + "%"
+                + ", forest/open=" + summary.forestSamples()
+                + "/" + summary.openLowlandSamples()
+                + ", context/mountain=" + summary.contextualSamples()
+                + "/" + summary.mountainSamples();
     }
 
     private static String adjacencyText(

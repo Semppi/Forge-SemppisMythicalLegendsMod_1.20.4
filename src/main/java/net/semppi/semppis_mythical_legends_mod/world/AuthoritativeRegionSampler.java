@@ -76,15 +76,13 @@ public final class AuthoritativeRegionSampler {
      * entirely inside one parent continent.
      */
     public static ChildAdjacency childAdjacency(long worldSeed, int x, int z) {
-        Site parent = nearestSite(
-                worldSeed, x, z, CONTINENT_SCALE,
-                SALT_CONTINENT_SITE, true
-        );
+        ChildGeometry geometry = childGeometry(worldSeed, x, z);
+        Site parent = geometry.parent();
         Continent continent = pickContinent(
                 mix64(parent.key() ^ SALT_CONTINENT_PICK)
         );
-        int count = childCount(parent);
-        int selected = nearestChildIndex(worldSeed, parent, count);
+        int count = geometry.childCount();
+        int selected = geometry.childIndex();
         SubDir selectedDirection = directionFor(
                 continent, parent, selected
         );
@@ -115,6 +113,22 @@ public final class AuthoritativeRegionSampler {
         return new ChildAdjacency(
                 parent.key(), selected, count,
                 Region.land(continent, selectedDirection), neighbors
+        );
+    }
+
+    /**
+     * Returns the final warped parent/child candidate geometry without reading
+     * climate or applying any biome-border adjustment. Macro surveys use this
+     * to measure the shapes that label assignment will actually receive.
+     */
+    public static GeometrySample geometrySample(long worldSeed, int x, int z) {
+        ChildGeometry geometry = childGeometry(worldSeed, x, z);
+        Site parent = geometry.parent();
+        double latticeShift = CONTINENT_SCALE * 0.5;
+        return new GeometrySample(
+                parent.key(), geometry.childIndex(), geometry.childCount(),
+                floorToInt(parent.centerX() - latticeShift),
+                floorToInt(parent.centerZ() - latticeShift)
         );
     }
 
@@ -189,6 +203,17 @@ public final class AuthoritativeRegionSampler {
         }
 
         return bestIndex;
+    }
+
+    private static ChildGeometry childGeometry(long seed, int x, int z) {
+        Site parent = nearestSite(
+                seed, x, z, CONTINENT_SCALE,
+                SALT_CONTINENT_SITE, true
+        );
+        int count = childCount(parent);
+        return new ChildGeometry(
+                parent, nearestChildIndex(seed, parent, count), count
+        );
     }
 
     private static SubDir directionForChild(Site parent, int childIndex) {
@@ -377,6 +402,13 @@ public final class AuthoritativeRegionSampler {
 
     private record Site(long key, double centerX, double centerZ,
                         double sampleX, double sampleZ) {}
+
+    private record ChildGeometry(Site parent, int childIndex,
+                                 int childCount) {}
+
+    public record GeometrySample(long parentKey, int childIndex,
+                                 int childCount, int parentCenterX,
+                                 int parentCenterZ) {}
 
     public record ChildNeighbor(int childIndex, SubDir direction) {}
 
