@@ -13,8 +13,9 @@ import java.util.Map;
 import java.util.WeakHashMap;
 
 /**
- * Assigns directions to one already-selected continent using its cached macro
- * climate survey. Geometry and continent identity remain unchanged.
+ * Selects a conservative parent-continent identity and assigns its child
+ * directions using the cached macro climate survey. Candidate geometry never
+ * changes, and Antarctica remains reserved for its dedicated strict rule.
  */
 public final class ClimateDirectionAssignment {
     private static final SubDir[] DIRECTIONS = SubDir.values();
@@ -29,7 +30,7 @@ public final class ClimateDirectionAssignment {
                 AuthoritativeRegionSampler.geometrySample(seed, x, z);
         Assignment assignment = assignment(level, geometry, x, z);
         return Region.land(
-                geometry.continent(),
+                assignment.continent(),
                 assignment.directions().get(geometry.childIndex())
         );
     }
@@ -51,7 +52,7 @@ public final class ClimateDirectionAssignment {
         return new AuthoritativeRegionSampler.ChildAdjacency(
                 geometry.parentKey(), selected, geometry.childCount(),
                 Region.land(
-                        geometry.continent(),
+                        assignment.continent(),
                         assignment.directions().get(selected)
                 ),
                 neighbors
@@ -64,6 +65,34 @@ public final class ClimateDirectionAssignment {
         AuthoritativeRegionSampler.GeometrySample geometry =
                 AuthoritativeRegionSampler.geometrySample(seed, x, z);
         return assignment(level, geometry, x, z).directions();
+    }
+
+    public static Continent assignedContinent(
+            ServerLevelAccessor level, int x, int z) {
+        long seed = level.getLevel().getSeed();
+        AuthoritativeRegionSampler.GeometrySample geometry =
+                AuthoritativeRegionSampler.geometrySample(seed, x, z);
+        return assignment(level, geometry, x, z).continent();
+    }
+
+    public static ContinentDecision continentDecision(
+            ServerLevelAccessor level, int x, int z) {
+        long seed = level.getLevel().getSeed();
+        AuthoritativeRegionSampler.GeometrySample geometry =
+                AuthoritativeRegionSampler.geometrySample(seed, x, z);
+        MacroClimateSurvey.ClusterSurvey survey =
+                MacroClimateSurvey.survey(level, x, z);
+        Assignment assignment = assignment(level, geometry, x, z);
+        return new ContinentDecision(
+                geometry.continent(), assignment.continent(),
+                survey.parent().placementWeight(),
+                unavoidableRejectionWeight(
+                        survey, geometry.continent()
+                ),
+                unavoidableRejectionWeight(
+                        survey, assignment.continent()
+                )
+        );
     }
 
     private static Assignment assignment(
@@ -97,8 +126,10 @@ public final class ClimateDirectionAssignment {
             AuthoritativeRegionSampler.GeometrySample geometry,
             MacroClimateSurvey.ClusterSurvey survey) {
         int count = geometry.childCount();
-        if (geometry.continent() == Continent.ANTARCTICA) {
+        Continent continent = chooseContinent(geometry, survey);
+        if (continent == Continent.ANTARCTICA) {
             return new Assignment(
+                    continent,
                     java.util.Collections.nCopies(count, SubDir.CENTRAL)
             );
         }
@@ -108,20 +139,132 @@ public final class ClimateDirectionAssignment {
             MacroClimateSurvey.ClimateSummary climate =
                     survey.children().get(child);
             for (int direction = 0;
-                 direction < DIRECTIONS.length; direction++) {
+                direction < DIRECTIONS.length; direction++) {
                 scores[child][direction] = climateScore(
-                        climate, geometry.continent(), DIRECTIONS[direction]
+                        climate, continent, DIRECTIONS[direction]
                 );
             }
         }
 
         Search search = new Search(
-                geometry.parentKey(), geometry.continent(), scores
+                geometry.parentKey(), continent, scores
         );
         search.visit(0);
-        return new Assignment(Arrays.stream(search.best())
-                .mapToObj(index -> DIRECTIONS[index])
-                .toList());
+        return new Assignment(
+                continent,
+                Arrays.stream(search.best())
+                        .mapToObj(index -> DIRECTIONS[index])
+                        .toList()
+        );
+    }
+
+    /**
+     * A continent is retained whenever at least half of the weighted climate
+     * can be inherited by some direction. A replacement must cross back below
+     * that majority-rejection line and improve unavoidable rejection by at
+     * least ten percent (with a four-point floor for sparse surveys).
+     */
+    private static Continent chooseContinent(
+            AuthoritativeRegionSampler.GeometrySample geometry,
+            MacroClimateSurvey.ClusterSurvey survey) {
+        Continent initial = geometry.continent();
+
+        // Antarctica's rare creation/removal rules are the following Jr. goal.
+        if (initial == Continent.ANTARCTICA) return initial;
+
+        int totalWeight = survey.parent().placementWeight();
+        if (totalWeight == 0) return initial;
+
+        int initialRejected = unavoidableRejectionWeight(
+                survey, initial
+        );
+        if ((long) initialRejected * 2L <= totalWeight) {
+            return initial;
+        }
+
+        int requiredImprovement = Math.max(
+                4, (totalWeight + 9) / 10
+        );
+        Continent best = initial;
+        int bestRejected = initialRejected;
+        int bestScore = continentScore(survey.parent(), initial);
+        long bestTie = mix64(geometry.parentKey() ^ initial.ordinal());
+
+        for (Continent candidate : Continent.values()) {
+            if (candidate == initial
+                    || candidate == Continent.ANTARCTICA) {
+                continue;
+            }
+
+            int rejected = unavoidableRejectionWeight(
+                    survey, candidate
+            );
+            if ((long) rejected * 2L > totalWeight
+                    || initialRejected - rejected < requiredImprovement) {
+                continue;
+            }
+
+            int score = continentScore(survey.parent(), candidate);
+            long tie = mix64(
+                    geometry.parentKey() ^ candidate.ordinal()
+            );
+            if (best == initial
+                    || rejected < bestRejected
+                    || (rejected == bestRejected && score > bestScore)
+                    || (rejected == bestRejected && score == bestScore
+                    && Long.compareUnsigned(tie, bestTie) < 0)) {
+                best = candidate;
+                bestRejected = rejected;
+                bestScore = score;
+                bestTie = tie;
+            }
+        }
+        return best;
+    }
+
+    private static int unavoidableRejectionWeight(
+            MacroClimateSurvey.ClusterSurvey survey,
+            Continent continent) {
+        int rejected = 0;
+        for (MacroClimateSurvey.ClimateSummary child : survey.children()) {
+            int bestDirectionRejection = Integer.MAX_VALUE;
+            for (SubDir direction : DIRECTIONS) {
+                int directionRejection = 0;
+                for (Map.Entry<ResourceLocation, Integer> entry
+                        : child.biomeSamples().entrySet()) {
+                    int weight = TagRules.biomeProfile(entry.getKey())
+                            .placementWeight();
+                    if (weight > 0
+                            && TagRules.directionAffinity(
+                                    continent, direction, entry.getKey()
+                            ) == TagRules.Affinity.STRONGLY_UNSUITABLE) {
+                        directionRejection += entry.getValue() * weight;
+                    }
+                }
+                bestDirectionRejection = Math.min(
+                        bestDirectionRejection, directionRejection
+                );
+            }
+            rejected += bestDirectionRejection;
+        }
+        return rejected;
+    }
+
+    private static int continentScore(
+            MacroClimateSurvey.ClimateSummary summary,
+            Continent continent) {
+        int score = 0;
+        for (Map.Entry<ResourceLocation, Integer> entry
+                : summary.biomeSamples().entrySet()) {
+            int weight = TagRules.biomeProfile(entry.getKey())
+                    .placementWeight();
+            if (weight == 0) continue;
+            score += entry.getValue() * weight
+                    * TagRules.continentAffinity(
+                            continent, entry.getKey()
+                    ).score();
+        }
+        return score;
     }
 
     private static int climateScore(
@@ -155,11 +298,20 @@ public final class ClimateDirectionAssignment {
         return neighbors;
     }
 
-    private record Assignment(List<SubDir> directions) {
+    private record Assignment(Continent continent,
+                              List<SubDir> directions) {
         private Assignment {
             directions = List.copyOf(directions);
         }
     }
+
+    public record ContinentDecision(
+            Continent initial,
+            Continent assigned,
+            int totalWeight,
+            int initialRejectedWeight,
+            int assignedRejectedWeight
+    ) {}
 
     /** Exhaustive search is bounded by 5^8 = 390,625 assignments. */
     private static final class Search {
@@ -279,13 +431,14 @@ public final class ClimateDirectionAssignment {
             return best;
         }
 
-        private static long mix64(long value) {
-            value ^= value >>> 33;
-            value *= 0xFF51AFD7ED558CCDL;
-            value ^= value >>> 33;
-            value *= 0xC4CEB9FE1A85EC53L;
-            value ^= value >>> 33;
-            return value;
-        }
+    }
+
+    private static long mix64(long value) {
+        value ^= value >>> 33;
+        value *= 0xFF51AFD7ED558CCDL;
+        value ^= value >>> 33;
+        value *= 0xC4CEB9FE1A85EC53L;
+        value ^= value >>> 33;
+        return value;
     }
 }

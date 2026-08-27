@@ -9,6 +9,7 @@ import net.minecraft.world.level.Level;
 import net.semppi.semppis_mythical_legends_mod.spawn.RegionGate;
 import net.semppi.semppis_mythical_legends_mod.world.AuthoritativeRegionSampler;
 import net.semppi.semppis_mythical_legends_mod.world.ClimateDirectionAssignment;
+import net.semppi.semppis_mythical_legends_mod.world.Continent;
 import net.semppi.semppis_mythical_legends_mod.world.MacroClimateSurvey;
 import net.semppi.semppis_mythical_legends_mod.world.Region;
 import net.semppi.semppis_mythical_legends_mod.world.RegionSurfaceClassifier;
@@ -91,15 +92,31 @@ public final class RegionDebugCommands {
                 ClimateDirectionAssignment.assignedDirections(
                         source.getLevel(), pos.getX(), pos.getZ()
                 );
+        Continent assignedContinent =
+                ClimateDirectionAssignment.assignedContinent(
+                        source.getLevel(), pos.getX(), pos.getZ()
+                );
+        ClimateDirectionAssignment.ContinentDecision continentDecision =
+                ClimateDirectionAssignment.continentDecision(
+                        source.getLevel(), pos.getX(), pos.getZ()
+                );
+        String continentText = assignedContinent == geometry.continent()
+                ? assignedContinent.toString()
+                : assignedContinent + "<-" + geometry.continent();
         source.sendSuccess(() -> Component.literal(
                 "Climate cluster "
                         + Long.toUnsignedString(survey.parentKey(), 16)
-                        + " | Continent: " + geometry.continent()
+                        + " | Continent: " + continentText
                         + " | Center: " + survey.parentCenterX() + "/"
                         + survey.parentCenterZ()
                         + " | Step: " + survey.sampleStep()
                         + " | Children sampled: " + survey.sampledChildren()
                         + "/" + survey.children().size()
+                        + " | Rejection: "
+                        + continentDecision.initialRejectedWeight()
+                        + "->"
+                        + continentDecision.assignedRejectedWeight()
+                        + "/" + continentDecision.totalWeight()
         ), false);
         source.sendSuccess(() -> Component.literal(
                 "Parent " + climateText(survey.parent())
@@ -110,7 +127,7 @@ public final class RegionDebugCommands {
             MacroClimateSurvey.ClimateSummary child = survey.children().get(index);
             SubDir assigned = directions.get(index);
             SubDir initial = AuthoritativeRegionSampler.initialDirection(
-                    survey.parentKey(), index, geometry.continent()
+                    survey.parentKey(), index, assignedContinent
             );
             String directionText = assigned == initial
                     ? assigned.toString()
