@@ -26,8 +26,10 @@ import net.semppi.semppis_mythical_legends_mod.world.MacroClimateSurvey;
 import net.semppi.semppis_mythical_legends_mod.world.Region;
 import net.semppi.semppis_mythical_legends_mod.world.RegionSurfaceClassifier;
 import net.semppi.semppis_mythical_legends_mod.world.SubDir;
+import net.semppi.semppis_mythical_legends_mod.world.TerrainWeirdnessSampler;
 
 import java.util.List;
+import java.util.Locale;
 
 /** Reports the exact same resolved sample used by spawning and F3 sync. */
 public final class RegionDebugCommands {
@@ -59,11 +61,18 @@ public final class RegionDebugCommands {
                                             source.getLevel(),
                                             pos.getX(), pos.getZ(), region
                                     );
+                            int weirdnessPoints =
+                                    TerrainWeirdnessSampler.sample(
+                                            source.getLevel(),
+                                            pos.getX(), pos.getZ()
+                                    ).points();
 
                             String message = "Region: " + region.display()
                                     + " | Surface: " + sample.kind()
                                     + " | Activity: " + activity.value()
                                     + " (" + activity.source() + ")"
+                                    + " | Weirdness points: +"
+                                    + weirdnessPoints
                                     + " | X/Z: " + pos.getX() + "/" + pos.getZ();
                             if (sample.kind()
                                     == RegionSurfaceClassifier.SurfaceKind.LAND
@@ -104,6 +113,39 @@ public final class RegionDebugCommands {
                                 ))
                         )
         );
+
+        dispatcher.register(
+                Commands.literal("smlweirdness")
+                        .requires(source -> source.hasPermission(2))
+                        .executes(context -> runWeirdnessCheck(
+                                context.getSource()
+                        ))
+        );
+    }
+
+    private static int runWeirdnessCheck(CommandSourceStack source) {
+        if (source.getLevel().dimension() != Level.OVERWORLD) {
+            source.sendFailure(Component.literal(
+                    "Weirdness check is unavailable outside the Overworld"
+            ));
+            return 0;
+        }
+        BlockPos pos = BlockPos.containing(source.getPosition());
+        TerrainWeirdnessSampler.WeirdnessSample sample =
+                TerrainWeirdnessSampler.sample(
+                        source.getLevel(), pos.getX(), pos.getZ()
+                );
+        String message = String.format(
+                Locale.ROOT,
+                "Terrain weirdness: center=%.3f | mean|W|=%.3f"
+                        + " | |W|>=0.90: %d/9 | |W|>=0.97: %d/9"
+                        + " | Points: +%d",
+                sample.center(), sample.meanAbsolute(),
+                sample.highSamples(), sample.extremeSamples(),
+                sample.points()
+        );
+        source.sendSuccess(() -> Component.literal(message), false);
+        return 1;
     }
 
     private static int runSpawnCheck(
