@@ -15,10 +15,13 @@ import java.util.WeakHashMap;
 /**
  * Selects a conservative parent-continent identity and assigns its child
  * directions using the cached macro climate survey. Candidate geometry never
- * changes, and Antarctica remains reserved for its dedicated strict rule.
+ * changes. The internal ANTARCTICA identity is exposed to players as the rare
+ * directionless Frozen Pole region.
  */
 public final class ClimateDirectionAssignment {
     private static final SubDir[] DIRECTIONS = SubDir.values();
+    private static final int FROZEN_POLE_RARITY = 4;
+    private static final int MIN_FROZEN_POLE_LOWLAND_SAMPLES = 48;
     private static final Map<ServerLevel, Map<Long, Assignment>> CACHE =
             new WeakHashMap<>();
 
@@ -169,8 +172,18 @@ public final class ClimateDirectionAssignment {
             MacroClimateSurvey.ClusterSurvey survey) {
         Continent initial = geometry.continent();
 
-        // Antarctica's rare creation/removal rules are the following Jr. goal.
-        if (initial == Continent.ANTARCTICA) return initial;
+        boolean frozenPole = qualifiesAsFrozenPole(survey.parent())
+                && Math.floorMod(
+                        mix64(geometry.parentKey()), FROZEN_POLE_RARITY
+                ) == 0;
+        if (frozenPole) return Continent.ANTARCTICA;
+
+        // A failed polar roll must always inherit an ordinary continent. This
+        // also removes hot or forested ANTARCTICA identities produced by the
+        // old geometry-only hash.
+        if (initial == Continent.ANTARCTICA) {
+            return bestOrdinaryContinent(geometry, survey);
+        }
 
         int totalWeight = survey.parent().placementWeight();
         if (totalWeight == 0) return initial;
@@ -209,6 +222,50 @@ public final class ClimateDirectionAssignment {
                     geometry.parentKey() ^ candidate.ordinal()
             );
             if (best == initial
+                    || rejected < bestRejected
+                    || (rejected == bestRejected && score > bestScore)
+                    || (rejected == bestRejected && score == bestScore
+                    && Long.compareUnsigned(tie, bestTie) < 0)) {
+                best = candidate;
+                bestRejected = rejected;
+                bestScore = score;
+                bestTie = tie;
+            }
+        }
+        return best;
+    }
+
+    /**
+     * Frozen Pole requires a sizeable frozen-barren lowland province. Context
+     * and mountains are excluded, while only a small sampled edge allowance is
+     * made for forest and ordinary open terrain.
+     */
+    private static boolean qualifiesAsFrozenPole(
+            MacroClimateSurvey.ClimateSummary climate) {
+        int lowland = climate.totalSamples()
+                - climate.contextualSamples() - climate.mountainSamples();
+        if (lowland < MIN_FROZEN_POLE_LOWLAND_SAMPLES) return false;
+        if ((long) climate.frozenBarrenSamples() * 10L
+                < (long) lowland * 7L) {
+            return false;
+        }
+        if ((long) climate.forestSamples() * 20L > lowland) return false;
+        return (long) climate.openLowlandSamples() * 20L <= lowland;
+    }
+
+    private static Continent bestOrdinaryContinent(
+            AuthoritativeRegionSampler.GeometrySample geometry,
+            MacroClimateSurvey.ClusterSurvey survey) {
+        Continent best = null;
+        int bestRejected = Integer.MAX_VALUE;
+        int bestScore = Integer.MIN_VALUE;
+        long bestTie = 0L;
+        for (Continent candidate : Continent.values()) {
+            if (candidate == Continent.ANTARCTICA) continue;
+            int rejected = unavoidableRejectionWeight(survey, candidate);
+            int score = continentScore(survey.parent(), candidate);
+            long tie = mix64(geometry.parentKey() ^ candidate.ordinal());
+            if (best == null
                     || rejected < bestRejected
                     || (rejected == bestRejected && score > bestScore)
                     || (rejected == bestRejected && score == bestScore

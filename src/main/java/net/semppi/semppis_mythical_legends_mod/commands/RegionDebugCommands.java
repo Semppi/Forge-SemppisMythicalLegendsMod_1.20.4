@@ -101,8 +101,9 @@ public final class RegionDebugCommands {
                         source.getLevel(), pos.getX(), pos.getZ()
                 );
         String continentText = assignedContinent == geometry.continent()
-                ? assignedContinent.toString()
-                : assignedContinent + "<-" + geometry.continent();
+                ? continentName(assignedContinent)
+                : continentName(assignedContinent) + "<-"
+                + continentName(geometry.continent());
         source.sendSuccess(() -> Component.literal(
                 "Climate cluster "
                         + Long.toUnsignedString(survey.parentKey(), 16)
@@ -139,6 +140,11 @@ public final class RegionDebugCommands {
             ), false);
         }
         return 1;
+    }
+
+    private static String continentName(Continent continent) {
+        return continent == Continent.ANTARCTICA
+                ? "FROZEN_POLE" : continent.toString();
     }
 
     private static String climateText(

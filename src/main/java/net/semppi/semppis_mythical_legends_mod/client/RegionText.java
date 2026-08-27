@@ -14,9 +14,9 @@ public final class RegionText {
             return prettyOcean(region.sea());
         }
 
-        // Antarctica has no directions in the UI
+        // The internal Antarctica identity represents either frozen pole.
         if (region.continent() == Continent.ANTARCTICA) {
-            return "Antarctica";
+            return "Frozen Pole";
         }
 
         String dir = switch (region.dir()) {

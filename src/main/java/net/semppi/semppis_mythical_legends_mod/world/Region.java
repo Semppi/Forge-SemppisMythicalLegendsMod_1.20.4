@@ -23,14 +23,14 @@ public record Region(boolean ocean, Continent continent, SubDir dir, Ocean sea) 
             };
         }
 
-        // Antarctica has no directions in the UI
+        // The internal Antarctica identity represents either frozen pole.
         if (continent == Continent.ANTARCTICA) {
-            return "Antarctica";
+            return "Frozen Pole";
         }
 
         String cName = switch (continent) {
             case AFRICA -> "Africa";
-            case ANTARCTICA -> "Antarctica";
+            case ANTARCTICA -> "Frozen Pole";
             case ASIA -> "Asia";
             case EUROPE -> "Europe";
             case N_AMERICA -> "North America";
