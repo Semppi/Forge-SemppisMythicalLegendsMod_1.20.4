@@ -19,6 +19,7 @@ import net.semppi.semppis_mythical_legends_mod.rules.SMLRules;
 import net.semppi.semppis_mythical_legends_mod.spawn.RegionGate;
 import net.semppi.semppis_mythical_legends_mod.spawn.RegionMobAllow;
 import net.semppi.semppis_mythical_legends_mod.world.AuthoritativeRegionSampler;
+import net.semppi.semppis_mythical_legends_mod.world.BiomeActivitySampler;
 import net.semppi.semppis_mythical_legends_mod.world.ClimateDirectionAssignment;
 import net.semppi.semppis_mythical_legends_mod.world.Continent;
 import net.semppi.semppis_mythical_legends_mod.world.MacroClimateSurvey;
@@ -53,9 +54,16 @@ public final class RegionDebugCommands {
                                     source.getLevel(), pos.getX(), pos.getZ()
                             );
                             Region region = sample.region();
+                            BiomeActivitySampler.ActivitySample activity =
+                                    BiomeActivitySampler.sample(
+                                            source.getLevel(),
+                                            pos.getX(), pos.getZ(), region
+                                    );
 
                             String message = "Region: " + region.display()
                                     + " | Surface: " + sample.kind()
+                                    + " | Activity: " + activity.value()
+                                    + " (" + activity.source() + ")"
                                     + " | X/Z: " + pos.getX() + "/" + pos.getZ();
                             if (sample.kind()
                                     == RegionSurfaceClassifier.SurfaceKind.LAND
