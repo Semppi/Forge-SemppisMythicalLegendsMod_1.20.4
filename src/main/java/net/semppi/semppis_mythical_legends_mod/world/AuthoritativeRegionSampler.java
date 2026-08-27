@@ -4,12 +4,12 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * The single seed-and-coordinate authority for the continental overlay.
+ * The seed-and-coordinate authority for continental candidate geometry.
  *
  * <p>This sampler never reads chunks, biomes, height, game time or mutable
  * world state. Given the same algorithm version, world seed and X/Z, it always
- * returns the same label. Biome affinity is deliberately a later bounded layer
- * and must never create a second layout.</p>
+ * returns the same candidate. Macro climate may relabel child directions but
+ * never changes these shapes or creates a second layout.</p>
  */
 public final class AuthoritativeRegionSampler {
     public static final int ALGORITHM_VERSION = 3;
@@ -63,7 +63,7 @@ public final class AuthoritativeRegionSampler {
 
         SubDir direction = continent == Continent.ANTARCTICA
                 ? SubDir.CENTRAL
-                : directionForChild(continentSite, childIndex);
+                : initialDirection(continentSite.key(), childIndex, continent);
 
         return Region.land(continent, direction);
     }
@@ -127,6 +127,7 @@ public final class AuthoritativeRegionSampler {
         double latticeShift = CONTINENT_SCALE * 0.5;
         return new GeometrySample(
                 parent.key(), geometry.childIndex(), geometry.childCount(),
+                pickContinent(mix64(parent.key() ^ SALT_CONTINENT_PICK)),
                 floorToInt(parent.centerX() - latticeShift),
                 floorToInt(parent.centerZ() - latticeShift)
         );
@@ -216,9 +217,13 @@ public final class AuthoritativeRegionSampler {
         );
     }
 
-    private static SubDir directionForChild(Site parent, int childIndex) {
+    public static SubDir initialDirection(long parentKey, int childIndex,
+                                          Continent continent) {
+        if (continent == Continent.ANTARCTICA) {
+            return SubDir.CENTRAL;
+        }
         long value = hash(
-                parent.key(), childIndex, ALGORITHM_VERSION,
+                parentKey, childIndex, ALGORITHM_VERSION,
                 SALT_SUBREGION_PICK
         );
         return pickDirection(value);
@@ -228,7 +233,7 @@ public final class AuthoritativeRegionSampler {
                                        int childIndex) {
         return continent == Continent.ANTARCTICA
                 ? SubDir.CENTRAL
-                : directionForChild(parent, childIndex);
+                : initialDirection(parent.key(), childIndex, continent);
     }
 
     /**
@@ -407,7 +412,8 @@ public final class AuthoritativeRegionSampler {
                                  int childCount) {}
 
     public record GeometrySample(long parentKey, int childIndex,
-                                 int childCount, int parentCenterX,
+                                 int childCount, Continent continent,
+                                 int parentCenterX,
                                  int parentCenterZ) {}
 
     public record ChildNeighbor(int childIndex, SubDir direction) {}

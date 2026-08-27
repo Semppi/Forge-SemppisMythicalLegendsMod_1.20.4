@@ -8,9 +8,13 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.world.level.Level;
 import net.semppi.semppis_mythical_legends_mod.spawn.RegionGate;
 import net.semppi.semppis_mythical_legends_mod.world.AuthoritativeRegionSampler;
+import net.semppi.semppis_mythical_legends_mod.world.ClimateDirectionAssignment;
 import net.semppi.semppis_mythical_legends_mod.world.MacroClimateSurvey;
 import net.semppi.semppis_mythical_legends_mod.world.Region;
 import net.semppi.semppis_mythical_legends_mod.world.RegionSurfaceClassifier;
+import net.semppi.semppis_mythical_legends_mod.world.SubDir;
+
+import java.util.List;
 
 /** Reports the exact same resolved sample used by spawning and F3 sync. */
 public final class RegionDebugCommands {
@@ -46,10 +50,10 @@ public final class RegionDebugCommands {
                                     || sample.kind()
                                     == RegionSurfaceClassifier.SurfaceKind.RIVER) {
                                 AuthoritativeRegionSampler.ChildAdjacency adjacency =
-                                        AuthoritativeRegionSampler.childAdjacency(
-                                                source.getLevel().getSeed(),
+                                        ClimateDirectionAssignment.childAdjacency(
+                                                source.getLevel(),
                                                 pos.getX(), pos.getZ()
-                                );
+                                        );
                                 message += adjacencyText(adjacency);
                             }
                             String finalMessage = message;
@@ -79,9 +83,18 @@ public final class RegionDebugCommands {
         MacroClimateSurvey.ClusterSurvey survey = MacroClimateSurvey.survey(
                 source.getLevel(), pos.getX(), pos.getZ()
         );
+        AuthoritativeRegionSampler.GeometrySample geometry =
+                AuthoritativeRegionSampler.geometrySample(
+                        source.getLevel().getSeed(), pos.getX(), pos.getZ()
+                );
+        List<SubDir> directions =
+                ClimateDirectionAssignment.assignedDirections(
+                        source.getLevel(), pos.getX(), pos.getZ()
+                );
         source.sendSuccess(() -> Component.literal(
                 "Climate cluster "
                         + Long.toUnsignedString(survey.parentKey(), 16)
+                        + " | Continent: " + geometry.continent()
                         + " | Center: " + survey.parentCenterX() + "/"
                         + survey.parentCenterZ()
                         + " | Step: " + survey.sampleStep()
@@ -95,8 +108,17 @@ public final class RegionDebugCommands {
         for (int index = 0; index < survey.children().size(); index++) {
             int childNumber = index + 1;
             MacroClimateSurvey.ClimateSummary child = survey.children().get(index);
+            SubDir assigned = directions.get(index);
+            SubDir initial = AuthoritativeRegionSampler.initialDirection(
+                    survey.parentKey(), index, geometry.continent()
+            );
+            String directionText = assigned == initial
+                    ? assigned.toString()
+                    : assigned + "<-" + initial;
             source.sendSuccess(() -> Component.literal(
-                    "Child " + childNumber + " " + climateText(child)
+                    "Child " + childNumber + " "
+                            + directionText + " "
+                            + climateText(child)
             ), false);
         }
         return 1;

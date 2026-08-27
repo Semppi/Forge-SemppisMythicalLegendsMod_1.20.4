@@ -111,14 +111,14 @@ public final class RegionSurfaceClassifier {
             // every coordinate deterministic without letting the shore itself
             // pull a continental boundary.
             return new Sample(
-                    SurfaceKind.SHORE, SAMPLER.landRegion(seed, x, z)
+                    SurfaceKind.SHORE, SAMPLER.landRegion(level, x, z)
             );
         }
 
         // Rivers use the unmodified local land overlay under their own
         // coordinates. A surface land biome may nudge a nearby existing
         // boundary, but it can never select a region from scratch.
-        Region landRegion = SAMPLER.landRegion(seed, x, z);
+        Region landRegion = SAMPLER.landRegion(level, x, z);
         if (kind == SurfaceKind.LAND) {
             landRegion = BoundedBiomeBorderAttractor.attract(
                     level, seed, x, z, biome, landRegion
@@ -243,7 +243,7 @@ public final class RegionSurfaceClassifier {
     private static Region resolveLandRegion(
             ServerLevelAccessor level, long seed, int x, int z,
             Holder<Biome> biome) {
-        Region region = SAMPLER.landRegion(seed, x, z);
+        Region region = SAMPLER.landRegion(level, x, z);
         region = BoundedBiomeBorderAttractor.attract(
                 level, seed, x, z, biome, region
         );

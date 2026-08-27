@@ -112,8 +112,8 @@ public final class MacroClimateSurvey {
                         )
                         : TagRules.biomeProfile(biomeId);
 
-                parent.add(profile);
-                children.get(geometry.childIndex()).add(profile);
+                parent.add(biomeId, profile);
+                children.get(geometry.childIndex()).add(biomeId, profile);
             }
         }
 
@@ -156,6 +156,7 @@ public final class MacroClimateSurvey {
             Map<TagRules.MoistureBand, Integer> moistureEvidence,
             Map<TagRules.BiomeRole, Integer> roleSamples,
             Map<TagRules.Portability, Integer> portabilitySamples,
+            Map<ResourceLocation, Integer> biomeSamples,
             int frozenBarrenSamples,
             int forestSamples,
             int openLowlandSamples,
@@ -167,6 +168,7 @@ public final class MacroClimateSurvey {
             moistureEvidence = Map.copyOf(moistureEvidence);
             roleSamples = Map.copyOf(roleSamples);
             portabilitySamples = Map.copyOf(portabilitySamples);
+            biomeSamples = Map.copyOf(biomeSamples);
         }
 
         public TagRules.TemperatureBand dominantTemperature() {
@@ -238,11 +240,17 @@ public final class MacroClimateSurvey {
                 new EnumMap<>(TagRules.BiomeRole.class);
         private final EnumMap<TagRules.Portability, Integer> portability =
                 new EnumMap<>(TagRules.Portability.class);
+        private final Map<ResourceLocation, Integer> biomes =
+                new LinkedHashMap<>();
 
-        private void add(TagRules.BiomeClimateProfile profile) {
+        private void add(ResourceLocation biomeId,
+                         TagRules.BiomeClimateProfile profile) {
             totalSamples++;
             roles.merge(profile.role(), 1, Integer::sum);
             portability.merge(profile.portability(), 1, Integer::sum);
+            if (biomeId != null) {
+                biomes.merge(biomeId, 1, Integer::sum);
+            }
 
             if (profile.isPlacementContext()) contextualSamples++;
             if (profile.isMountain()) mountainSamples++;
@@ -267,7 +275,7 @@ public final class MacroClimateSurvey {
         private ClimateSummary finish() {
             return new ClimateSummary(
                     totalSamples, votingSamples, placementWeight,
-                    temperatures, moisture, roles, portability,
+                    temperatures, moisture, roles, portability, biomes,
                     frozenBarrenSamples, forestSamples, openLowlandSamples,
                     contextualSamples, mountainSamples
             );

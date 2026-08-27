@@ -48,7 +48,9 @@ public final class BoundedBiomeBorderAttractor {
         for (double[] direction : DIRECTIONS) {
             int probeX = offset(x, direction[0], BOUNDARY_PROBE);
             int probeZ = offset(z, direction[1], BOUNDARY_PROBE);
-            Region competitor = AuthoritativeRegionSampler.landRegion(seed, probeX, probeZ);
+            Region competitor = ClimateDirectionAssignment.landRegion(
+                    level, probeX, probeZ
+            );
 
             if (competitor.equals(original) || competitor.ocean()) {
                 continue;
@@ -62,7 +64,7 @@ public final class BoundedBiomeBorderAttractor {
             }
 
             double boundaryDistance = boundaryDistance(
-                    seed, x, z, direction, original
+                    level, x, z, direction, original
             );
             if (boundaryDistance > allowedReach
                     || boundaryDistance > MAX_ATTRACTION) {
@@ -183,7 +185,8 @@ public final class BoundedBiomeBorderAttractor {
         return TagRules.biomeProfile(biomeId).placementWeight() > 0;
     }
 
-    private static double boundaryDistance(long seed, int x, int z,
+    private static double boundaryDistance(ServerLevelAccessor level,
+                                           int x, int z,
                                            double[] direction, Region original) {
         double inside = 0.0;
         double outside = BOUNDARY_PROBE;
@@ -192,7 +195,9 @@ public final class BoundedBiomeBorderAttractor {
             double middle = (inside + outside) * 0.5;
             int sampleX = offset(x, direction[0], middle);
             int sampleZ = offset(z, direction[1], middle);
-            Region sample = AuthoritativeRegionSampler.landRegion(seed, sampleX, sampleZ);
+            Region sample = ClimateDirectionAssignment.landRegion(
+                    level, sampleX, sampleZ
+            );
 
             if (sample.equals(original)) {
                 inside = middle;

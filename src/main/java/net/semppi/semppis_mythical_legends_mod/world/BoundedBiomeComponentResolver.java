@@ -95,8 +95,8 @@ public final class BoundedBiomeComponentResolver {
 
             int blockX = cell.x() * QUART_BLOCKS + QUART_BLOCKS / 2;
             int blockZ = cell.z() * QUART_BLOCKS + QUART_BLOCKS / 2;
-            Region owner = AuthoritativeRegionSampler.landRegion(
-                    seed, blockX, blockZ
+            Region owner = ClimateDirectionAssignment.landRegion(
+                    level, blockX, blockZ
             );
             ownership.merge(owner, 1, Integer::sum);
 
