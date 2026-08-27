@@ -1,12 +1,23 @@
 package net.semppi.semppis_mythical_legends_mod.commands;
 
 import com.mojang.brigadier.CommandDispatcher;
+import com.mojang.brigadier.arguments.StringArgumentType;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.Holder;
 import net.minecraft.network.chat.Component;
+import net.minecraft.resources.ResourceLocation;
+import net.minecraft.world.entity.EntityType;
+import net.minecraft.world.entity.MobSpawnType;
+import net.minecraft.world.level.biome.Biome;
+import net.minecraft.world.level.Heightmap;
 import net.minecraft.world.level.Level;
+import net.minecraftforge.registries.ForgeRegistries;
+import net.semppi.semppis_mythical_legends_mod.SemppisMythicalLegendsMod;
+import net.semppi.semppis_mythical_legends_mod.rules.SMLRules;
 import net.semppi.semppis_mythical_legends_mod.spawn.RegionGate;
+import net.semppi.semppis_mythical_legends_mod.spawn.RegionMobAllow;
 import net.semppi.semppis_mythical_legends_mod.world.AuthoritativeRegionSampler;
 import net.semppi.semppis_mythical_legends_mod.world.ClimateDirectionAssignment;
 import net.semppi.semppis_mythical_legends_mod.world.Continent;
@@ -70,6 +81,111 @@ public final class RegionDebugCommands {
                         .requires(source -> source.hasPermission(2))
                         .executes(context -> runClimateSurvey(context.getSource()))
         );
+
+        dispatcher.register(
+                Commands.literal("smlspawncheck")
+                        .requires(source -> source.hasPermission(2))
+                        .then(Commands.argument(
+                                        "creature", StringArgumentType.word()
+                                )
+                                .executes(context -> runSpawnCheck(
+                                        context.getSource(),
+                                        StringArgumentType.getString(
+                                                context, "creature"
+                                        )
+                                ))
+                        )
+        );
+    }
+
+    private static int runSpawnCheck(
+            CommandSourceStack source, String creatureName) {
+        if (source.getLevel().dimension() != Level.OVERWORLD) {
+            source.sendFailure(Component.literal(
+                    "Spawn check is unavailable outside the Overworld"
+            ));
+            return 0;
+        }
+
+        String normalized = creatureName.contains(":")
+                ? creatureName
+                : SemppisMythicalLegendsMod.MOD_ID + ":" + creatureName;
+        ResourceLocation id = ResourceLocation.tryParse(normalized);
+        EntityType<?> type = id == null
+                ? null : ForgeRegistries.ENTITY_TYPES.getValue(id);
+        if (type == null || id == null
+                || !SemppisMythicalLegendsMod.MOD_ID.equals(
+                        id.getNamespace()
+                )) {
+            source.sendFailure(Component.literal(
+                    "Unknown SML creature: " + creatureName
+            ));
+            return 0;
+        }
+
+        BlockPos commandPos = BlockPos.containing(source.getPosition());
+        int surfaceY = source.getLevel().getHeight(
+                Heightmap.Types.WORLD_SURFACE,
+                commandPos.getX(), commandPos.getZ()
+        );
+        BlockPos surfacePos = new BlockPos(
+                commandPos.getX(), surfaceY, commandPos.getZ()
+        );
+        Holder<Biome> surfaceBiome = source.getLevel().getBiome(surfacePos);
+        ResourceLocation biomeId = surfaceBiome
+                .unwrapKey()
+                .map(key -> key.location())
+                .orElse(new ResourceLocation("sml", "unknown"));
+        boolean biomeSpawnListed = surfaceBiome.value().getMobSettings()
+                .getMobs(type.getCategory()).unwrap().stream()
+                .anyMatch(entry -> entry.type == type);
+        RegionSurfaceClassifier.Sample sample = RegionGate.resolve(
+                source.getLevel(), surfacePos.getX(), surfacePos.getZ()
+        );
+        Region region = sample.region();
+        boolean regionalMatch = region.ocean()
+                ? RegionMobAllow.isAllowedForSea(type, region.sea())
+                : RegionMobAllow.isAllowedForLand(
+                        type, region.continent(), region.dir()
+                );
+        boolean gamerule = source.getLevel().getGameRules()
+                .getBoolean(SMLRules.CONTINENTAL_SPAWNING);
+        boolean effective = RegionGate.allows(
+                source.getLevel(), type, surfacePos, MobSpawnType.NATURAL
+        );
+
+        source.sendSuccess(() -> Component.literal(
+                "Spawn check: " + id
+        ), false);
+        source.sendSuccess(() -> Component.literal(
+                "Biome: " + biomeId
+                        + " | Surface: " + sample.kind()
+                        + " | Region: " + region.display()
+                        + " | X/Z: " + surfacePos.getX()
+                        + "/" + surfacePos.getZ()
+        ), false);
+        source.sendSuccess(() -> Component.literal(
+                "Biome spawn list: "
+                        + (biomeSpawnListed ? "MATCH" : "NOT LISTED")
+                        + " | Regional restriction: "
+                        + yesNo(RegionMobAllow.hasRestriction(type))
+                        + " | Region match: " + allowedBlocked(regionalMatch)
+        ), false);
+        source.sendSuccess(() -> Component.literal(
+                "smlContinentalSpawning: " + gamerule
+                        + " | Effective region gate: "
+                        + allowedBlocked(effective)
+                        + " | Biome/base spawn rules still apply"
+        ), false);
+        return 1;
+    }
+
+    private static String allowedBlocked(boolean value) {
+        return value ? "ALLOWED" : "BLOCKED";
+    }
+
+    private static String yesNo(boolean value) {
+        return value ? "YES" : "NO";
     }
 
     private static int runClimateSurvey(CommandSourceStack source) {

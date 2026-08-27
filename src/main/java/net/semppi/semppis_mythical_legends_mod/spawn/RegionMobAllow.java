@@ -52,6 +52,19 @@ public final class RegionMobAllow {
         return true;
     }
 
+    /** True when this creature has a continent/direction or ocean rule. */
+    public static boolean hasRestriction(EntityType<?> type) {
+        return type == ModEntities.ALICANTO.get()
+                || type == ModEntities.LESSER_BEHEMOTH.get()
+                || type == ModEntities.COLOSSAL_LOBSTER.get()
+                || type == ModEntities.LOVELAND_FROGMAN.get()
+                || type == ModEntities.MANDRAKE.get()
+                || type == ModEntities.PROTO_WENDIGO.get()
+                || type == ModEntities.PUKIS.get()
+                || type == ModEntities.SATYR.get()
+                || type == ModEntities.WENDIGO.get();
+    }
+
     /** Breeding restriction (opt-in). Default: no one is picky. */
     public static boolean isBreedingRestricted(EntityType<?> type) {
         // Example to enable picky breeding for a species:
