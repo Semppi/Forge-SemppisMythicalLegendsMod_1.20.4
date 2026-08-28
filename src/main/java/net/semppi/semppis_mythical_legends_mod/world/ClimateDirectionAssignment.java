@@ -415,6 +415,7 @@ public final class ClimateDirectionAssignment {
         private final int[] current;
         private int[] best;
         private int bestScore = Integer.MIN_VALUE;
+        private int bestDistinctDirections = Integer.MIN_VALUE;
         private int bestOriginalMatches = Integer.MIN_VALUE;
         private long bestTie;
 
@@ -435,12 +436,16 @@ public final class ClimateDirectionAssignment {
                 return;
             }
 
-            if (distinctCount() != Math.min(current.length, DIRECTIONS.length)
-                    || !repeatsAreConnected()) {
+            // Repeated labels are valid when they form one connected area.
+            // Directional variety is preferred below, but never required:
+            // forcing every available direction could assign a climatically
+            // forbidden label merely to complete the set.
+            if (!repeatsAreConnected()) {
                 return;
             }
 
             int score = 0;
+            int distinctDirections = distinctCount();
             int originalMatches = 0;
             long tie = parentKey;
             for (int index = 0; index < current.length; index++) {
@@ -457,12 +462,17 @@ public final class ClimateDirectionAssignment {
             if (best == null
                     || score > bestScore
                     || (score == bestScore
+                    && distinctDirections > bestDistinctDirections)
+                    || (score == bestScore
+                    && distinctDirections == bestDistinctDirections
                     && originalMatches > bestOriginalMatches)
                     || (score == bestScore
+                    && distinctDirections == bestDistinctDirections
                     && originalMatches == bestOriginalMatches
                     && Long.compareUnsigned(tie, bestTie) < 0)) {
                 best = current.clone();
                 bestScore = score;
+                bestDistinctDirections = distinctDirections;
                 bestOriginalMatches = originalMatches;
                 bestTie = tie;
             }
