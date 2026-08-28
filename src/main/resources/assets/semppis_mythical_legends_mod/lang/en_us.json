@@ -226,7 +226,9 @@
 
   "key.categories.semppis_mythical_legends_mod": "Semppi's Mythical Legends",
   "key.semppis_mythical_legends_mod.open_interaction_screen": "Open Interaction Screen",
+  "key.semppis_mythical_legends_mod.open_test_map": "Open Test Map",
   "screen.semppis_mythical_legends_mod.interaction": "Interaction",
+  "screen.semppis_mythical_legends_mod.test_map": "SML Test Map",
   "hud.semppis_mythical_legends_mod.tone.teasing": "Teasing",
   "hud.semppis_mythical_legends_mod.tone.soft": "Soft",
   "hud.semppis_mythical_legends_mod.tone.neutral": "Neutral",

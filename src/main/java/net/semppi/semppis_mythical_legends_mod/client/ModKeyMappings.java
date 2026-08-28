@@ -21,11 +21,22 @@ public final class ModKeyMappings {
     public static final String OPEN_INTERACTION_SCREEN =
             "key.semppis_mythical_legends_mod.open_interaction_screen";
 
+    public static final String OPEN_TEST_MAP =
+            "key.semppis_mythical_legends_mod.open_test_map";
+
     public static final KeyMapping INTERACTION_SCREEN =
             new KeyMapping(
                     OPEN_INTERACTION_SCREEN,
                     InputConstants.Type.KEYSYM,
                     GLFW.GLFW_KEY_LEFT_ALT,
+                    CATEGORY
+            );
+
+    public static final KeyMapping TEST_MAP =
+            new KeyMapping(
+                    OPEN_TEST_MAP,
+                    InputConstants.Type.KEYSYM,
+                    GLFW.GLFW_KEY_P,
                     CATEGORY
             );
 
@@ -35,5 +46,6 @@ public final class ModKeyMappings {
     @SubscribeEvent
     public static void registerKeyMappings(RegisterKeyMappingsEvent event) {
         event.register(INTERACTION_SCREEN);
+        event.register(TEST_MAP);
     }
 }

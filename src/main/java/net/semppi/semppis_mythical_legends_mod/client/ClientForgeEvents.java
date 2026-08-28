@@ -9,6 +9,7 @@ import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
 import net.semppi.semppis_mythical_legends_mod.SemppisMythicalLegendsMod;
 import net.semppi.semppis_mythical_legends_mod.client.hud.InteractionHudState;
+import net.semppi.semppis_mythical_legends_mod.client.screen.TestMapScreen;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.phys.EntityHitResult;
@@ -34,6 +35,37 @@ public final class ClientForgeEvents {
     private static final double SPYGLASS_INTERACTION_TARGET_RANGE = 55.0D;
 
     private static int lockedHotbarSlot = -1;
+
+    @SubscribeEvent
+    public static void onClientTickBeforeVanillaKeys(
+            TickEvent.ClientTickEvent.Pre event
+    ) {
+        Minecraft minecraft = Minecraft.getInstance();
+
+        while (ModKeyMappings.TEST_MAP.consumeClick()) {
+            if (minecraft.screen == null
+                    && minecraft.player != null
+                    && minecraft.level != null) {
+
+                /*
+                 * P is also vanilla's default Social Interactions key.
+                 * Drain that queued click when both mappings use P so only
+                 * the SML test map opens. Players can rebind either action.
+                 */
+                if (minecraft.options.keySocialInteractions
+                        .same(ModKeyMappings.TEST_MAP)) {
+                    while (minecraft.options.keySocialInteractions
+                            .consumeClick()) {
+                        // Intentionally consumed by the test map.
+                    }
+                }
+
+                InteractionHudState.close();
+                lockedHotbarSlot = -1;
+                minecraft.setScreen(new TestMapScreen());
+            }
+        }
+    }
 
     @SubscribeEvent
     public static void onClientTick(
