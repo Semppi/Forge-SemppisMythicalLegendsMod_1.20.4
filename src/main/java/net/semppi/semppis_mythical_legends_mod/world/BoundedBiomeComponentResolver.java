@@ -52,7 +52,7 @@ public final class BoundedBiomeComponentResolver {
         int startQuartZ = QuartPos.fromBlock(z);
         long startKey = cellKey(startQuartX, startQuartZ);
         ComponentCache cache = cacheFor(level.getLevel());
-        ComponentDecision cached = cache.get(startKey);
+        ComponentDecision cached = cache.get(startKey, biomeId);
         if (cached != null) {
             return cached.winner() == null ? original : cached.winner();
         }
@@ -128,7 +128,7 @@ public final class BoundedBiomeComponentResolver {
     private static ComponentDecision chooseWinner(
             ComponentSearch search, ResourceLocation biomeId) {
         if (search.exceededBounds()) {
-            return new ComponentDecision(null);
+            return new ComponentDecision(biomeId, null);
         }
 
         Region winner = null;
@@ -156,9 +156,9 @@ public final class BoundedBiomeComponentResolver {
         // An exact or nearly exact split retains the ordinary boundary. A
         // component needs a real two-cell lead before it may move the seam.
         if (winner == null || winnerCells < runnerUpCells + 2) {
-            return new ComponentDecision(null);
+            return new ComponentDecision(biomeId, null);
         }
-        return new ComponentDecision(winner);
+        return new ComponentDecision(biomeId, winner);
     }
 
     private static ComponentCache cacheFor(ServerLevel level) {
@@ -179,7 +179,15 @@ public final class BoundedBiomeComponentResolver {
                                    Map<Region, Integer> ownership,
                                    boolean exceededBounds) {}
 
-    private record ComponentDecision(Region winner) {}
+    /**
+     * The biome identity is part of the cached result so /fillbiome and other
+     * runtime biome editors cannot reuse a decision calculated for the biome
+     * that previously occupied this coordinate.
+     */
+    private record ComponentDecision(
+            ResourceLocation biomeId,
+            Region winner
+    ) {}
 
     private static final class ComponentCache {
         private final Map<Long, ComponentDecision> values =
@@ -191,8 +199,11 @@ public final class BoundedBiomeComponentResolver {
                     }
                 };
 
-        private synchronized ComponentDecision get(long key) {
-            return values.get(key);
+        private synchronized ComponentDecision get(
+                long key, ResourceLocation biomeId) {
+            ComponentDecision decision = values.get(key);
+            return decision != null && decision.biomeId().equals(biomeId)
+                    ? decision : null;
         }
 
         private synchronized void putAll(
