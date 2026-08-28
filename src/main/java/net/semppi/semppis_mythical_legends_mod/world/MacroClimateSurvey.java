@@ -17,8 +17,8 @@ import java.util.WeakHashMap;
 
 /**
  * Sparse, no-chunk-load climate survey of the final warped parent and child
- * candidate shapes. The result is descriptive only; label assignment remains
- * unchanged until the next overhaul goal.
+ * candidate shapes. The same cached biome histogram supplies diagnostics and
+ * climate-aware continent/direction assignment without loading chunks.
  */
 public final class MacroClimateSurvey {
     // 32 samples cross the 49,152-block survey square. Roughly half belong to

@@ -798,10 +798,16 @@ public final class TagRules {
         return BIOME_PROFILES.getOrDefault(biomeId, UNKNOWN_PROFILE);
     }
 
-    // ---- compatibility score used by the current boundary layer ----
+    // ---- compatibility used by assignment and the bounded boundary layer ----
 
     public static Affinity directionAffinity(Continent continent, SubDir direction,
                                              ResourceLocation biomeId) {
+        var authored = BiomeRegionCompatibility.rating(
+                continent, direction, biomeId
+        );
+        if (authored.isPresent()) {
+            return ratingAffinity(authored.getAsInt());
+        }
         Affinity override = override(CONTINENT_OVERRIDES, continent, biomeId);
         if (override != null) return override;
 
@@ -824,6 +830,18 @@ public final class TagRules {
     }
 
     public static Affinity continentAffinity(Continent continent, ResourceLocation biomeId) {
+        int bestAuthored = -1;
+        for (SubDir direction : SubDir.values()) {
+            var authored = BiomeRegionCompatibility.rating(
+                    continent, direction, biomeId
+            );
+            if (authored.isPresent()) {
+                bestAuthored = Math.max(
+                        bestAuthored, authored.getAsInt()
+                );
+            }
+        }
+        if (bestAuthored >= 0) return ratingAffinity(bestAuthored);
         Affinity override = override(CONTINENT_OVERRIDES, continent, biomeId);
         if (override != null) return override;
         if (isSurfaceIndependent(biomeId)) return Affinity.NEUTRAL;
@@ -836,6 +854,19 @@ public final class TagRules {
         }
 
         return climateAffinity(continent, climateFamily(biomeId));
+    }
+
+    private static Affinity ratingAffinity(int rating) {
+        return switch (rating) {
+            case 5 -> Affinity.EXCELLENT_MATCH;
+            case 4 -> Affinity.GOOD_MATCH;
+            case 3 -> Affinity.NEUTRAL;
+            case 2, 1 -> Affinity.UNUSUAL;
+            case 0 -> Affinity.STRONGLY_UNSUITABLE;
+            default -> throw new IllegalArgumentException(
+                    "Compatibility rating must be between 0 and 5"
+            );
+        };
     }
 
     public static Affinity oceanAffinity(Ocean ocean, ResourceLocation biomeId) {

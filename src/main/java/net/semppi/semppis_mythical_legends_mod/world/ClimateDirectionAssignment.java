@@ -22,6 +22,9 @@ public final class ClimateDirectionAssignment {
     private static final SubDir[] DIRECTIONS = SubDir.values();
     private static final int FROZEN_POLE_RARITY = 4;
     private static final int MIN_FROZEN_POLE_LOWLAND_SAMPLES = 48;
+    private static final int MIN_FORBIDDEN_SAMPLES = 2;
+    private static final int FORBIDDEN_SHARE_PERCENT = 8;
+    private static final int MEANINGFUL_FORBIDDEN_PENALTY = 1_000_000;
     private static final Map<ServerLevel, Map<Long, Assignment>> CACHE =
             new WeakHashMap<>();
 
@@ -200,7 +203,7 @@ public final class ClimateDirectionAssignment {
         );
         Continent best = initial;
         int bestRejected = initialRejected;
-        int bestScore = continentScore(survey.parent(), initial);
+        int bestScore = continentScore(survey, initial);
         long bestTie = mix64(geometry.parentKey() ^ initial.ordinal());
 
         for (Continent candidate : Continent.values()) {
@@ -217,7 +220,7 @@ public final class ClimateDirectionAssignment {
                 continue;
             }
 
-            int score = continentScore(survey.parent(), candidate);
+            int score = continentScore(survey, candidate);
             long tie = mix64(
                     geometry.parentKey() ^ candidate.ordinal()
             );
@@ -263,7 +266,7 @@ public final class ClimateDirectionAssignment {
         for (Continent candidate : Continent.values()) {
             if (candidate == Continent.ANTARCTICA) continue;
             int rejected = unavoidableRejectionWeight(survey, candidate);
-            int score = continentScore(survey.parent(), candidate);
+            int score = continentScore(survey, candidate);
             long tie = mix64(geometry.parentKey() ^ candidate.ordinal());
             if (best == null
                     || rejected < bestRejected
@@ -286,18 +289,11 @@ public final class ClimateDirectionAssignment {
         for (MacroClimateSurvey.ClimateSummary child : survey.children()) {
             int bestDirectionRejection = Integer.MAX_VALUE;
             for (SubDir direction : DIRECTIONS) {
-                int directionRejection = 0;
-                for (Map.Entry<ResourceLocation, Integer> entry
-                        : child.biomeSamples().entrySet()) {
-                    int weight = TagRules.biomeProfile(entry.getKey())
-                            .placementWeight();
-                    if (weight > 0
-                            && TagRules.directionAffinity(
-                                    continent, direction, entry.getKey()
-                            ) == TagRules.Affinity.STRONGLY_UNSUITABLE) {
-                        directionRejection += entry.getValue() * weight;
-                    }
-                }
+                DirectionEvidence evidence = directionEvidence(
+                        child, continent, direction
+                );
+                int directionRejection = evidence.meaningfulForbidden()
+                        ? evidence.forbiddenWeight() : 0;
                 bestDirectionRejection = Math.min(
                         bestDirectionRejection, directionRejection
                 );
@@ -308,18 +304,18 @@ public final class ClimateDirectionAssignment {
     }
 
     private static int continentScore(
-            MacroClimateSurvey.ClimateSummary summary,
+            MacroClimateSurvey.ClusterSurvey survey,
             Continent continent) {
         int score = 0;
-        for (Map.Entry<ResourceLocation, Integer> entry
-                : summary.biomeSamples().entrySet()) {
-            int weight = TagRules.biomeProfile(entry.getKey())
-                    .placementWeight();
-            if (weight == 0) continue;
-            score += entry.getValue() * weight
-                    * TagRules.continentAffinity(
-                            continent, entry.getKey()
-                    ).score();
+        for (MacroClimateSurvey.ClimateSummary child : survey.children()) {
+            int bestDirection = Integer.MIN_VALUE;
+            for (SubDir direction : DIRECTIONS) {
+                bestDirection = Math.max(
+                        bestDirection,
+                        climateScore(child, continent, direction)
+                );
+            }
+            score += bestDirection;
         }
         return score;
     }
@@ -327,19 +323,60 @@ public final class ClimateDirectionAssignment {
     private static int climateScore(
             MacroClimateSurvey.ClimateSummary summary,
             Continent continent, SubDir direction) {
+        DirectionEvidence evidence = directionEvidence(
+                summary, continent, direction
+        );
+        return evidence.score()
+                - (evidence.meaningfulForbidden()
+                ? MEANINGFUL_FORBIDDEN_PENALTY : 0);
+    }
+
+    private static DirectionEvidence directionEvidence(
+            MacroClimateSurvey.ClimateSummary summary,
+            Continent continent, SubDir direction) {
         int score = 0;
+        int forbiddenSamples = 0;
+        int forbiddenWeight = 0;
         for (Map.Entry<ResourceLocation, Integer> entry
                 : summary.biomeSamples().entrySet()) {
             int weight = TagRules.biomeProfile(entry.getKey())
                     .placementWeight();
             if (weight == 0) continue;
-            score += entry.getValue() * weight
-                    * TagRules.directionAffinity(
-                            continent, direction, entry.getKey()
-                    ).score();
+            int count = entry.getValue();
+            var authored = BiomeRegionCompatibility.rating(
+                    continent, direction, entry.getKey()
+            );
+            if (authored.isPresent()) {
+                int rating = authored.getAsInt();
+                score += count * weight
+                        * BiomeRegionCompatibility.utility(rating);
+                if (rating == BiomeRegionCompatibility.FORBIDDEN) {
+                    forbiddenSamples += count;
+                    forbiddenWeight += count * weight;
+                }
+            } else {
+                score += count * weight * 2
+                        * TagRules.directionAffinity(
+                                continent, direction, entry.getKey()
+                        ).score();
+            }
         }
-        return score;
+        boolean meaningfulForbidden = forbiddenSamples
+                >= MIN_FORBIDDEN_SAMPLES
+                && summary.placementWeight() > 0
+                && (long) forbiddenWeight * 100L
+                >= (long) summary.placementWeight()
+                * FORBIDDEN_SHARE_PERCENT;
+        return new DirectionEvidence(
+                score, forbiddenWeight, meaningfulForbidden
+        );
     }
+
+    private record DirectionEvidence(
+            int score,
+            int forbiddenWeight,
+            boolean meaningfulForbidden
+    ) {}
 
     private static List<Integer> neighborIndices(int child, int count) {
         List<Integer> neighbors = new ArrayList<>();
