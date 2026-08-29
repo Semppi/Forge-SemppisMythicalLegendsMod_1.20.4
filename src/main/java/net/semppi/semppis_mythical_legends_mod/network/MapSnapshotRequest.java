@@ -26,7 +26,10 @@ public record MapSnapshotRequest() {
 
         SMLNetwork.sendTo(
                 player,
-                ServerMapSnapshot.create(player)
+                ServerMapDiscoveryState.merge(
+                        player,
+                        ServerMapSnapshot.create(player)
+                )
         );
     }
 }

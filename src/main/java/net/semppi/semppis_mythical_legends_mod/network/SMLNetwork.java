@@ -61,6 +61,21 @@ public final class SMLNetwork {
                     );
                 })
                 .add();
+
+        CHANNEL.messageBuilder(
+                        MapSnapshotClearPayload.class,
+                        id++,
+                        NetworkDirection.PLAY_TO_CLIENT
+                )
+                .encoder(MapSnapshotClearPayload::write)
+                .decoder(MapSnapshotClearPayload::decode)
+                .consumerMainThread((msg, ctx) -> {
+                    DistExecutor.unsafeRunWhenOn(Dist.CLIENT, () -> () ->
+                            net.semppi.semppis_mythical_legends_mod.client.map.ClientMapSnapshotState
+                                    .clear()
+                    );
+                })
+                .add();
     }
 
     // Preferred path on Forge 49.x
@@ -69,6 +84,13 @@ public final class SMLNetwork {
     }
 
     public static void sendTo(ServerPlayer player, MapSnapshotPayload msg) {
+        CHANNEL.send(msg, PacketDistributor.PLAYER.with(player));
+    }
+
+    public static void sendTo(
+            ServerPlayer player,
+            MapSnapshotClearPayload msg
+    ) {
         CHANNEL.send(msg, PacketDistributor.PLAYER.with(player));
     }
 
