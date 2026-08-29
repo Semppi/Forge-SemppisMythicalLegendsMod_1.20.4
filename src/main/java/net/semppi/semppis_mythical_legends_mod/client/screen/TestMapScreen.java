@@ -3,13 +3,29 @@ package net.semppi.semppis_mythical_legends_mod.client.screen;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.network.chat.Component;
+import net.minecraft.resources.ResourceLocation;
 import net.semppi.semppis_mythical_legends_mod.client.ModKeyMappings;
 import org.lwjgl.glfw.GLFW;
 
 /**
- * Empty first-stage map screen. Map rendering belongs to later Jr. goals.
+ * First-stage map screen with a fixed empty map canvas.
+ * Terrain and overlay rendering belong to later Jr. goals.
  */
 public final class TestMapScreen extends Screen {
+
+    /** One screen pixel currently represents one world block. */
+    private static final int MAP_CANVAS_SIZE = 256;
+
+    private static final int VANILLA_MAP_TEXTURE_SIZE = 128;
+
+    private static final ResourceLocation EMPTY_MAP_TEXTURE =
+            new ResourceLocation(
+                    "minecraft",
+                    "textures/map/map_background.png"
+            );
+
+    private static final int MAP_BORDER_COLOR = 0xFF2B241A;
+    private static final int MAP_SHADOW_COLOR = 0x66000000;
 
     private static final Component TITLE =
             Component.translatable(
@@ -34,7 +50,47 @@ public final class TestMapScreen extends Screen {
                 partialTick
         );
 
+        renderEmptyMapCanvas(guiGraphics);
+
         super.render(guiGraphics, mouseX, mouseY, partialTick);
+    }
+
+    private void renderEmptyMapCanvas(GuiGraphics guiGraphics) {
+        int left = (this.width - MAP_CANVAS_SIZE) / 2;
+        int top = (this.height - MAP_CANVAS_SIZE) / 2;
+        int right = left + MAP_CANVAS_SIZE;
+        int bottom = top + MAP_CANVAS_SIZE;
+
+        guiGraphics.fill(
+                left + 3,
+                top + 3,
+                right + 3,
+                bottom + 3,
+                MAP_SHADOW_COLOR
+        );
+        guiGraphics.fill(
+                left - 1,
+                top - 1,
+                right + 1,
+                bottom + 1,
+                MAP_BORDER_COLOR
+        );
+
+        guiGraphics.pose().pushPose();
+        guiGraphics.pose().translate(left, top, 0.0F);
+        guiGraphics.pose().scale(2.0F, 2.0F, 1.0F);
+        guiGraphics.blit(
+                EMPTY_MAP_TEXTURE,
+                0,
+                0,
+                0.0F,
+                0.0F,
+                VANILLA_MAP_TEXTURE_SIZE,
+                VANILLA_MAP_TEXTURE_SIZE,
+                VANILLA_MAP_TEXTURE_SIZE,
+                VANILLA_MAP_TEXTURE_SIZE
+        );
+        guiGraphics.pose().popPose();
     }
 
     @Override
