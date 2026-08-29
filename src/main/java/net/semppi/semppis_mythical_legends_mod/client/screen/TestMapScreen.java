@@ -5,6 +5,8 @@ import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import net.semppi.semppis_mythical_legends_mod.client.ModKeyMappings;
+import net.semppi.semppis_mythical_legends_mod.client.map.ClientMapSnapshotState;
+import net.semppi.semppis_mythical_legends_mod.network.SMLNetwork;
 import org.lwjgl.glfw.GLFW;
 
 /**
@@ -26,6 +28,7 @@ public final class TestMapScreen extends Screen {
 
     private static final int MAP_BORDER_COLOR = 0xFF2B241A;
     private static final int MAP_SHADOW_COLOR = 0x66000000;
+    private static final int MAP_FOREGROUND_WASH = 0x55FFF1C1;
 
     private static final Component TITLE =
             Component.translatable(
@@ -34,6 +37,13 @@ public final class TestMapScreen extends Screen {
 
     public TestMapScreen() {
         super(TITLE);
+    }
+
+    @Override
+    protected void init() {
+        super.init();
+        ClientMapSnapshotState.clear();
+        SMLNetwork.requestMapSnapshot();
     }
 
     @Override
@@ -50,9 +60,11 @@ public final class TestMapScreen extends Screen {
                 partialTick
         );
 
-        renderEmptyMapCanvas(guiGraphics);
-
         super.render(guiGraphics, mouseX, mouseY, partialTick);
+
+        // The canvas is intentionally the final foreground layer. The world
+        // darkening therefore never dims the map itself.
+        renderEmptyMapCanvas(guiGraphics);
     }
 
     private void renderEmptyMapCanvas(GuiGraphics guiGraphics) {
@@ -91,6 +103,16 @@ public final class TestMapScreen extends Screen {
                 VANILLA_MAP_TEXTURE_SIZE
         );
         guiGraphics.pose().popPose();
+
+        // Vanilla's empty-map texture is deliberately muted. This light wash
+        // keeps the test canvas readable over the darkened world backdrop.
+        guiGraphics.fill(
+                left,
+                top,
+                right,
+                bottom,
+                MAP_FOREGROUND_WASH
+        );
     }
 
     @Override

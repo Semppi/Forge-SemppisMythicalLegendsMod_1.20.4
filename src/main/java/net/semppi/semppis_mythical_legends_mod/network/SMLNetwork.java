@@ -36,11 +36,44 @@ public final class SMLNetwork {
                     );
                 })
                 .add();
+
+        CHANNEL.messageBuilder(
+                        MapSnapshotRequest.class,
+                        id++,
+                        NetworkDirection.PLAY_TO_SERVER
+                )
+                .encoder(MapSnapshotRequest::write)
+                .decoder(MapSnapshotRequest::decode)
+                .consumerMainThread(MapSnapshotRequest::handle)
+                .add();
+
+        CHANNEL.messageBuilder(
+                        MapSnapshotPayload.class,
+                        id++,
+                        NetworkDirection.PLAY_TO_CLIENT
+                )
+                .encoder(MapSnapshotPayload::write)
+                .decoder(MapSnapshotPayload::decode)
+                .consumerMainThread((msg, ctx) -> {
+                    DistExecutor.unsafeRunWhenOn(Dist.CLIENT, () -> () ->
+                            net.semppi.semppis_mythical_legends_mod.client.map.ClientMapSnapshotState
+                                    .set(msg)
+                    );
+                })
+                .add();
     }
 
     // Preferred path on Forge 49.x
     public static void sendTo(ServerPlayer player, RegionSyncPayload msg) {
         CHANNEL.send(msg, PacketDistributor.PLAYER.with(player)); // (message, target)
+    }
+
+    public static void sendTo(ServerPlayer player, MapSnapshotPayload msg) {
+        CHANNEL.send(msg, PacketDistributor.PLAYER.with(player));
+    }
+
+    public static void requestMapSnapshot() {
+        CHANNEL.send(new MapSnapshotRequest(), PacketDistributor.SERVER.noArg());
     }
 
     // If the above doesn't exist in your workspace, comment it out and use this instead:
