@@ -2,7 +2,7 @@ package net.semppi.semppis_mythical_legends_mod.network;
 
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.server.level.ServerPlayer;
-import net.minecraftforge.network.CustomPayloadEvent;
+import net.minecraftforge.event.network.CustomPayloadEvent;
 
 /** Client request for the fixed map page containing the player. */
 public record MapSnapshotRequest() {

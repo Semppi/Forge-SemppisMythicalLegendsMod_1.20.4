@@ -21,7 +21,7 @@ public final class TestMapScreen extends Screen {
     private static final int VANILLA_MAP_TEXTURE_SIZE = 128;
 
     private static final ResourceLocation EMPTY_MAP_TEXTURE =
-            new ResourceLocation(
+            ResourceLocation.fromNamespaceAndPath(
                     "minecraft",
                     "textures/map/map_background.png"
             );
