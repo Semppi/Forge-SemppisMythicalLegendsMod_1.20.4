@@ -1,12 +1,14 @@
 package net.semppi.semppis_mythical_legends_mod.client.screen;
 
 import com.mojang.blaze3d.platform.NativeImage;
+import com.mojang.math.Axis;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.renderer.texture.DynamicTexture;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
+import net.minecraft.util.Mth;
 import net.semppi.semppis_mythical_legends_mod.client.ModKeyMappings;
 import net.semppi.semppis_mythical_legends_mod.client.map.BiomeMapColorResolver;
 import net.semppi.semppis_mythical_legends_mod.client.map.ClientMapSnapshotState;
@@ -22,8 +24,12 @@ import java.util.List;
  */
 public final class TestMapScreen extends Screen {
 
-    /** One screen pixel currently represents one world block. */
+    /** The source texture still stores one pixel for every world block. */
     private static final int MAP_CANVAS_SIZE = 256;
+
+    private static final int MAX_FRAME_DISPLAY_SIZE = 240;
+    private static final int SCREEN_MARGIN = 12;
+    private static final int FRAME_INSET = 10;
 
     private static final int VANILLA_MAP_TEXTURE_SIZE = 128;
 
@@ -37,6 +43,8 @@ public final class TestMapScreen extends Screen {
     private static final int MAP_SHADOW_COLOR = 0x66000000;
     private static final int MAP_FOREGROUND_WASH = 0x55FFF1C1;
     private static final int UNEXPLORED_MASK = 0x88000000;
+    private static final int MARKER_OUTLINE = 0xFF1B1B1B;
+    private static final int MARKER_FILL = 0xFFF5F5F5;
 
     private MapSnapshotPayload displayedSnapshot;
     private ResourceLocation mapTextureLocation;
@@ -77,33 +85,41 @@ public final class TestMapScreen extends Screen {
 
         // The canvas is intentionally the final foreground layer. The world
         // darkening therefore never dims the map itself.
-        renderEmptyMapCanvas(guiGraphics);
+        renderMap(guiGraphics);
     }
 
-    private void renderEmptyMapCanvas(GuiGraphics guiGraphics) {
-        int left = (this.width - MAP_CANVAS_SIZE) / 2;
-        int top = (this.height - MAP_CANVAS_SIZE) / 2;
-        int right = left + MAP_CANVAS_SIZE;
-        int bottom = top + MAP_CANVAS_SIZE;
+    private void renderMap(GuiGraphics guiGraphics) {
+        int availableSize = Math.min(this.width, this.height)
+                - SCREEN_MARGIN * 2;
+        int frameSize = Math.min(MAX_FRAME_DISPLAY_SIZE, availableSize);
+        if (frameSize <= FRAME_INSET * 2) {
+            return;
+        }
+
+        int frameLeft = (this.width - frameSize) / 2;
+        int frameTop = (this.height - frameSize) / 2;
+        int frameRight = frameLeft + frameSize;
+        int frameBottom = frameTop + frameSize;
 
         guiGraphics.fill(
-                left + 3,
-                top + 3,
-                right + 3,
-                bottom + 3,
+                frameLeft + 3,
+                frameTop + 3,
+                frameRight + 3,
+                frameBottom + 3,
                 MAP_SHADOW_COLOR
         );
         guiGraphics.fill(
-                left - 1,
-                top - 1,
-                right + 1,
-                bottom + 1,
+                frameLeft - 1,
+                frameTop - 1,
+                frameRight + 1,
+                frameBottom + 1,
                 MAP_BORDER_COLOR
         );
 
         guiGraphics.pose().pushPose();
-        guiGraphics.pose().translate(left, top, 0.0F);
-        guiGraphics.pose().scale(2.0F, 2.0F, 1.0F);
+        guiGraphics.pose().translate(frameLeft, frameTop, 0.0F);
+        float frameScale = (float) frameSize / VANILLA_MAP_TEXTURE_SIZE;
+        guiGraphics.pose().scale(frameScale, frameScale, 1.0F);
         guiGraphics.blit(
                 EMPTY_MAP_TEXTURE,
                 0,
@@ -120,14 +136,32 @@ public final class TestMapScreen extends Screen {
         // Vanilla's empty-map texture is deliberately muted. This light wash
         // keeps the test canvas readable over the darkened world backdrop.
         guiGraphics.fill(
-                left,
-                top,
-                right,
-                bottom,
+                frameLeft,
+                frameTop,
+                frameRight,
+                frameBottom,
                 MAP_FOREGROUND_WASH
         );
 
-        renderBiomeLayer(guiGraphics, left, top, right, bottom);
+        int mapLeft = frameLeft + FRAME_INSET;
+        int mapTop = frameTop + FRAME_INSET;
+        int mapRight = frameRight - FRAME_INSET;
+        int mapBottom = frameBottom - FRAME_INSET;
+
+        renderBiomeLayer(
+                guiGraphics,
+                mapLeft,
+                mapTop,
+                mapRight,
+                mapBottom
+        );
+        renderPlayerMarker(
+                guiGraphics,
+                mapLeft,
+                mapTop,
+                mapRight,
+                mapBottom
+        );
     }
 
     private void renderBiomeLayer(
@@ -143,10 +177,14 @@ public final class TestMapScreen extends Screen {
         guiGraphics.fill(left, top, right, bottom, UNEXPLORED_MASK);
 
         if (mapTextureLocation != null) {
+            float displayScale = (float) (right - left) / MAP_CANVAS_SIZE;
+            guiGraphics.pose().pushPose();
+            guiGraphics.pose().translate(left, top, 0.0F);
+            guiGraphics.pose().scale(displayScale, displayScale, 1.0F);
             guiGraphics.blit(
                     mapTextureLocation,
-                    left,
-                    top,
+                    0,
+                    0,
                     0.0F,
                     0.0F,
                     MAP_CANVAS_SIZE,
@@ -154,7 +192,73 @@ public final class TestMapScreen extends Screen {
                     MAP_CANVAS_SIZE,
                     MAP_CANVAS_SIZE
             );
+            guiGraphics.pose().popPose();
         }
+    }
+
+    private void renderPlayerMarker(
+            GuiGraphics guiGraphics,
+            int mapLeft,
+            int mapTop,
+            int mapRight,
+            int mapBottom
+    ) {
+        Minecraft minecraft = Minecraft.getInstance();
+        MapSnapshotPayload snapshot = this.displayedSnapshot;
+        if (snapshot == null
+                || minecraft.player == null
+                || minecraft.level == null
+                || !minecraft.level.dimension().location().equals(
+                        snapshot.dimension()
+                )) {
+            return;
+        }
+
+        double relativeX = minecraft.player.getX() - snapshot.originX();
+        double relativeZ = minecraft.player.getZ() - snapshot.originZ();
+        boolean inside = relativeX >= 0.0
+                && relativeX < MAP_CANVAS_SIZE
+                && relativeZ >= 0.0
+                && relativeZ < MAP_CANVAS_SIZE;
+
+        double displaySize = mapRight - mapLeft;
+        double rawX = mapLeft
+                + relativeX / MAP_CANVAS_SIZE * displaySize;
+        double rawY = mapTop
+                + relativeZ / MAP_CANVAS_SIZE * displaySize;
+        double markerScale = inside ? 1.0 : 0.5;
+        double markerHalfSize = 4.0 * markerScale;
+        double markerX = Mth.clamp(
+                rawX,
+                mapLeft + markerHalfSize,
+                mapRight - markerHalfSize
+        );
+        double markerY = Mth.clamp(
+                rawY,
+                mapTop + markerHalfSize,
+                mapBottom - markerHalfSize
+        );
+
+        guiGraphics.pose().pushPose();
+        guiGraphics.pose().translate(markerX, markerY, 100.0F);
+        guiGraphics.pose().mulPose(Axis.ZP.rotationDegrees(
+                minecraft.player.getYRot() - 180.0F
+        ));
+        guiGraphics.pose().scale(
+                (float) markerScale,
+                (float) markerScale,
+                1.0F
+        );
+
+        // Small vanilla-style pixel arrow, pointing upward before rotation.
+        guiGraphics.fill(-1, -4, 1, -3, MARKER_OUTLINE);
+        guiGraphics.fill(-2, -3, 2, -2, MARKER_OUTLINE);
+        guiGraphics.fill(-3, -2, 3, -1, MARKER_OUTLINE);
+        guiGraphics.fill(-2, -1, 2, 4, MARKER_OUTLINE);
+        guiGraphics.fill(-1, -3, 1, -2, MARKER_FILL);
+        guiGraphics.fill(-2, -2, 2, -1, MARKER_FILL);
+        guiGraphics.fill(-1, -1, 1, 3, MARKER_FILL);
+        guiGraphics.pose().popPose();
     }
 
     private void refreshMapTexture() {
