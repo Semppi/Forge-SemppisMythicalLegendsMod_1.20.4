@@ -229,6 +229,8 @@
   "key.semppis_mythical_legends_mod.open_test_map": "Open Test Map",
   "screen.semppis_mythical_legends_mod.interaction": "Interaction",
   "screen.semppis_mythical_legends_mod.test_map": "SML Test Map",
+  "screen.semppis_mythical_legends_mod.continents_on": "Continents: ON",
+  "screen.semppis_mythical_legends_mod.continents_off": "Continents: OFF",
   "hud.semppis_mythical_legends_mod.tone.teasing": "Teasing",
   "hud.semppis_mythical_legends_mod.tone.soft": "Soft",
   "hud.semppis_mythical_legends_mod.tone.neutral": "Neutral",

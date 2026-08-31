@@ -4,6 +4,7 @@ import com.mojang.blaze3d.platform.NativeImage;
 import com.mojang.math.Axis;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.renderer.texture.DynamicTexture;
 import net.minecraft.network.chat.Component;
@@ -36,6 +37,9 @@ public final class TestMapScreen extends Screen {
     private static final int MAX_SIDE_PANEL_WIDTH = 88;
     private static final int MIN_SIDE_PANEL_WIDTH = 28;
     private static final int SIDE_PANEL_BORDER = 2;
+    private static final int PANEL_BUTTON_MARGIN = 5;
+    private static final int PANEL_BUTTON_HEIGHT = 18;
+    private static final int MIN_BUTTON_PANEL_WIDTH = 64;
 
     private static final int VANILLA_MAP_TEXTURE_SIZE = 128;
 
@@ -82,6 +86,10 @@ public final class TestMapScreen extends Screen {
 
     private MapSnapshotPayload displayedSnapshot;
     private ResourceLocation mapTextureLocation;
+    private boolean mapTextureDirty = true;
+
+    /** Remember the display preference while Minecraft remains open. */
+    private static boolean continentalOverlayEnabled = true;
 
     private static final Component TITLE =
             Component.translatable(
@@ -96,9 +104,62 @@ public final class TestMapScreen extends Screen {
     protected void init() {
         super.init();
         this.displayedSnapshot = null;
+        this.mapTextureDirty = true;
         releaseMapTexture();
         ClientMapSnapshotState.clear();
+        addContinentalToggle();
         SMLNetwork.requestMapSnapshot();
+    }
+
+    private void addContinentalToggle() {
+        int availableSize = Math.min(this.width, this.height)
+                - SCREEN_MARGIN * 2;
+        int frameSize = Math.min(MAX_FRAME_DISPLAY_SIZE, availableSize);
+        if (frameSize <= FRAME_INSET * 2) {
+            return;
+        }
+
+        int frameLeft = (this.width - frameSize) / 2;
+        int frameTop = (this.height - frameSize) / 2;
+        int availablePerSide = frameLeft
+                - SCREEN_MARGIN
+                - SIDE_PANEL_GAP;
+        int panelWidth = Math.min(MAX_SIDE_PANEL_WIDTH, availablePerSide);
+        if (panelWidth < MIN_BUTTON_PANEL_WIDTH) {
+            return;
+        }
+
+        int rightPanelRight = this.width - SCREEN_MARGIN;
+        int rightPanelLeft = rightPanelRight - panelWidth;
+        int buttonWidth = panelWidth - PANEL_BUTTON_MARGIN * 2;
+
+        addRenderableWidget(
+                Button.builder(
+                                continentalToggleLabel(),
+                                button -> toggleContinentalOverlay(button)
+                        )
+                        .bounds(
+                                rightPanelLeft + PANEL_BUTTON_MARGIN,
+                                frameTop + PANEL_BUTTON_MARGIN,
+                                buttonWidth,
+                                PANEL_BUTTON_HEIGHT
+                        )
+                        .build()
+        );
+    }
+
+    private void toggleContinentalOverlay(Button button) {
+        continentalOverlayEnabled = !continentalOverlayEnabled;
+        button.setMessage(continentalToggleLabel());
+        this.mapTextureDirty = true;
+    }
+
+    private static Component continentalToggleLabel() {
+        return Component.translatable(
+                continentalOverlayEnabled
+                        ? "screen.semppis_mythical_legends_mod.continents_on"
+                        : "screen.semppis_mythical_legends_mod.continents_off"
+        );
     }
 
     @Override
@@ -115,11 +176,10 @@ public final class TestMapScreen extends Screen {
                 partialTick
         );
 
-        super.render(guiGraphics, mouseX, mouseY, partialTick);
-
-        // The canvas is intentionally the final foreground layer. The world
-        // darkening therefore never dims the map itself.
+        // The world darkening is already complete, so the map and panels stay
+        // bright. Normal widgets render last and sit cleanly above the trays.
         renderMap(guiGraphics);
+        super.render(guiGraphics, mouseX, mouseY, partialTick);
     }
 
     private void renderMap(GuiGraphics guiGraphics) {
@@ -397,11 +457,13 @@ public final class TestMapScreen extends Screen {
 
     private void refreshMapTexture() {
         MapSnapshotPayload snapshot = ClientMapSnapshotState.get();
-        if (snapshot == null || snapshot == displayedSnapshot) {
+        if (snapshot == null
+                || (!mapTextureDirty && snapshot == displayedSnapshot)) {
             return;
         }
 
         displayedSnapshot = snapshot;
+        mapTextureDirty = false;
         releaseMapTexture();
 
         int[] biomePixels = snapshot.biomePixels();
@@ -437,7 +499,8 @@ public final class TestMapScreen extends Screen {
                             ? BIOME_EDGE_COLOR
                             : paletteColors[encodedBiome - 1];
                     byte encodedRegion = regionPixels[row + x];
-                    if (!biomeEdge
+                    if (continentalOverlayEnabled
+                            && !biomeEdge
                             && encodedRegion != 0
                             && isContinentalStripe(
                                     snapshot.originX() + x,
