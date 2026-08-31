@@ -86,6 +86,7 @@ public final class TestMapScreen extends Screen {
 
     private MapSnapshotPayload displayedSnapshot;
     private ResourceLocation mapTextureLocation;
+    private Button continentalToggleButton;
     private boolean mapTextureDirty = true;
 
     /** Remember the display preference while Minecraft remains open. */
@@ -104,6 +105,7 @@ public final class TestMapScreen extends Screen {
     protected void init() {
         super.init();
         this.displayedSnapshot = null;
+        this.continentalToggleButton = null;
         this.mapTextureDirty = true;
         releaseMapTexture();
         ClientMapSnapshotState.clear();
@@ -133,7 +135,7 @@ public final class TestMapScreen extends Screen {
         int rightPanelLeft = rightPanelRight - panelWidth;
         int buttonWidth = panelWidth - PANEL_BUTTON_MARGIN * 2;
 
-        addRenderableWidget(
+        this.continentalToggleButton = addRenderableWidget(
                 Button.builder(
                                 continentalToggleLabel(),
                                 button -> toggleContinentalOverlay(button)
@@ -176,10 +178,22 @@ public final class TestMapScreen extends Screen {
                 partialTick
         );
 
-        // The world darkening is already complete, so the map and panels stay
-        // bright. Normal widgets render last and sit cleanly above the trays.
-        renderMap(guiGraphics);
         super.render(guiGraphics, mouseX, mouseY, partialTick);
+
+        // Screen rendering may add another darkened backdrop. Draw the map
+        // furniture afterward so the parchment and panels remain bright.
+        renderMap(guiGraphics);
+
+        // The registered widget was underneath the foreground map pass. Draw
+        // only this control again so it remains clickable and clearly visible.
+        if (this.continentalToggleButton != null) {
+            this.continentalToggleButton.render(
+                    guiGraphics,
+                    mouseX,
+                    mouseY,
+                    partialTick
+            );
+        }
     }
 
     private void renderMap(GuiGraphics guiGraphics) {
