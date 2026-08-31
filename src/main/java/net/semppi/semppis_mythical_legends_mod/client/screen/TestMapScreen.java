@@ -196,10 +196,12 @@ public final class TestMapScreen extends Screen {
             return;
         }
 
-        int leftPanelRight = frameLeft - SIDE_PANEL_GAP;
-        int leftPanelLeft = leftPanelRight - panelWidth;
-        int rightPanelLeft = frameRight + SIDE_PANEL_GAP;
-        int rightPanelRight = rightPanelLeft + panelWidth;
+        // Anchor the trays outward. Any extra horizontal room becomes open
+        // space around the centered map instead of unused screen-edge space.
+        int leftPanelLeft = SCREEN_MARGIN;
+        int leftPanelRight = leftPanelLeft + panelWidth;
+        int rightPanelRight = this.width - SCREEN_MARGIN;
+        int rightPanelLeft = rightPanelRight - panelWidth;
 
         renderSidePanel(
                 guiGraphics,
