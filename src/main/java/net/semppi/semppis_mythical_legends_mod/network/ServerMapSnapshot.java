@@ -18,6 +18,8 @@ import java.util.Map;
 
 /** Builds map snapshots without loading or generating any additional chunks. */
 public final class ServerMapSnapshot {
+    private static final int REGION_TILE_SIZE = 32;
+    private static final int MIN_REGION_TILE_SIZE = 4;
 
     private ServerMapSnapshot() {}
 
@@ -57,11 +59,19 @@ public final class ServerMapSnapshot {
                         chunkOffsetZ * 16,
                         palette,
                         paletteIndices,
-                        pixels,
-                        regionPixels,
-                        player
+                        pixels
                 );
             }
+        }
+
+        if (player.serverLevel().dimension() == Level.OVERWORLD) {
+            sampleRegionTiles(
+                    player,
+                    originX,
+                    originZ,
+                    pixels,
+                    regionPixels
+            );
         }
 
         return new MapSnapshotPayload(
@@ -82,9 +92,7 @@ public final class ServerMapSnapshot {
             int pixelStartZ,
             List<ResourceLocation> palette,
             Map<ResourceLocation, Integer> paletteIndices,
-            int[] pixels,
-            byte[] regionPixels,
-            ServerPlayer player
+            int[] pixels
     ) {
         for (int localZ = 0; localZ < 16; localZ++) {
             int pixelZ = pixelStartZ + localZ;
@@ -119,16 +127,180 @@ public final class ServerMapSnapshot {
                 );
                 int pixel = pixelZ * MapSnapshotPayload.SIZE + pixelX;
                 pixels[pixel] = paletteIndex + 1;
-                if (player.serverLevel().dimension() == Level.OVERWORLD) {
-                    regionPixels[pixel] = MapRegionCode.encode(
-                            RegionGate.resolve(
-                                    player.serverLevel(),
-                                    worldX,
-                                    worldZ
-                            ).region()
-                    );
+            }
+        }
+    }
+
+    /**
+     * Uniform continental interiors are cheap, while tiles containing an
+     * actual boundary recursively retain the resolver's four-block detail.
+     */
+    private static void sampleRegionTiles(
+            ServerPlayer player,
+            int originX,
+            int originZ,
+            int[] biomePixels,
+            byte[] regionPixels
+    ) {
+        for (int z = 0; z < MapSnapshotPayload.SIZE; z += REGION_TILE_SIZE) {
+            for (int x = 0; x < MapSnapshotPayload.SIZE; x += REGION_TILE_SIZE) {
+                sampleRegionTile(
+                        player,
+                        originX,
+                        originZ,
+                        biomePixels,
+                        regionPixels,
+                        x,
+                        z,
+                        REGION_TILE_SIZE
+                );
+            }
+        }
+    }
+
+    private static void sampleRegionTile(
+            ServerPlayer player,
+            int originX,
+            int originZ,
+            int[] biomePixels,
+            byte[] regionPixels,
+            int startX,
+            int startZ,
+            int size
+    ) {
+        Discovery coverage = discoveryCoverage(
+                biomePixels,
+                startX,
+                startZ,
+                size
+        );
+        if (coverage == Discovery.NONE) {
+            return;
+        }
+
+        if (coverage == Discovery.FULL) {
+            byte topLeft = resolveRegionCode(
+                    player, originX + startX, originZ + startZ
+            );
+            byte topRight = resolveRegionCode(
+                    player,
+                    originX + startX + size - 1,
+                    originZ + startZ
+            );
+            byte bottomLeft = resolveRegionCode(
+                    player,
+                    originX + startX,
+                    originZ + startZ + size - 1
+            );
+            byte bottomRight = resolveRegionCode(
+                    player,
+                    originX + startX + size - 1,
+                    originZ + startZ + size - 1
+            );
+            byte center = resolveRegionCode(
+                    player,
+                    originX + startX + size / 2,
+                    originZ + startZ + size / 2
+            );
+
+            int overlayIdentity = MapRegionCode.overlayIdentity(topLeft);
+            if (overlayIdentity == MapRegionCode.overlayIdentity(topRight)
+                    && overlayIdentity == MapRegionCode.overlayIdentity(
+                            bottomLeft
+                    )
+                    && overlayIdentity == MapRegionCode.overlayIdentity(
+                            bottomRight
+                    )
+                    && overlayIdentity == MapRegionCode.overlayIdentity(center)) {
+                fillRegionTile(
+                        regionPixels, startX, startZ, size, topLeft
+                );
+                return;
+            }
+        }
+
+        if (size <= MIN_REGION_TILE_SIZE) {
+            for (int z = startZ; z < startZ + size; z++) {
+                for (int x = startX; x < startX + size; x++) {
+                    int pixel = z * MapSnapshotPayload.SIZE + x;
+                    if (biomePixels[pixel] != 0) {
+                        regionPixels[pixel] = resolveRegionCode(
+                                player, originX + x, originZ + z
+                        );
+                    }
+                }
+            }
+            return;
+        }
+
+        int half = size / 2;
+        sampleRegionTile(
+                player, originX, originZ, biomePixels, regionPixels,
+                startX, startZ, half
+        );
+        sampleRegionTile(
+                player, originX, originZ, biomePixels, regionPixels,
+                startX + half, startZ, half
+        );
+        sampleRegionTile(
+                player, originX, originZ, biomePixels, regionPixels,
+                startX, startZ + half, half
+        );
+        sampleRegionTile(
+                player, originX, originZ, biomePixels, regionPixels,
+                startX + half, startZ + half, half
+        );
+    }
+
+    private static byte resolveRegionCode(
+            ServerPlayer player, int worldX, int worldZ
+    ) {
+        return MapRegionCode.encode(
+                RegionGate.resolve(
+                        player.serverLevel(), worldX, worldZ
+                ).region()
+        );
+    }
+
+    private static Discovery discoveryCoverage(
+            int[] biomePixels, int startX, int startZ, int size
+    ) {
+        boolean discovered = false;
+        boolean unexplored = false;
+        for (int z = startZ; z < startZ + size; z++) {
+            int row = z * MapSnapshotPayload.SIZE;
+            for (int x = startX; x < startX + size; x++) {
+                if (biomePixels[row + x] == 0) {
+                    unexplored = true;
+                } else {
+                    discovered = true;
+                }
+                if (discovered && unexplored) {
+                    return Discovery.PARTIAL;
                 }
             }
         }
+        return discovered ? Discovery.FULL : Discovery.NONE;
+    }
+
+    private static void fillRegionTile(
+            byte[] regionPixels,
+            int startX,
+            int startZ,
+            int size,
+            byte region
+    ) {
+        for (int z = startZ; z < startZ + size; z++) {
+            int row = z * MapSnapshotPayload.SIZE;
+            for (int x = startX; x < startX + size; x++) {
+                regionPixels[row + x] = region;
+            }
+        }
+    }
+
+    private enum Discovery {
+        NONE,
+        PARTIAL,
+        FULL
     }
 }

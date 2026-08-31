@@ -439,7 +439,10 @@ public final class TestMapScreen extends Screen {
                     byte encodedRegion = regionPixels[row + x];
                     if (!biomeEdge
                             && encodedRegion != 0
-                            && isContinentalStripe(x, z)) {
+                            && isContinentalStripe(
+                                    snapshot.originX() + x,
+                                    snapshot.originZ() + z
+                            )) {
                         pixelColor = blendRgb(
                                 pixelColor,
                                 overlayColor(encodedRegion),
@@ -486,8 +489,14 @@ public final class TestMapScreen extends Screen {
         return false;
     }
 
-    private static boolean isContinentalStripe(int x, int z) {
-        return Math.floorMod(x - z, CONTINENT_STRIPE_SPACING)
+    private static boolean isContinentalStripe(int worldX, int worldZ) {
+        // Screen Z grows downward, so x + z produces a line rising toward
+        // the right: bottom-left to top-right. World coordinates keep the
+        // hatch phase continuous when a neighboring map page is opened.
+        return Math.floorMod(
+                worldX + worldZ,
+                CONTINENT_STRIPE_SPACING
+        )
                 < CONTINENT_STRIPE_WIDTH;
     }
 

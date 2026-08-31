@@ -45,4 +45,13 @@ public final class MapRegionCode {
         }
         return Ocean.values()[oceanIndex];
     }
+
+    /** Identity actually drawn by the current continental overlay. */
+    public static int overlayIdentity(byte encodedRegion) {
+        if (isOcean(encodedRegion)) {
+            return Continent.values().length
+                    + ocean(encodedRegion).ordinal();
+        }
+        return continent(encodedRegion).ordinal();
+    }
 }
