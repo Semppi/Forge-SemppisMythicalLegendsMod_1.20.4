@@ -43,6 +43,7 @@ public final class TestMapScreen extends Screen {
     private static final int MAP_SHADOW_COLOR = 0x66000000;
     private static final int MAP_FOREGROUND_WASH = 0x55FFF1C1;
     private static final int UNEXPLORED_MASK = 0x88000000;
+    private static final int BIOME_EDGE_COLOR = 0x2B2924;
     private static final int MARKER_OUTLINE = 0xFF1B1B1B;
     private static final int MARKER_FILL = 0xFFF5F5F5;
 
@@ -292,10 +293,18 @@ public final class TestMapScreen extends Screen {
             for (int x = 0; x < MAP_CANVAS_SIZE; x++) {
                 int encodedBiome = biomePixels[row + x];
                 if (encodedBiome != 0) {
+                    int pixelColor = isBiomeEdge(
+                            biomePixels,
+                            x,
+                            z,
+                            encodedBiome
+                    )
+                            ? BIOME_EDGE_COLOR
+                            : paletteColors[encodedBiome - 1];
                     image.setPixelRGBA(
                             x,
                             z,
-                            rgbToAbgr(paletteColors[encodedBiome - 1])
+                            rgbToAbgr(pixelColor)
                     );
                 } else {
                     image.setPixelRGBA(x, z, 0x00000000);
@@ -309,6 +318,27 @@ public final class TestMapScreen extends Screen {
                 "sml_test_biome_map",
                 mapTexture
         );
+    }
+
+    private static boolean isBiomeEdge(
+            int[] biomePixels,
+            int x,
+            int z,
+            int encodedBiome
+    ) {
+        // Right and bottom are sufficient to draw every boundary once. This
+        // prevents the line from becoming two source pixels thick.
+        if (x + 1 < MAP_CANVAS_SIZE) {
+            int right = biomePixels[z * MAP_CANVAS_SIZE + x + 1];
+            if (right != 0 && right != encodedBiome) {
+                return true;
+            }
+        }
+        if (z + 1 < MAP_CANVAS_SIZE) {
+            int below = biomePixels[(z + 1) * MAP_CANVAS_SIZE + x];
+            return below != 0 && below != encodedBiome;
+        }
+        return false;
     }
 
     private static int rgbToAbgr(int rgb) {
