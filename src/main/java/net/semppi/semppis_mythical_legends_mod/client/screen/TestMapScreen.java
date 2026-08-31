@@ -30,6 +30,10 @@ public final class TestMapScreen extends Screen {
     private static final int MAX_FRAME_DISPLAY_SIZE = 240;
     private static final int SCREEN_MARGIN = 12;
     private static final int FRAME_INSET = 10;
+    private static final int SIDE_PANEL_GAP = 8;
+    private static final int MAX_SIDE_PANEL_WIDTH = 88;
+    private static final int MIN_SIDE_PANEL_WIDTH = 28;
+    private static final int SIDE_PANEL_BORDER = 2;
 
     private static final int VANILLA_MAP_TEXTURE_SIZE = 128;
 
@@ -44,6 +48,10 @@ public final class TestMapScreen extends Screen {
     private static final int MAP_FOREGROUND_WASH = 0x55FFF1C1;
     private static final int UNEXPLORED_MASK = 0x88000000;
     private static final int BIOME_EDGE_COLOR = 0x2B2924;
+    private static final int PANEL_BORDER_COLOR = 0xFF514532;
+    private static final int PANEL_BACKGROUND_COLOR = 0xFFE3CC99;
+    private static final int PANEL_INNER_EDGE_COLOR = 0xFFC2A978;
+    private static final int PANEL_HIGHLIGHT_COLOR = 0xFFF0DCAD;
     private static final int MARKER_OUTLINE = 0xFF1B1B1B;
     private static final int MARKER_FILL = 0xFFF5F5F5;
 
@@ -101,6 +109,14 @@ public final class TestMapScreen extends Screen {
         int frameTop = (this.height - frameSize) / 2;
         int frameRight = frameLeft + frameSize;
         int frameBottom = frameTop + frameSize;
+
+        renderSidePanels(
+                guiGraphics,
+                frameLeft,
+                frameTop,
+                frameRight,
+                frameBottom
+        );
 
         guiGraphics.fill(
                 frameLeft + 3,
@@ -162,6 +178,96 @@ public final class TestMapScreen extends Screen {
                 mapTop,
                 mapRight,
                 mapBottom
+        );
+    }
+
+    private void renderSidePanels(
+            GuiGraphics guiGraphics,
+            int frameLeft,
+            int frameTop,
+            int frameRight,
+            int frameBottom
+    ) {
+        int availablePerSide = frameLeft
+                - SCREEN_MARGIN
+                - SIDE_PANEL_GAP;
+        int panelWidth = Math.min(MAX_SIDE_PANEL_WIDTH, availablePerSide);
+        if (panelWidth < MIN_SIDE_PANEL_WIDTH) {
+            return;
+        }
+
+        int leftPanelRight = frameLeft - SIDE_PANEL_GAP;
+        int leftPanelLeft = leftPanelRight - panelWidth;
+        int rightPanelLeft = frameRight + SIDE_PANEL_GAP;
+        int rightPanelRight = rightPanelLeft + panelWidth;
+
+        renderSidePanel(
+                guiGraphics,
+                leftPanelLeft,
+                frameTop,
+                leftPanelRight,
+                frameBottom
+        );
+        renderSidePanel(
+                guiGraphics,
+                rightPanelLeft,
+                frameTop,
+                rightPanelRight,
+                frameBottom
+        );
+    }
+
+    private static void renderSidePanel(
+            GuiGraphics guiGraphics,
+            int left,
+            int top,
+            int right,
+            int bottom
+    ) {
+        guiGraphics.fill(
+                left + 3,
+                top + 3,
+                right + 3,
+                bottom + 3,
+                MAP_SHADOW_COLOR
+        );
+        guiGraphics.fill(left, top, right, bottom, PANEL_BORDER_COLOR);
+        guiGraphics.fill(
+                left + SIDE_PANEL_BORDER,
+                top + SIDE_PANEL_BORDER,
+                right - SIDE_PANEL_BORDER,
+                bottom - SIDE_PANEL_BORDER,
+                PANEL_BACKGROUND_COLOR
+        );
+
+        // Empty inset treatment reserves a clear future control surface.
+        guiGraphics.fill(
+                left + SIDE_PANEL_BORDER,
+                top + SIDE_PANEL_BORDER,
+                right - SIDE_PANEL_BORDER,
+                top + SIDE_PANEL_BORDER + 1,
+                PANEL_HIGHLIGHT_COLOR
+        );
+        guiGraphics.fill(
+                left + SIDE_PANEL_BORDER,
+                top + SIDE_PANEL_BORDER,
+                left + SIDE_PANEL_BORDER + 1,
+                bottom - SIDE_PANEL_BORDER,
+                PANEL_HIGHLIGHT_COLOR
+        );
+        guiGraphics.fill(
+                left + SIDE_PANEL_BORDER,
+                bottom - SIDE_PANEL_BORDER - 1,
+                right - SIDE_PANEL_BORDER,
+                bottom - SIDE_PANEL_BORDER,
+                PANEL_INNER_EDGE_COLOR
+        );
+        guiGraphics.fill(
+                right - SIDE_PANEL_BORDER - 1,
+                top + SIDE_PANEL_BORDER,
+                right - SIDE_PANEL_BORDER,
+                bottom - SIDE_PANEL_BORDER,
+                PANEL_INNER_EDGE_COLOR
         );
     }
 
