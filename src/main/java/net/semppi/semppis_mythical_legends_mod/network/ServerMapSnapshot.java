@@ -5,9 +5,11 @@ import net.minecraft.core.QuartPos;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.level.Level;
 import net.minecraft.world.level.biome.Biome;
 import net.minecraft.world.level.chunk.LevelChunk;
 import net.minecraft.world.level.levelgen.Heightmap;
+import net.semppi.semppis_mythical_legends_mod.spawn.RegionGate;
 
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -30,6 +32,7 @@ public final class ServerMapSnapshot {
         ) * MapSnapshotPayload.SIZE;
 
         int[] pixels = new int[MapSnapshotPayload.PIXEL_COUNT];
+        byte[] regionPixels = new byte[MapSnapshotPayload.PIXEL_COUNT];
         List<ResourceLocation> palette = new ArrayList<>();
         Map<ResourceLocation, Integer> paletteIndices = new LinkedHashMap<>();
 
@@ -54,7 +57,9 @@ public final class ServerMapSnapshot {
                         chunkOffsetZ * 16,
                         palette,
                         paletteIndices,
-                        pixels
+                        pixels,
+                        regionPixels,
+                        player
                 );
             }
         }
@@ -64,7 +69,8 @@ public final class ServerMapSnapshot {
                 originX,
                 originZ,
                 palette,
-                pixels
+                pixels,
+                regionPixels
         );
     }
 
@@ -76,7 +82,9 @@ public final class ServerMapSnapshot {
             int pixelStartZ,
             List<ResourceLocation> palette,
             Map<ResourceLocation, Integer> paletteIndices,
-            int[] pixels
+            int[] pixels,
+            byte[] regionPixels,
+            ServerPlayer player
     ) {
         for (int localZ = 0; localZ < 16; localZ++) {
             int pixelZ = pixelStartZ + localZ;
@@ -109,8 +117,17 @@ public final class ServerMapSnapshot {
                             return palette.size() - 1;
                         }
                 );
-                pixels[pixelZ * MapSnapshotPayload.SIZE + pixelX] =
-                        paletteIndex + 1;
+                int pixel = pixelZ * MapSnapshotPayload.SIZE + pixelX;
+                pixels[pixel] = paletteIndex + 1;
+                if (player.serverLevel().dimension() == Level.OVERWORLD) {
+                    regionPixels[pixel] = MapRegionCode.encode(
+                            RegionGate.resolve(
+                                    player.serverLevel(),
+                                    worldX,
+                                    worldZ
+                            ).region()
+                    );
+                }
             }
         }
     }

@@ -13,14 +13,16 @@ import net.semppi.semppis_mythical_legends_mod.client.ModKeyMappings;
 import net.semppi.semppis_mythical_legends_mod.client.map.BiomeMapColorResolver;
 import net.semppi.semppis_mythical_legends_mod.client.map.ClientMapSnapshotState;
 import net.semppi.semppis_mythical_legends_mod.network.MapSnapshotPayload;
+import net.semppi.semppis_mythical_legends_mod.network.MapRegionCode;
 import net.semppi.semppis_mythical_legends_mod.network.SMLNetwork;
+import net.semppi.semppis_mythical_legends_mod.world.Continent;
+import net.semppi.semppis_mythical_legends_mod.world.Ocean;
 import org.lwjgl.glfw.GLFW;
 
 import java.util.List;
 
 /**
- * Early test-map screen with a fixed biome canvas.
- * Boundary and continental overlays belong to later Jr. goals.
+ * Early test-map screen with a fixed biome canvas and continental overlay.
  */
 public final class TestMapScreen extends Screen {
 
@@ -48,6 +50,29 @@ public final class TestMapScreen extends Screen {
     private static final int MAP_FOREGROUND_WASH = 0x55FFF1C1;
     private static final int UNEXPLORED_MASK = 0x88000000;
     private static final int BIOME_EDGE_COLOR = 0x2B2924;
+    private static final int CONTINENT_STRIPE_SPACING = 6;
+    private static final int CONTINENT_STRIPE_WIDTH = 2;
+    private static final int CONTINENT_STRIPE_ALPHA = 112;
+
+    private static final int[] LAND_OVERLAY_COLORS = {
+            0xD29A43, // Africa
+            0xE7EEF4, // Frozen Pole
+            0x9A63C7, // Asia
+            0x4C9B63, // Europe
+            0xD75A4A, // North America
+            0x43A89B, // South America
+            0xD8B643  // Australia
+    };
+
+    private static final int[] OCEAN_OVERLAY_COLORS = {
+            0xA8DDF0, // Arctic
+            0x438FD0, // North Atlantic
+            0x2C809C, // South Atlantic
+            0x596FB6, // Indian
+            0x5EA8E5, // North Pacific
+            0x397F7C, // South Pacific
+            0xC08AA4  // Southern
+    };
     private static final int PANEL_BORDER_COLOR = 0xFF514532;
     private static final int PANEL_BACKGROUND_COLOR = 0xFFE3CC99;
     private static final int PANEL_INNER_EDGE_COLOR = 0xFFC2A978;
@@ -380,6 +405,7 @@ public final class TestMapScreen extends Screen {
         releaseMapTexture();
 
         int[] biomePixels = snapshot.biomePixels();
+        byte[] regionPixels = snapshot.regionPixels();
         List<ResourceLocation> palette = snapshot.biomePalette();
         int[] paletteColors = new int[palette.size()];
         Minecraft minecraft = Minecraft.getInstance();
@@ -401,14 +427,25 @@ public final class TestMapScreen extends Screen {
             for (int x = 0; x < MAP_CANVAS_SIZE; x++) {
                 int encodedBiome = biomePixels[row + x];
                 if (encodedBiome != 0) {
-                    int pixelColor = isBiomeEdge(
+                    boolean biomeEdge = isBiomeEdge(
                             biomePixels,
                             x,
                             z,
                             encodedBiome
-                    )
+                    );
+                    int pixelColor = biomeEdge
                             ? BIOME_EDGE_COLOR
                             : paletteColors[encodedBiome - 1];
+                    byte encodedRegion = regionPixels[row + x];
+                    if (!biomeEdge
+                            && encodedRegion != 0
+                            && isContinentalStripe(x, z)) {
+                        pixelColor = blendRgb(
+                                pixelColor,
+                                overlayColor(encodedRegion),
+                                CONTINENT_STRIPE_ALPHA
+                        );
+                    }
                     image.setPixelRGBA(
                             x,
                             z,
@@ -447,6 +484,31 @@ public final class TestMapScreen extends Screen {
             return below != 0 && below != encodedBiome;
         }
         return false;
+    }
+
+    private static boolean isContinentalStripe(int x, int z) {
+        return Math.floorMod(x - z, CONTINENT_STRIPE_SPACING)
+                < CONTINENT_STRIPE_WIDTH;
+    }
+
+    private static int overlayColor(byte encodedRegion) {
+        if (MapRegionCode.isOcean(encodedRegion)) {
+            Ocean ocean = MapRegionCode.ocean(encodedRegion);
+            return OCEAN_OVERLAY_COLORS[ocean.ordinal()];
+        }
+        Continent continent = MapRegionCode.continent(encodedRegion);
+        return LAND_OVERLAY_COLORS[continent.ordinal()];
+    }
+
+    private static int blendRgb(int background, int foreground, int alpha) {
+        int inverseAlpha = 255 - alpha;
+        int red = ((background >> 16 & 0xFF) * inverseAlpha
+                + (foreground >> 16 & 0xFF) * alpha) / 255;
+        int green = ((background >> 8 & 0xFF) * inverseAlpha
+                + (foreground >> 8 & 0xFF) * alpha) / 255;
+        int blue = ((background & 0xFF) * inverseAlpha
+                + (foreground & 0xFF) * alpha) / 255;
+        return red << 16 | green << 8 | blue;
     }
 
     private static int rgbToAbgr(int rgb) {

@@ -83,10 +83,13 @@ public final class ServerMapDiscoveryState {
                 new LinkedHashMap<>();
         private final int[] pixels =
                 new int[MapSnapshotPayload.PIXEL_COUNT];
+        private final byte[] regionPixels =
+                new byte[MapSnapshotPayload.PIXEL_COUNT];
 
         private void merge(MapSnapshotPayload current) {
             List<ResourceLocation> currentPalette = current.biomePalette();
             int[] currentPixels = current.biomePixels();
+            byte[] currentRegionPixels = current.regionPixels();
 
             for (int pixel = 0; pixel < currentPixels.length; pixel++) {
                 int encodedBiome = currentPixels[pixel];
@@ -103,6 +106,7 @@ public final class ServerMapDiscoveryState {
                         }
                 );
                 pixels[pixel] = storedIndex + 1;
+                regionPixels[pixel] = currentRegionPixels[pixel];
             }
         }
 
@@ -112,7 +116,8 @@ public final class ServerMapDiscoveryState {
                     key.originX(),
                     key.originZ(),
                     palette,
-                    pixels
+                    pixels,
+                    regionPixels
             );
         }
     }
