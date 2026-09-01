@@ -164,17 +164,36 @@ public final class RegionSurfaceClassifier {
         // boundary, but it can never select a region from scratch.
         Region landRegion = SAMPLER.landRegion(level, x, z);
         if (kind == SurfaceKind.LAND) {
-            landRegion = BoundedBiomeBorderAttractor.attract(
-                    level, seed, x, z, biome, landRegion
-            );
-            landRegion = BoundedBiomeComponentResolver.resolve(
-                    level, seed, x, z, biome, landRegion
+            landRegion = resolveLandBeforeVacuum(
+                    level, seed, x, z, biome
             );
             landRegion = BoundedRegionFragmentResolver.resolve(
-                    level, x, z, biome, landRegion
+                    level, seed, x, z, biome, landRegion
             );
         }
         return new Sample(kind, landRegion);
+    }
+
+    /**
+     * Resolves the authoritative land owner immediately before the final
+     * small-fragment cleanup. Keeping this stage separate lets that cleanup
+     * survey the border players actually see without recursively invoking
+     * itself for every neighboring biome cell.
+     */
+    static Region resolveLandBeforeVacuum(
+            ServerLevelAccessor level,
+            long seed,
+            int x,
+            int z,
+            Holder<Biome> biome
+    ) {
+        Region region = SAMPLER.landRegion(level, x, z);
+        region = BoundedBiomeBorderAttractor.attract(
+                level, seed, x, z, biome, region
+        );
+        return BoundedBiomeComponentResolver.resolve(
+                level, seed, x, z, biome, region
+        );
     }
 
     public static SurfaceKind classify(Holder<Biome> biome) {

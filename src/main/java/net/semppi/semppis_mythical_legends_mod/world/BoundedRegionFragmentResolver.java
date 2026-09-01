@@ -36,6 +36,7 @@ public final class BoundedRegionFragmentResolver {
 
     public static Region resolve(
             ServerLevelAccessor level,
+            long seed,
             int x,
             int z,
             Holder<Biome> biome,
@@ -55,29 +56,22 @@ public final class BoundedRegionFragmentResolver {
 
         int quartX = QuartPos.fromBlock(x);
         int quartZ = QuartPos.fromBlock(z);
-        Region rawOwner = ClimateDirectionAssignment.landRegion(level, x, z);
-
-        // A previous pass already made a supported decision here. Preserve it
-        // instead of allowing this cleanup pass to compete with that result.
-        if (!current.equals(rawOwner)) {
-            return current;
-        }
 
         long startKey = cellKey(quartX, quartZ);
         FragmentCache cache = cacheFor(level.getLevel());
-        FragmentDecision cached = cache.get(startKey, biomeId, rawOwner);
+        FragmentDecision cached = cache.get(startKey, biomeId, current);
         if (cached != null) {
             return cached.winner() == null ? current : cached.winner();
         }
 
         FragmentSearch fragment = surveyFragment(
-                level, quartX, quartZ, biomeId, rawOwner,
+                level, seed, quartX, quartZ, biomeId, current,
                 MAX_FRAGMENT_CELLS
         );
         if (fragment.exceededBounds()) {
             cache.putAll(
                     fragment.cells(),
-                    new FragmentDecision(biomeId, rawOwner, null)
+                    new FragmentDecision(biomeId, current, null)
             );
             return current;
         }
@@ -87,6 +81,7 @@ public final class BoundedRegionFragmentResolver {
             Cell neighbor = fragment.neighborSeeds().get(winner);
             FragmentSearch competitor = surveyFragment(
                     level,
+                    seed,
                     neighbor.x(),
                     neighbor.z(),
                     biomeId,
@@ -100,7 +95,7 @@ public final class BoundedRegionFragmentResolver {
         }
 
         FragmentDecision decision = new FragmentDecision(
-                biomeId, rawOwner, winner
+                biomeId, current, winner
         );
         cache.putAll(fragment.cells(), decision);
         return winner == null ? current : winner;
@@ -108,6 +103,7 @@ public final class BoundedRegionFragmentResolver {
 
     private static FragmentSearch surveyFragment(
             ServerLevelAccessor level,
+            long seed,
             int startQuartX,
             int startQuartZ,
             ResourceLocation biomeId,
@@ -158,9 +154,14 @@ public final class BoundedRegionFragmentResolver {
 
                 int blockX = neighborX * 4 + 2;
                 int blockZ = neighborZ * 4 + 2;
-                Region neighborOwner = ClimateDirectionAssignment.landRegion(
-                        level, blockX, blockZ
-                );
+                Region neighborOwner =
+                        RegionSurfaceClassifier.resolveLandBeforeVacuum(
+                                level,
+                                seed,
+                                blockX,
+                                blockZ,
+                                neighborBiome
+                        );
                 if (owner.equals(neighborOwner)) {
                     open.addLast(new Cell(neighborX, neighborZ));
                 } else if (!neighborOwner.ocean()) {
