@@ -9,8 +9,11 @@ import net.minecraft.world.level.ServerLevelAccessor;
 import net.minecraft.world.level.biome.Biome;
 import net.minecraft.world.level.levelgen.Heightmap;
 
+import java.util.ArrayDeque;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.Set;
 import java.util.WeakHashMap;
 
 /**
@@ -28,6 +31,8 @@ public final class RegionSurfaceClassifier {
     private static final int MIN_COAST_NEIGHBORHOOD_SUPPORT = 3;
     private static final int MIN_COAST_REGION_SUPPORT = 2;
     private static final int MIN_POTENTIAL_COAST_SUPPORT = 2;
+    private static final int MIN_DETACHED_COAST_COMPONENT_SIZE = 12;
+    private static final int MAX_COAST_COMPONENT_CACHE_ENTRIES = 65_536;
     private static final int MAX_RAW_COAST_CACHE_ENTRIES = 65_536;
     private static final int[][] COAST_NEIGHBORS = {
             {0, 0},
@@ -38,6 +43,8 @@ public final class RegionSurfaceClassifier {
     };
     private static final Map<ServerLevel, RawCoastCache> RAW_COAST_CACHES =
             new WeakHashMap<>();
+    private static final Map<ServerLevel, CoastComponentCache>
+            COAST_COMPONENT_CACHES = new WeakHashMap<>();
 
     // Vanilla shores are normally narrow, so this deliberately stays much
     // tighter than the sea-coast search. Nearest rings vote first, allowing a
@@ -68,6 +75,8 @@ public final class RegionSurfaceClassifier {
             CoastMatch match,
             int potentialSupport
     ) {}
+
+    private record CoastCell(int quartX, int quartZ) {}
 
     private record InheritanceVote(
             int score,
@@ -228,12 +237,40 @@ public final class RegionSurfaceClassifier {
         return selectSupportedWinner(votes, 2, 1);
     }
 
+    private static CoastMatch findCoast(
+            ServerLevelAccessor level,
+            long seed,
+            int waterX,
+            int waterZ
+    ) {
+        int quartX = QuartPos.fromBlock(waterX);
+        int quartZ = QuartPos.fromBlock(waterZ);
+        long key = cellKey(quartX, quartZ);
+        CoastComponentCache cache = coastComponentCache(level.getLevel());
+        CoastMatch cached = cache.get(key);
+        if (cached != CoastComponentCache.NOT_CACHED) {
+            return cached;
+        }
+
+        CoastMatch candidate = findSmoothedCoast(
+                level, seed, quartX * 4 + 2, quartZ * 4 + 2
+        );
+        if (candidate == null) {
+            cache.put(key, null);
+            return null;
+        }
+
+        return retainConnectedCoastComponent(
+                level, seed, new CoastCell(quartX, quartZ), candidate, cache
+        ) ? candidate : null;
+    }
+
     /**
      * Applies a small cross-shaped majority filter to the raw coast field.
      * This removes isolated coast cells and fills isolated ocean holes without
      * moving an ordinary continuous boundary by more than one biome cell.
      */
-    private static CoastMatch findCoast(
+    private static CoastMatch findSmoothedCoast(
             ServerLevelAccessor level,
             long seed,
             int waterX,
@@ -296,21 +333,116 @@ public final class RegionSurfaceClassifier {
                 : new CoastMatch(winner);
     }
 
+    /**
+     * Rejects a small coast-colored component floating in open water. A
+     * component is retained immediately when it reaches genuine land/shore,
+     * or when it is large enough that it is no longer a map-scale freckle.
+     * The bounded search prevents this validation from walking an entire
+     * coastline when opening the diagnostic map.
+     */
+    private static boolean retainConnectedCoastComponent(
+            ServerLevelAccessor level,
+            long seed,
+            CoastCell origin,
+            CoastMatch originMatch,
+            CoastComponentCache cache
+    ) {
+        ArrayDeque<CoastCell> pending = new ArrayDeque<>();
+        Set<Long> visited = new HashSet<>();
+        pending.add(origin);
+
+        boolean retain = false;
+        while (!pending.isEmpty()) {
+            CoastCell cell = pending.removeFirst();
+            long key = cellKey(cell.quartX(), cell.quartZ());
+            if (!visited.add(key)) {
+                continue;
+            }
+
+            int x = cell.quartX() * 4 + 2;
+            int z = cell.quartZ() * 4 + 2;
+            if (touchesGeneratedLandOrShore(level, x, z)
+                    || visited.size() >= MIN_DETACHED_COAST_COMPONENT_SIZE) {
+                retain = true;
+                break;
+            }
+
+            for (int direction = 1; direction < COAST_NEIGHBORS.length;
+                 direction++) {
+                int neighborX = x + COAST_NEIGHBORS[direction][0];
+                int neighborZ = z + COAST_NEIGHBORS[direction][1];
+                long neighborKey = cellKey(
+                        QuartPos.fromBlock(neighborX),
+                        QuartPos.fromBlock(neighborZ)
+                );
+                if (visited.contains(neighborKey)
+                        || !isGeneratedOrdinaryOcean(
+                                level, neighborX, neighborZ
+                        )) {
+                    continue;
+                }
+                CoastMatch neighbor = findSmoothedCoast(
+                        level, seed, neighborX, neighborZ
+                );
+                if (neighbor != null
+                        && neighbor.region().equals(originMatch.region())) {
+                    pending.addLast(new CoastCell(
+                            QuartPos.fromBlock(neighborX),
+                            QuartPos.fromBlock(neighborZ)
+                    ));
+                }
+            }
+        }
+
+        for (long key : visited) {
+            cache.put(key, retain ? originMatch : null);
+        }
+        return retain;
+    }
+
+    private static boolean touchesGeneratedLandOrShore(
+            ServerLevelAccessor level,
+            int x,
+            int z
+    ) {
+        for (int direction = 1; direction < COAST_NEIGHBORS.length;
+             direction++) {
+            Holder<Biome> biome = generatedSeaLevelBiome(
+                    level,
+                    x + COAST_NEIGHBORS[direction][0],
+                    z + COAST_NEIGHBORS[direction][1]
+            );
+            SurfaceKind kind = classify(biome);
+            if (kind == SurfaceKind.LAND || kind == SurfaceKind.SHORE) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     private static boolean isGeneratedOrdinaryOcean(
+            ServerLevelAccessor level,
+            int x,
+            int z
+    ) {
+        Holder<Biome> biome = generatedSeaLevelBiome(level, x, z);
+        return biome.is(BiomeTags.IS_OCEAN)
+                && !biome.is(BiomeTags.IS_DEEP_OCEAN);
+    }
+
+    private static Holder<Biome> generatedSeaLevelBiome(
             ServerLevelAccessor level,
             int x,
             int z
     ) {
         var chunkSource = level.getLevel().getChunkSource();
         var generator = chunkSource.getGenerator();
-        Holder<Biome> biome = generator.getBiomeSource().getNoiseBiome(
+        return generator.getBiomeSource().getNoiseBiome(
                 QuartPos.fromBlock(x),
                 QuartPos.fromBlock(generator.getSeaLevel()),
                 QuartPos.fromBlock(z),
                 chunkSource.randomState().sampler()
         );
-        return biome.is(BiomeTags.IS_OCEAN)
-                && !biome.is(BiomeTags.IS_DEEP_OCEAN);
     }
 
     private static RawCoastResult rawCoast(
@@ -420,6 +552,14 @@ public final class RegionSurfaceClassifier {
         synchronized (RAW_COAST_CACHES) {
             return RAW_COAST_CACHES.computeIfAbsent(
                     level, ignored -> new RawCoastCache()
+            );
+        }
+    }
+
+    private static CoastComponentCache coastComponentCache(ServerLevel level) {
+        synchronized (COAST_COMPONENT_CACHES) {
+            return COAST_COMPONENT_CACHES.computeIfAbsent(
+                    level, ignored -> new CoastComponentCache()
             );
         }
     }
@@ -542,6 +682,27 @@ public final class RegionSurfaceClassifier {
             }
             values.put(key, value);
             return value;
+        }
+    }
+
+    private static final class CoastComponentCache {
+        private static final CoastMatch NOT_CACHED = new CoastMatch(null);
+        private final Map<Long, CoastMatch> values =
+                new LinkedHashMap<>(256, 0.75F, true) {
+                    @Override
+                    protected boolean removeEldestEntry(
+                            Map.Entry<Long, CoastMatch> eldest
+                    ) {
+                        return size() > MAX_COAST_COMPONENT_CACHE_ENTRIES;
+                    }
+                };
+
+        private synchronized CoastMatch get(long key) {
+            return values.containsKey(key) ? values.get(key) : NOT_CACHED;
+        }
+
+        private synchronized void put(long key, CoastMatch value) {
+            values.put(key, value);
         }
     }
 }
