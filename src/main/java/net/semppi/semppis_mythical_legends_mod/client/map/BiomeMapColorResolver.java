@@ -78,6 +78,40 @@ public final class BiomeMapColorResolver {
         return biome.getGrassColor(0.0, 0.0);
     }
 
+    public static boolean isOcean(
+            Minecraft minecraft,
+            ResourceLocation biomeId
+    ) {
+        Holder.Reference<Biome> holder = biomeHolder(minecraft, biomeId);
+        return holder != null
+                ? holder.is(BiomeTags.IS_OCEAN)
+                : biomeId.getPath().toLowerCase(Locale.ROOT).contains("ocean");
+    }
+
+    public static boolean isRiver(
+            Minecraft minecraft,
+            ResourceLocation biomeId
+    ) {
+        Holder.Reference<Biome> holder = biomeHolder(minecraft, biomeId);
+        return holder != null
+                ? holder.is(BiomeTags.IS_RIVER)
+                : biomeId.getPath().toLowerCase(Locale.ROOT).contains("river");
+    }
+
+    private static Holder.Reference<Biome> biomeHolder(
+            Minecraft minecraft,
+            ResourceLocation biomeId
+    ) {
+        if (minecraft.level == null) {
+            return null;
+        }
+        Registry<Biome> biomes = minecraft.level.registryAccess()
+                .registryOrThrow(Registries.BIOME);
+        return biomes.getHolder(
+                ResourceKey.create(Registries.BIOME, biomeId)
+        ).orElse(null);
+    }
+
     private static int fallbackColor(ResourceLocation biomeId) {
         String path = biomeId.getPath().toLowerCase(Locale.ROOT);
         if (containsAny(path, "ocean", "river")) {

@@ -487,6 +487,8 @@ public final class TestMapScreen extends Screen {
         int[] defaultPaletteColors = new int[palette.size()];
         int[] dryPaletteColors = new int[palette.size()];
         int[] wetPaletteColors = new int[palette.size()];
+        boolean[] oceanBiomes = new boolean[palette.size()];
+        boolean[] riverBiomes = new boolean[palette.size()];
         Minecraft minecraft = Minecraft.getInstance();
 
         for (int index = 0; index < palette.size(); index++) {
@@ -506,6 +508,12 @@ public final class TestMapScreen extends Screen {
                     biome,
                     MapSnapshotPayload.SURFACE_WET
             );
+            oceanBiomes[index] = BiomeMapColorResolver.isOcean(
+                    minecraft, biome
+            );
+            riverBiomes[index] = BiomeMapColorResolver.isRiver(
+                    minecraft, biome
+            );
         }
 
         NativeImage image = new NativeImage(
@@ -522,7 +530,9 @@ public final class TestMapScreen extends Screen {
                             biomePixels,
                             x,
                             z,
-                            encodedBiome
+                            encodedBiome,
+                            oceanBiomes,
+                            riverBiomes
                     );
                     int pixelColor = biomeEdge
                             ? BIOME_EDGE_COLOR
@@ -586,21 +596,45 @@ public final class TestMapScreen extends Screen {
             int[] biomePixels,
             int x,
             int z,
-            int encodedBiome
+            int encodedBiome,
+            boolean[] oceanBiomes,
+            boolean[] riverBiomes
     ) {
         // Right and bottom are sufficient to draw every boundary once. This
         // prevents the line from becoming two source pixels thick.
         if (x + 1 < MAP_CANVAS_SIZE) {
             int right = biomePixels[z * MAP_CANVAS_SIZE + x + 1];
-            if (right != 0 && right != encodedBiome) {
+            if (hasVisibleBiomeEdge(
+                    encodedBiome, right, oceanBiomes, riverBiomes
+            )) {
                 return true;
             }
         }
         if (z + 1 < MAP_CANVAS_SIZE) {
             int below = biomePixels[(z + 1) * MAP_CANVAS_SIZE + x];
-            return below != 0 && below != encodedBiome;
+            return hasVisibleBiomeEdge(
+                    encodedBiome, below, oceanBiomes, riverBiomes
+            );
         }
         return false;
+    }
+
+    private static boolean hasVisibleBiomeEdge(
+            int first,
+            int second,
+            boolean[] oceanBiomes,
+            boolean[] riverBiomes
+    ) {
+        if (second == 0 || first == second) {
+            return false;
+        }
+
+        int firstIndex = first - 1;
+        int secondIndex = second - 1;
+        if (riverBiomes[firstIndex] || riverBiomes[secondIndex]) {
+            return false;
+        }
+        return !oceanBiomes[firstIndex] || !oceanBiomes[secondIndex];
     }
 
     private static boolean isContinentalStripe(int worldX, int worldZ) {
