@@ -170,6 +170,9 @@ public final class RegionSurfaceClassifier {
             landRegion = BoundedBiomeComponentResolver.resolve(
                     level, seed, x, z, biome, landRegion
             );
+            landRegion = BoundedRegionFragmentResolver.resolve(
+                    level, x, z, biome, landRegion
+            );
         }
         return new Sample(kind, landRegion);
     }
