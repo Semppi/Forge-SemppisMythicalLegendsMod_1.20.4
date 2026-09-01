@@ -48,9 +48,21 @@ public final class RegionSurfaceClassifier {
 
     private record CoastMatch(Region region) {}
 
-    private record InheritanceVote(int score, int support) {
-        private InheritanceVote add(int weight) {
-            return new InheritanceVote(score + weight, support + 1);
+    private record InheritanceVote(
+            int score,
+            int support,
+            int directionMask
+    ) {
+        private InheritanceVote add(int weight, int directionIndex) {
+            return new InheritanceVote(
+                    score + weight,
+                    support + 1,
+                    directionMask | 1 << directionIndex
+            );
+        }
+
+        private int directionSupport() {
+            return Integer.bitCount(directionMask);
         }
     }
 
@@ -148,8 +160,8 @@ public final class RegionSurfaceClassifier {
 
     /**
      * Inherits a shore from a bounded nearest band of genuine inland samples.
-     * A region needs support from at least three probes, so one changing ray can
-     * no longer create a thin bite or isolated shore pixel.
+     * A region needs support from at least three probes, reducing thin bites
+     * and isolated shore pixels.
      */
     private static Region findShoreLand(ServerLevelAccessor level, long seed,
                                         int shoreX, int shoreZ) {
@@ -164,7 +176,10 @@ public final class RegionSurfaceClassifier {
             int step = SHORE_STEPS[ring];
             int weight = SHORE_STEPS.length - ring;
 
-            for (double[] direction : INHERITANCE_DIRECTIONS) {
+            for (int directionIndex = 0;
+                 directionIndex < INHERITANCE_DIRECTIONS.length;
+                 directionIndex++) {
+                double[] direction = INHERITANCE_DIRECTIONS[directionIndex];
                 int landX = offset(shoreX, direction[0], step);
                 int landZ = offset(shoreZ, direction[1], step);
                 Holder<Biome> candidate = biomeSource.getNoiseBiome(
@@ -178,10 +193,10 @@ public final class RegionSurfaceClassifier {
                 Region landRegion = resolveLandRegion(
                         level, seed, landX, landZ, candidate
                 );
-                addVote(votes, landRegion, weight);
+                addVote(votes, landRegion, weight, directionIndex);
             }
 
-            Region winner = selectSupportedWinner(votes, 3);
+            Region winner = selectSupportedWinner(votes, 3, 1);
             if (winner != null) {
                 return winner;
             }
@@ -189,7 +204,7 @@ public final class RegionSurfaceClassifier {
         // A very small island may never expose three inland probes. Two
         // agreeing samples are still safer than falling back to an unrelated
         // raw boundary beneath the beach.
-        return selectSupportedWinner(votes, 2);
+        return selectSupportedWinner(votes, 2, 1);
     }
 
     private static CoastMatch findCoast(ServerLevelAccessor level, long seed, int waterX, int waterZ) {
@@ -199,15 +214,18 @@ public final class RegionSurfaceClassifier {
         var climateSampler = chunkSource.randomState().sampler();
         int quartY = QuartPos.fromBlock(generator.getSeaLevel());
 
-        // Nearer rings carry more voting weight, while three agreeing probes are
-        // required. This keeps a coast attached to nearby land without the old
-        // first-hit ray producing stripes, freckles or one-pixel islands.
+        // Nearer rings carry more voting weight. A coast needs three agreeing
+        // probes spread across at least two directions, preventing one ray
+        // from producing stripes, freckles or one-pixel islands.
         Map<Region, InheritanceVote> votes = new LinkedHashMap<>();
         for (int ring = 0; ring < COAST_STEPS.length; ring++) {
             int step = COAST_STEPS[ring];
             int weight = COAST_STEPS.length - ring;
 
-            for (double[] direction : INHERITANCE_DIRECTIONS) {
+            for (int directionIndex = 0;
+                 directionIndex < INHERITANCE_DIRECTIONS.length;
+                 directionIndex++) {
+                double[] direction = INHERITANCE_DIRECTIONS[directionIndex];
                 int landX = offset(waterX, direction[0], step);
                 int landZ = offset(waterZ, direction[1], step);
                 Holder<Biome> candidate = biomeSource.getNoiseBiome(
@@ -228,11 +246,18 @@ public final class RegionSurfaceClassifier {
                 long dx = (long) landX - waterX;
                 long dz = (long) landZ - waterZ;
                 if (dx * dx + dz * dz <= (long) reach * reach) {
-                    addVote(votes, landRegion, weight);
+                    addVote(
+                            votes,
+                            landRegion,
+                            weight,
+                            directionIndex
+                    );
                 }
             }
 
-            Region winner = selectSupportedWinner(votes, 3);
+            // Repeated hits along one ray no longer manufacture a narrow
+            // coastal finger or isolated freckle in otherwise open water.
+            Region winner = selectSupportedWinner(votes, 3, 2);
             if (winner != null) {
                 return new CoastMatch(winner);
             }
@@ -253,24 +278,36 @@ public final class RegionSurfaceClassifier {
     }
 
     private static void addVote(
-            Map<Region, InheritanceVote> votes, Region region, int weight) {
+            Map<Region, InheritanceVote> votes,
+            Region region,
+            int weight,
+            int directionIndex
+    ) {
         votes.compute(
                 region,
                 (ignored, vote) -> vote == null
-                        ? new InheritanceVote(weight, 1)
-                        : vote.add(weight)
+                        ? new InheritanceVote(
+                                weight,
+                                1,
+                                1 << directionIndex
+                        )
+                        : vote.add(weight, directionIndex)
         );
     }
 
     /** Stable insertion order resolves an exact score/support tie. */
     private static Region selectSupportedWinner(
-            Map<Region, InheritanceVote> votes, int minimumSupport) {
+            Map<Region, InheritanceVote> votes,
+            int minimumSupport,
+            int minimumDirectionSupport
+    ) {
         Region winner = null;
         InheritanceVote best = null;
 
         for (Map.Entry<Region, InheritanceVote> entry : votes.entrySet()) {
             InheritanceVote vote = entry.getValue();
-            if (vote.support() < minimumSupport) {
+            if (vote.support() < minimumSupport
+                    || vote.directionSupport() < minimumDirectionSupport) {
                 continue;
             }
             if (best == null
