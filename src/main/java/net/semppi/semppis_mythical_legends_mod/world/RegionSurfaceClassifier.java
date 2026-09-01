@@ -164,12 +164,17 @@ public final class RegionSurfaceClassifier {
         // boundary, but it can never select a region from scratch.
         Region landRegion = SAMPLER.landRegion(level, x, z);
         if (kind == SurfaceKind.LAND) {
-            landRegion = resolveLandBeforeVacuum(
+            Region beforeVacuum = resolveLandBeforeVacuum(
                     level, seed, x, z, biome
             );
             landRegion = BoundedRegionFragmentResolver.resolve(
-                    level, seed, x, z, biome, landRegion
+                    level, seed, x, z, biome, beforeVacuum
             );
+            if (landRegion.equals(beforeVacuum)) {
+                landRegion = BoundedBiomeEdgeSnapper.resolve(
+                        level, seed, x, z, biome, beforeVacuum
+                );
+            }
         }
         return new Sample(kind, landRegion);
     }
