@@ -32,6 +32,8 @@ public final class RegionSurfaceClassifier {
     private static final int MIN_COAST_REGION_SUPPORT = 2;
     private static final int MIN_POTENTIAL_COAST_SUPPORT = 2;
     private static final int MIN_DETACHED_COAST_COMPONENT_SIZE = 12;
+    private static final int MAX_ENCLOSED_OCEAN_HOLE_SIZE = 8;
+    private static final int MIN_OCEAN_HOLE_COAST_SUPPORT = 2;
     private static final int MAX_COAST_COMPONENT_CACHE_ENTRIES = 65_536;
     private static final int MAX_RAW_COAST_CACHE_ENTRIES = 65_536;
     private static final int[][] COAST_NEIGHBORS = {
@@ -256,8 +258,9 @@ public final class RegionSurfaceClassifier {
                 level, seed, quartX * 4 + 2, quartZ * 4 + 2
         );
         if (candidate == null) {
-            cache.put(key, null);
-            return null;
+            return fillEnclosedOceanHole(
+                    level, seed, new CoastCell(quartX, quartZ), cache
+            );
         }
 
         return retainConnectedCoastComponent(
@@ -398,6 +401,96 @@ public final class RegionSurfaceClassifier {
             cache.put(key, retain ? originMatch : null);
         }
         return retain;
+    }
+
+    /**
+     * Fills only a small, fully bounded pocket in the smoothed coast field.
+     * Reaching deep ocean, more than eight cells, or two different coastal
+     * regions proves that the pocket is an inlet/boundary rather than an
+     * isolated ocean freckle and leaves it untouched.
+     */
+    private static CoastMatch fillEnclosedOceanHole(
+            ServerLevelAccessor level,
+            long seed,
+            CoastCell origin,
+            CoastComponentCache cache
+    ) {
+        ArrayDeque<CoastCell> pending = new ArrayDeque<>();
+        Set<Long> visited = new HashSet<>();
+        pending.add(origin);
+
+        Region surroundingRegion = null;
+        int coastSupport = 0;
+        boolean enclosed = true;
+
+        while (!pending.isEmpty() && enclosed) {
+            CoastCell cell = pending.removeFirst();
+            long key = cellKey(cell.quartX(), cell.quartZ());
+            if (!visited.add(key)) {
+                continue;
+            }
+            if (visited.size() > MAX_ENCLOSED_OCEAN_HOLE_SIZE) {
+                enclosed = false;
+                break;
+            }
+
+            int x = cell.quartX() * 4 + 2;
+            int z = cell.quartZ() * 4 + 2;
+            for (int direction = 1; direction < COAST_NEIGHBORS.length;
+                 direction++) {
+                int neighborX = x + COAST_NEIGHBORS[direction][0];
+                int neighborZ = z + COAST_NEIGHBORS[direction][1];
+                long neighborKey = cellKey(
+                        QuartPos.fromBlock(neighborX),
+                        QuartPos.fromBlock(neighborZ)
+                );
+                if (visited.contains(neighborKey)) {
+                    continue;
+                }
+
+                Holder<Biome> biome = generatedSeaLevelBiome(
+                        level, neighborX, neighborZ
+                );
+                if (biome.is(BiomeTags.IS_DEEP_OCEAN)) {
+                    enclosed = false;
+                    break;
+                }
+                if (!biome.is(BiomeTags.IS_OCEAN)) {
+                    // Genuine land and shore form a valid closed side of a
+                    // coastal pocket but do not select its regional identity.
+                    continue;
+                }
+
+                CoastMatch neighbor = findSmoothedCoast(
+                        level, seed, neighborX, neighborZ
+                );
+                if (neighbor == null) {
+                    pending.addLast(new CoastCell(
+                            QuartPos.fromBlock(neighborX),
+                            QuartPos.fromBlock(neighborZ)
+                    ));
+                    continue;
+                }
+
+                coastSupport++;
+                if (surroundingRegion == null) {
+                    surroundingRegion = neighbor.region();
+                } else if (!surroundingRegion.equals(neighbor.region())) {
+                    enclosed = false;
+                    break;
+                }
+            }
+        }
+
+        CoastMatch result = enclosed
+                && surroundingRegion != null
+                && coastSupport >= MIN_OCEAN_HOLE_COAST_SUPPORT
+                ? new CoastMatch(surroundingRegion)
+                : null;
+        for (long key : visited) {
+            cache.put(key, result);
+        }
+        return result;
     }
 
     private static boolean touchesGeneratedLandOrShore(
