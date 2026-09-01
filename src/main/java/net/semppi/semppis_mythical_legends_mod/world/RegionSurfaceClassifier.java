@@ -3,6 +3,7 @@ package net.semppi.semppis_mythical_legends_mod.world;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Holder;
 import net.minecraft.core.QuartPos;
+import net.minecraft.server.level.ServerLevel;
 import net.minecraft.tags.BiomeTags;
 import net.minecraft.world.level.ServerLevelAccessor;
 import net.minecraft.world.level.biome.Biome;
@@ -10,6 +11,7 @@ import net.minecraft.world.level.levelgen.Heightmap;
 
 import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.WeakHashMap;
 
 /**
  * Classifies the Overworld surface before choosing a continental or ocean
@@ -22,6 +24,20 @@ public final class RegionSurfaceClassifier {
     // generator's biome source, not neighboring chunks, so exploration order
     // and which chunks happen to be loaded cannot alter a result.
     private static final int[] COAST_STEPS = {32, 64, 96, 128, 160, 192};
+    private static final int COAST_NEIGHBOR_OFFSET = 4;
+    private static final int MIN_COAST_NEIGHBORHOOD_SUPPORT = 3;
+    private static final int MIN_COAST_REGION_SUPPORT = 2;
+    private static final int MIN_POTENTIAL_COAST_SUPPORT = 2;
+    private static final int MAX_RAW_COAST_CACHE_ENTRIES = 65_536;
+    private static final int[][] COAST_NEIGHBORS = {
+            {0, 0},
+            {COAST_NEIGHBOR_OFFSET, 0},
+            {-COAST_NEIGHBOR_OFFSET, 0},
+            {0, COAST_NEIGHBOR_OFFSET},
+            {0, -COAST_NEIGHBOR_OFFSET}
+    };
+    private static final Map<ServerLevel, RawCoastCache> RAW_COAST_CACHES =
+            new WeakHashMap<>();
 
     // Vanilla shores are normally narrow, so this deliberately stays much
     // tighter than the sea-coast search. Nearest rings vote first, allowing a
@@ -47,6 +63,11 @@ public final class RegionSurfaceClassifier {
     public record Sample(SurfaceKind kind, Region region) {}
 
     private record CoastMatch(Region region) {}
+
+    private record RawCoastResult(
+            CoastMatch match,
+            int potentialSupport
+    ) {}
 
     private record InheritanceVote(
             int score,
@@ -207,7 +228,122 @@ public final class RegionSurfaceClassifier {
         return selectSupportedWinner(votes, 2, 1);
     }
 
-    private static CoastMatch findCoast(ServerLevelAccessor level, long seed, int waterX, int waterZ) {
+    /**
+     * Applies a small cross-shaped majority filter to the raw coast field.
+     * This removes isolated coast cells and fills isolated ocean holes without
+     * moving an ordinary continuous boundary by more than one biome cell.
+     */
+    private static CoastMatch findCoast(
+            ServerLevelAccessor level,
+            long seed,
+            int waterX,
+            int waterZ
+    ) {
+        RawCoastResult center = rawCoast(
+                level, seed, waterX, waterZ
+        );
+        if (center.match() == null
+                && center.potentialSupport()
+                < MIN_POTENTIAL_COAST_SUPPORT) {
+            return null;
+        }
+
+        int coastSupport = 0;
+        Map<Region, Integer> regionSupport = new LinkedHashMap<>();
+        for (int[] offset : COAST_NEIGHBORS) {
+            if ((offset[0] != 0 || offset[1] != 0)
+                    && !isGeneratedOrdinaryOcean(
+                            level,
+                            waterX + offset[0],
+                            waterZ + offset[1]
+                    )) {
+                continue;
+            }
+            RawCoastResult neighbor = offset[0] == 0 && offset[1] == 0
+                    ? center
+                    : rawCoast(
+                            level,
+                            seed,
+                            waterX + offset[0],
+                            waterZ + offset[1]
+                    );
+            if (neighbor.match() == null) {
+                continue;
+            }
+            coastSupport++;
+            regionSupport.merge(
+                    neighbor.match().region(), 1, Integer::sum
+            );
+        }
+
+        if (coastSupport < MIN_COAST_NEIGHBORHOOD_SUPPORT) {
+            return null;
+        }
+        if (center.match() != null) {
+            return center.match();
+        }
+
+        Region winner = null;
+        int winnerSupport = 0;
+        for (Map.Entry<Region, Integer> entry : regionSupport.entrySet()) {
+            if (entry.getValue() > winnerSupport) {
+                winner = entry.getKey();
+                winnerSupport = entry.getValue();
+            }
+        }
+        return winner == null || winnerSupport < MIN_COAST_REGION_SUPPORT
+                ? null
+                : new CoastMatch(winner);
+    }
+
+    private static boolean isGeneratedOrdinaryOcean(
+            ServerLevelAccessor level,
+            int x,
+            int z
+    ) {
+        var chunkSource = level.getLevel().getChunkSource();
+        var generator = chunkSource.getGenerator();
+        Holder<Biome> biome = generator.getBiomeSource().getNoiseBiome(
+                QuartPos.fromBlock(x),
+                QuartPos.fromBlock(generator.getSeaLevel()),
+                QuartPos.fromBlock(z),
+                chunkSource.randomState().sampler()
+        );
+        return biome.is(BiomeTags.IS_OCEAN)
+                && !biome.is(BiomeTags.IS_DEEP_OCEAN);
+    }
+
+    private static RawCoastResult rawCoast(
+            ServerLevelAccessor level,
+            long seed,
+            int waterX,
+            int waterZ
+    ) {
+        int quartX = QuartPos.fromBlock(waterX);
+        int quartZ = QuartPos.fromBlock(waterZ);
+        long key = cellKey(quartX, quartZ);
+        RawCoastCache cache = rawCoastCache(level.getLevel());
+        RawCoastResult cached = cache.get(key);
+        if (cached != null) {
+            return cached;
+        }
+
+        // Canonical cell centers prevent lookup order from changing which
+        // coordinate represents a four-block biome cell.
+        int canonicalX = quartX * 4 + 2;
+        int canonicalZ = quartZ * 4 + 2;
+        RawCoastResult computed = calculateRawCoast(
+                level, seed, canonicalX, canonicalZ
+        );
+        return cache.putIfAbsent(key, computed);
+    }
+
+    private static RawCoastResult calculateRawCoast(
+            ServerLevelAccessor level,
+            long seed,
+            int waterX,
+            int waterZ
+    ) {
         var chunkSource = level.getLevel().getChunkSource();
         var generator = chunkSource.getGenerator();
         var biomeSource = generator.getBiomeSource();
@@ -259,10 +395,37 @@ public final class RegionSurfaceClassifier {
             // coastal finger or isolated freckle in otherwise open water.
             Region winner = selectSupportedWinner(votes, 3, 2);
             if (winner != null) {
-                return new CoastMatch(winner);
+                return new RawCoastResult(
+                        new CoastMatch(winner),
+                        maximumPotentialSupport(votes)
+                );
             }
         }
-        return null;
+        return new RawCoastResult(
+                null, maximumPotentialSupport(votes)
+        );
+    }
+
+    private static int maximumPotentialSupport(
+            Map<Region, InheritanceVote> votes
+    ) {
+        int support = 0;
+        for (InheritanceVote vote : votes.values()) {
+            support = Math.max(support, vote.support());
+        }
+        return support;
+    }
+
+    private static RawCoastCache rawCoastCache(ServerLevel level) {
+        synchronized (RAW_COAST_CACHES) {
+            return RAW_COAST_CACHES.computeIfAbsent(
+                    level, ignored -> new RawCoastCache()
+            );
+        }
+    }
+
+    private static long cellKey(int quartX, int quartZ) {
+        return ((long) quartX << 32) ^ (quartZ & 0xFFFFFFFFL);
     }
 
     private static Region resolveLandRegion(
@@ -353,5 +516,32 @@ public final class RegionSurfaceClassifier {
         value = (value ^ (value >>> 30)) * 0xBF58476D1CE4E5B9L;
         value = (value ^ (value >>> 27)) * 0x94D049BB133111EBL;
         return value ^ (value >>> 31);
+    }
+
+    private static final class RawCoastCache {
+        private final Map<Long, RawCoastResult> values =
+                new LinkedHashMap<>(256, 0.75F, true) {
+                    @Override
+                    protected boolean removeEldestEntry(
+                            Map.Entry<Long, RawCoastResult> eldest
+                    ) {
+                        return size() > MAX_RAW_COAST_CACHE_ENTRIES;
+                    }
+                };
+
+        private synchronized RawCoastResult get(long key) {
+            return values.get(key);
+        }
+
+        private synchronized RawCoastResult putIfAbsent(
+                long key, RawCoastResult value
+        ) {
+            RawCoastResult existing = values.get(key);
+            if (existing != null) {
+                return existing;
+            }
+            values.put(key, value);
+            return value;
+        }
     }
 }
