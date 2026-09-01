@@ -8,6 +8,7 @@ import net.minecraft.resources.ResourceKey;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.tags.BiomeTags;
 import net.minecraft.world.level.biome.Biome;
+import net.semppi.semppis_mythical_legends_mod.network.MapSnapshotPayload;
 
 import java.util.Locale;
 
@@ -23,7 +24,11 @@ public final class BiomeMapColorResolver {
 
     private BiomeMapColorResolver() {}
 
-    public static int color(Minecraft minecraft, ResourceLocation biomeId) {
+    public static int color(
+            Minecraft minecraft,
+            ResourceLocation biomeId,
+            byte surface
+    ) {
         if (minecraft.level == null) {
             return UNKNOWN_LAND;
         }
@@ -40,8 +45,7 @@ public final class BiomeMapColorResolver {
         String path = biomeId.getPath().toLowerCase(Locale.ROOT);
         Biome biome = holder.value();
 
-        if (holder.is(BiomeTags.IS_OCEAN)
-                || holder.is(BiomeTags.IS_RIVER)) {
+        if (surface == MapSnapshotPayload.SURFACE_WET) {
             return biome.getWaterColor();
         }
         if (containsAny(path, "frozen", "snow", "ice")) {
@@ -64,6 +68,13 @@ public final class BiomeMapColorResolver {
             return MUSHROOM;
         }
 
+        if (surface == MapSnapshotPayload.SURFACE_DRY) {
+            return biome.getGrassColor(0.0, 0.0);
+        }
+        if (holder.is(BiomeTags.IS_OCEAN)
+                || holder.is(BiomeTags.IS_RIVER)) {
+            return biome.getWaterColor();
+        }
         return biome.getGrassColor(0.0, 0.0);
     }
 

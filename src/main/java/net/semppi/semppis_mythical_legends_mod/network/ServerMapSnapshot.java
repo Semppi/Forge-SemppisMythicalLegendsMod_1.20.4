@@ -1,5 +1,6 @@
 package net.semppi.semppis_mythical_legends_mod.network;
 
+import net.minecraft.core.BlockPos;
 import net.minecraft.core.Holder;
 import net.minecraft.core.QuartPos;
 import net.minecraft.resources.ResourceKey;
@@ -34,6 +35,7 @@ public final class ServerMapSnapshot {
         ) * MapSnapshotPayload.SIZE;
 
         int[] pixels = new int[MapSnapshotPayload.PIXEL_COUNT];
+        byte[] surfacePixels = new byte[MapSnapshotPayload.PIXEL_COUNT];
         byte[] regionPixels = new byte[MapSnapshotPayload.PIXEL_COUNT];
         List<ResourceLocation> palette = new ArrayList<>();
         Map<ResourceLocation, Integer> paletteIndices = new LinkedHashMap<>();
@@ -59,7 +61,8 @@ public final class ServerMapSnapshot {
                         chunkOffsetZ * 16,
                         palette,
                         paletteIndices,
-                        pixels
+                        pixels,
+                        surfacePixels
                 );
             }
         }
@@ -80,6 +83,7 @@ public final class ServerMapSnapshot {
                 originZ,
                 palette,
                 pixels,
+                surfacePixels,
                 regionPixels
         );
     }
@@ -92,7 +96,8 @@ public final class ServerMapSnapshot {
             int pixelStartZ,
             List<ResourceLocation> palette,
             Map<ResourceLocation, Integer> paletteIndices,
-            int[] pixels
+            int[] pixels,
+            byte[] surfacePixels
     ) {
         for (int localZ = 0; localZ < 16; localZ++) {
             int pixelZ = pixelStartZ + localZ;
@@ -127,6 +132,14 @@ public final class ServerMapSnapshot {
                 );
                 int pixel = pixelZ * MapSnapshotPayload.SIZE + pixelX;
                 pixels[pixel] = paletteIndex + 1;
+                BlockPos surface = new BlockPos(
+                        worldX,
+                        Math.max(chunk.getMinBuildHeight(), surfaceY - 1),
+                        worldZ
+                );
+                surfacePixels[pixel] = chunk.getFluidState(surface).isEmpty()
+                        ? MapSnapshotPayload.SURFACE_DRY
+                        : MapSnapshotPayload.SURFACE_WET;
             }
         }
     }

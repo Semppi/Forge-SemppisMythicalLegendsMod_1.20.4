@@ -83,12 +83,15 @@ public final class ServerMapDiscoveryState {
                 new LinkedHashMap<>();
         private final int[] pixels =
                 new int[MapSnapshotPayload.PIXEL_COUNT];
+        private final byte[] surfacePixels =
+                new byte[MapSnapshotPayload.PIXEL_COUNT];
         private final byte[] regionPixels =
                 new byte[MapSnapshotPayload.PIXEL_COUNT];
 
         private void merge(MapSnapshotPayload current) {
             List<ResourceLocation> currentPalette = current.biomePalette();
             int[] currentPixels = current.biomePixels();
+            byte[] currentSurfacePixels = current.surfacePixels();
             byte[] currentRegionPixels = current.regionPixels();
 
             for (int pixel = 0; pixel < currentPixels.length; pixel++) {
@@ -106,6 +109,7 @@ public final class ServerMapDiscoveryState {
                         }
                 );
                 pixels[pixel] = storedIndex + 1;
+                surfacePixels[pixel] = currentSurfacePixels[pixel];
                 regionPixels[pixel] = currentRegionPixels[pixel];
             }
         }
@@ -117,6 +121,7 @@ public final class ServerMapDiscoveryState {
                     key.originZ(),
                     palette,
                     pixels,
+                    surfacePixels,
                     regionPixels
             );
         }

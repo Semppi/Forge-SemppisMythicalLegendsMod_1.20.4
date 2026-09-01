@@ -456,8 +456,32 @@ public final class RegionSurfaceClassifier {
                     break;
                 }
                 if (!biome.is(BiomeTags.IS_OCEAN)) {
-                    // Genuine land and shore form a valid closed side of a
-                    // coastal pocket but do not select its regional identity.
+                    SurfaceKind kind = classify(biome);
+                    if (isGeneratedSubmerged(level, neighborX, neighborZ)
+                            && (kind == SurfaceKind.SHORE
+                            || kind == SurfaceKind.RIVER)) {
+                        Region shallowWaterRegion = kind == SurfaceKind.SHORE
+                                ? findShoreLand(
+                                        level, seed, neighborX, neighborZ
+                                )
+                                : SAMPLER.landRegion(
+                                        level, neighborX, neighborZ
+                                );
+                        if (shallowWaterRegion != null) {
+                            coastSupport++;
+                            if (surroundingRegion == null) {
+                                surroundingRegion = shallowWaterRegion;
+                            } else if (!surroundingRegion.equals(
+                                    shallowWaterRegion
+                            )) {
+                                enclosed = false;
+                                break;
+                            }
+                        }
+                    }
+                    // Dry land closes the pocket. Submerged beach and river
+                    // also close it, but contribute their continental region
+                    // so a gulf cannot manufacture an ocean-tag island.
                     continue;
                 }
 
@@ -506,11 +530,33 @@ public final class RegionSurfaceClassifier {
                     z + COAST_NEIGHBORS[direction][1]
             );
             SurfaceKind kind = classify(biome);
-            if (kind == SurfaceKind.LAND || kind == SurfaceKind.SHORE) {
+            if ((kind == SurfaceKind.LAND || kind == SurfaceKind.SHORE)
+                    && !isGeneratedSubmerged(
+                            level,
+                            x + COAST_NEIGHBORS[direction][0],
+                            z + COAST_NEIGHBORS[direction][1]
+                    )) {
                 return true;
             }
         }
         return false;
+    }
+
+    private static boolean isGeneratedSubmerged(
+            ServerLevelAccessor level,
+            int x,
+            int z
+    ) {
+        var chunkSource = level.getLevel().getChunkSource();
+        var generator = chunkSource.getGenerator();
+        int oceanFloor = generator.getBaseHeight(
+                x,
+                z,
+                Heightmap.Types.OCEAN_FLOOR_WG,
+                level,
+                chunkSource.randomState()
+        );
+        return oceanFloor < generator.getSeaLevel();
     }
 
     private static boolean isGeneratedOrdinaryOcean(

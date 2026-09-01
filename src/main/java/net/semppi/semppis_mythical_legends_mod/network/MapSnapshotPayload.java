@@ -18,15 +18,20 @@ public record MapSnapshotPayload(
         int originZ,
         List<ResourceLocation> biomePalette,
         int[] biomePixels,
+        byte[] surfacePixels,
         byte[] regionPixels
 ) {
     public static final int SIZE = 256;
     public static final int PIXEL_COUNT = SIZE * SIZE;
+    public static final byte SURFACE_UNKNOWN = 0;
+    public static final byte SURFACE_DRY = 1;
+    public static final byte SURFACE_WET = 2;
     private static final int MAX_PALETTE_SIZE = 4_096;
 
     public MapSnapshotPayload {
         biomePalette = List.copyOf(biomePalette);
         biomePixels = biomePixels.clone();
+        surfacePixels = surfacePixels.clone();
         regionPixels = regionPixels.clone();
 
         if (biomePalette.size() > MAX_PALETTE_SIZE) {
@@ -43,6 +48,12 @@ public record MapSnapshotPayload(
                             + " region pixels"
             );
         }
+        if (surfacePixels.length != PIXEL_COUNT) {
+            throw new IllegalArgumentException(
+                    "Map snapshot must contain exactly " + PIXEL_COUNT
+                            + " surface pixels"
+            );
+        }
     }
 
     @Override
@@ -55,6 +66,11 @@ public record MapSnapshotPayload(
         return regionPixels.clone();
     }
 
+    @Override
+    public byte[] surfacePixels() {
+        return surfacePixels.clone();
+    }
+
     public void write(FriendlyByteBuf buffer) {
         buffer.writeResourceLocation(dimension);
         buffer.writeInt(originX);
@@ -64,6 +80,7 @@ public record MapSnapshotPayload(
             buffer.writeResourceLocation(biome);
         }
         buffer.writeVarIntArray(biomePixels);
+        buffer.writeByteArray(surfacePixels);
         buffer.writeByteArray(regionPixels);
     }
 
@@ -87,6 +104,7 @@ public record MapSnapshotPayload(
                 originZ,
                 palette,
                 buffer.readVarIntArray(PIXEL_COUNT),
+                buffer.readByteArray(PIXEL_COUNT),
                 buffer.readByteArray(PIXEL_COUNT)
         );
     }

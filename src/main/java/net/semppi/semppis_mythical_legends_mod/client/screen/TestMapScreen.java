@@ -481,15 +481,30 @@ public final class TestMapScreen extends Screen {
         releaseMapTexture();
 
         int[] biomePixels = snapshot.biomePixels();
+        byte[] surfacePixels = snapshot.surfacePixels();
         byte[] regionPixels = snapshot.regionPixels();
         List<ResourceLocation> palette = snapshot.biomePalette();
-        int[] paletteColors = new int[palette.size()];
+        int[] defaultPaletteColors = new int[palette.size()];
+        int[] dryPaletteColors = new int[palette.size()];
+        int[] wetPaletteColors = new int[palette.size()];
         Minecraft minecraft = Minecraft.getInstance();
 
         for (int index = 0; index < palette.size(); index++) {
-            paletteColors[index] = BiomeMapColorResolver.color(
+            ResourceLocation biome = palette.get(index);
+            defaultPaletteColors[index] = BiomeMapColorResolver.color(
                     minecraft,
-                    palette.get(index)
+                    biome,
+                    MapSnapshotPayload.SURFACE_UNKNOWN
+            );
+            dryPaletteColors[index] = BiomeMapColorResolver.color(
+                    minecraft,
+                    biome,
+                    MapSnapshotPayload.SURFACE_DRY
+            );
+            wetPaletteColors[index] = BiomeMapColorResolver.color(
+                    minecraft,
+                    biome,
+                    MapSnapshotPayload.SURFACE_WET
             );
         }
 
@@ -511,7 +526,13 @@ public final class TestMapScreen extends Screen {
                     );
                     int pixelColor = biomeEdge
                             ? BIOME_EDGE_COLOR
-                            : paletteColors[encodedBiome - 1];
+                            : surfaceColor(
+                                    encodedBiome - 1,
+                                    surfacePixels[row + x],
+                                    defaultPaletteColors,
+                                    dryPaletteColors,
+                                    wetPaletteColors
+                            );
                     byte encodedRegion = regionPixels[row + x];
                     if (continentalOverlayEnabled
                             && !biomeEdge
@@ -543,6 +564,22 @@ public final class TestMapScreen extends Screen {
                 "sml_test_biome_map",
                 mapTexture
         );
+    }
+
+    private static int surfaceColor(
+            int paletteIndex,
+            byte surface,
+            int[] defaultColors,
+            int[] dryColors,
+            int[] wetColors
+    ) {
+        if (surface == MapSnapshotPayload.SURFACE_WET) {
+            return wetColors[paletteIndex];
+        }
+        if (surface == MapSnapshotPayload.SURFACE_DRY) {
+            return dryColors[paletteIndex];
+        }
+        return defaultColors[paletteIndex];
     }
 
     private static boolean isBiomeEdge(
