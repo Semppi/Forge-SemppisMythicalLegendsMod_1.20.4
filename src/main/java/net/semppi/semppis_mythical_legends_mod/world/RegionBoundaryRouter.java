@@ -34,8 +34,6 @@ public final class RegionBoundaryRouter {
     private static final int MAX_FRAGMENT_CELLS = 8_192;
     private static final int MIN_BOUNDARY_SUPPORT = 3;
     private static final int MIN_BOUNDARY_LEAD = 2;
-    private static final int MIN_ANCHOR_SEPARATION = 8;
-    private static final int MAX_ENCLOSED_CRUMB_CELLS = 64;
     private static final int MAX_CACHE_ENTRIES = 65_536;
 
     private static final int[][] CARDINAL_DIRECTIONS = {
@@ -133,10 +131,8 @@ public final class RegionBoundaryRouter {
         Set<Long> visited = new HashSet<>();
         Map<Region, Integer> boundarySupport = new LinkedHashMap<>();
         Map<Region, Cell> neighborSeeds = new LinkedHashMap<>();
-        Map<Region, BoundaryExtent> boundaryExtents = new LinkedHashMap<>();
         open.add(new Cell(startQuartX, startQuartZ));
         boolean exceededBounds = false;
-        boolean touchesBiomeBoundary = false;
 
         while (!open.isEmpty()) {
             Cell cell = open.removeFirst();
@@ -164,7 +160,6 @@ public final class RegionBoundaryRouter {
                         .map(value -> value.location())
                         .orElse(null);
                 if (!biomeId.equals(neighborId)) {
-                    touchesBiomeBoundary = true;
                     continue;
                 }
 
@@ -186,18 +181,12 @@ public final class RegionBoundaryRouter {
                             neighborOwner,
                             new Cell(neighborX, neighborZ)
                     );
-                    boundaryExtents.merge(
-                            neighborOwner,
-                            BoundaryExtent.at(neighborX, neighborZ),
-                            BoundaryExtent::include
-                    );
                 }
             }
         }
 
         return new FragmentSearch(
-                visited, boundarySupport, neighborSeeds, boundaryExtents,
-                touchesBiomeBoundary, exceededBounds
+                visited, boundarySupport, neighborSeeds, exceededBounds
         );
     }
 
@@ -232,16 +221,6 @@ public final class RegionBoundaryRouter {
                 || winnerSupport < runnerUpSupport + MIN_BOUNDARY_LEAD) {
             return null;
         }
-
-        boolean enclosedCrumb = !fragment.touchesBiomeBoundary()
-                && fragment.boundarySupport().size() == 1
-                && fragment.cells().size() <= MAX_ENCLOSED_CRUMB_CELLS;
-        BoundaryExtent extent = fragment.boundaryExtents().get(winner);
-        boolean hasTwoAnchors = extent != null
-                && extent.span() >= MIN_ANCHOR_SEPARATION;
-        if (!enclosedCrumb && !hasTwoAnchors) {
-            return null;
-        }
         return winner;
     }
 
@@ -259,41 +238,10 @@ public final class RegionBoundaryRouter {
 
     private record Cell(int x, int z) {}
 
-    /**
-     * The extrema provide deterministic entry/exit anchors without retaining
-     * every boundary cell. Manhattan span is sufficient here: a tiny local
-     * contact cannot masquerade as a continuing routed seam.
-     */
-    private record BoundaryExtent(
-            int minimumX,
-            int maximumX,
-            int minimumZ,
-            int maximumZ
-    ) {
-        private static BoundaryExtent at(int x, int z) {
-            return new BoundaryExtent(x, x, z, z);
-        }
-
-        private BoundaryExtent include(BoundaryExtent other) {
-            return new BoundaryExtent(
-                    Math.min(minimumX, other.minimumX),
-                    Math.max(maximumX, other.maximumX),
-                    Math.min(minimumZ, other.minimumZ),
-                    Math.max(maximumZ, other.maximumZ)
-            );
-        }
-
-        private int span() {
-            return maximumX - minimumX + maximumZ - minimumZ;
-        }
-    }
-
     private record FragmentSearch(
             Set<Long> cells,
             Map<Region, Integer> boundarySupport,
             Map<Region, Cell> neighborSeeds,
-            Map<Region, BoundaryExtent> boundaryExtents,
-            boolean touchesBiomeBoundary,
             boolean exceededBounds
     ) {}
 
