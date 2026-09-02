@@ -26,7 +26,12 @@ import java.util.WeakHashMap;
  * bound. Large and ambiguous fragments retain the original geometry.</p>
  */
 public final class RegionBoundaryRouter {
-    private static final int MAX_FRAGMENT_CELLS = 2_048;
+    // Match the established whole-biome survey budget. The previous 2,048
+    // limit was inherited from the tiny-fragment vacuum pass and caused
+    // ordinary field-sized wedges to abort before reaching their biome edge.
+    // This remains a hard synchronous bound; completed and aborted surveys
+    // are cached for every visited cell.
+    private static final int MAX_FRAGMENT_CELLS = 8_192;
     private static final int MIN_BOUNDARY_SUPPORT = 3;
     private static final int MIN_BOUNDARY_LEAD = 2;
     private static final int MAX_CACHE_ENTRIES = 65_536;
