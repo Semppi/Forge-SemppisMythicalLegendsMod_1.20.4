@@ -15,11 +15,17 @@ import java.util.Set;
 import java.util.WeakHashMap;
 
 /**
- * Moves a small raw-region remnant to the larger neighboring owner of the
- * same surface biome. This places the surviving regional seam on the biome's
- * outer edge without allowing a large or ambiguous land area to be rewritten.
+ * Routes a resolved continental seam around a complete, bounded fragment of
+ * one surface biome. A route is applied atomically to every cell in that
+ * fragment, placing the surviving seam on the biome's outer edge without
+ * allowing isolated per-cell edits, islands, or freckles.
+ *
+ * <p>The pre-router region remains the geometry guide. This is important for
+ * future continent-shape work: routing may move a nearby seam onto a natural
+ * biome edge, but it never invents a new owner or searches without a hard
+ * bound. Large and ambiguous fragments retain the original geometry.</p>
  */
-public final class BoundedRegionFragmentResolver {
+public final class RegionBoundaryRouter {
     private static final int MAX_FRAGMENT_CELLS = 2_048;
     private static final int MIN_BOUNDARY_SUPPORT = 3;
     private static final int MIN_BOUNDARY_LEAD = 2;
@@ -32,7 +38,7 @@ public final class BoundedRegionFragmentResolver {
     private static final Map<ServerLevel, FragmentCache> WORLD_CACHES =
             new WeakHashMap<>();
 
-    private BoundedRegionFragmentResolver() {}
+    private RegionBoundaryRouter() {}
 
     public static Region resolve(
             ServerLevelAccessor level,

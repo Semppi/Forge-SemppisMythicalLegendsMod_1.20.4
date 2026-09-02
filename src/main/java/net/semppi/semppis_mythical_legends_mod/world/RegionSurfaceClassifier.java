@@ -167,14 +167,9 @@ public final class RegionSurfaceClassifier {
             Region beforeVacuum = resolveLandBeforeVacuum(
                     level, seed, x, z, biome
             );
-            landRegion = BoundedRegionFragmentResolver.resolve(
+            landRegion = RegionBoundaryRouter.resolve(
                     level, seed, x, z, biome, beforeVacuum
             );
-            if (landRegion.equals(beforeVacuum)) {
-                landRegion = BoundedBiomeEdgeSnapper.resolve(
-                        level, seed, x, z, biome, beforeVacuum
-                );
-            }
         }
         return new Sample(kind, landRegion);
     }
