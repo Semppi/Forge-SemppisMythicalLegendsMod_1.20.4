@@ -188,10 +188,7 @@ public final class RegionSurfaceClassifier {
             Holder<Biome> biome
     ) {
         Region region = SAMPLER.landRegion(level, x, z);
-        region = BoundedBiomeBorderAttractor.attract(
-                level, seed, x, z, biome, region
-        );
-        return BoundedBiomeComponentResolver.resolve(
+        return BoundedBiomeBorderAttractor.attract(
                 level, seed, x, z, biome, region
         );
     }
@@ -733,10 +730,7 @@ public final class RegionSurfaceClassifier {
             ServerLevelAccessor level, long seed, int x, int z,
             Holder<Biome> biome) {
         Region region = SAMPLER.landRegion(level, x, z);
-        region = BoundedBiomeBorderAttractor.attract(
-                level, seed, x, z, biome, region
-        );
-        return BoundedBiomeComponentResolver.resolve(
+        return BoundedBiomeBorderAttractor.attract(
                 level, seed, x, z, biome, region
         );
     }

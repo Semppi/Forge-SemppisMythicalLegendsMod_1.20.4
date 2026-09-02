@@ -26,12 +26,10 @@ import java.util.WeakHashMap;
  * bound. Large and ambiguous fragments retain the original geometry.</p>
  */
 public final class RegionBoundaryRouter {
-    // Match the established whole-biome survey budget. The previous 2,048
-    // limit was inherited from the tiny-fragment vacuum pass and caused
-    // ordinary field-sized wedges to abort before reaching their biome edge.
-    // This remains a hard synchronous bound; completed and aborted surveys
-    // are cached for every visited cell.
-    private static final int MAX_FRAGMENT_CELLS = 8_192;
+    // This resolver runs in spawning, commands and map snapshots on the
+    // server thread. Keep one lookup strictly bounded and never invoke a
+    // second flood-fill from inside this survey.
+    private static final int MAX_FRAGMENT_CELLS = 2_048;
     private static final int MIN_BOUNDARY_SUPPORT = 3;
     private static final int MIN_BOUNDARY_LEAD = 2;
     private static final int MAX_CACHE_ENTRIES = 65_536;
@@ -62,6 +60,13 @@ public final class RegionBoundaryRouter {
 
         TagRules.BiomeClimateProfile profile = TagRules.biomeProfile(biomeId);
         if (profile.isPlacementContext() || profile.isMountain()) {
+            return current;
+        }
+
+        // The lightweight attractor has already made a coherent local move.
+        // Do not make an expensive cleanup pass reinterpret that result.
+        Region rawOwner = ClimateDirectionAssignment.landRegion(level, x, z);
+        if (!current.equals(rawOwner)) {
             return current;
         }
 
@@ -165,14 +170,12 @@ public final class RegionBoundaryRouter {
 
                 int blockX = neighborX * 4 + 2;
                 int blockZ = neighborZ * 4 + 2;
-                Region neighborOwner =
-                        RegionSurfaceClassifier.resolveLandBeforeVacuum(
-                                level,
-                                seed,
-                                blockX,
-                                blockZ,
-                                neighborBiome
-                        );
+                // Raw ownership is deterministic and constant-time. Calling
+                // resolveLandBeforeVacuum here previously nested an 8,192-cell
+                // biome survey inside every cell of this flood-fill.
+                Region neighborOwner = ClimateDirectionAssignment.landRegion(
+                        level, blockX, blockZ
+                );
                 if (owner.equals(neighborOwner)) {
                     open.addLast(new Cell(neighborX, neighborZ));
                 } else if (!neighborOwner.ocean()) {
