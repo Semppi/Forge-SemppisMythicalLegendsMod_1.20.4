@@ -85,6 +85,10 @@ public final class ServerMapDiscoveryState {
                 new int[MapSnapshotPayload.PIXEL_COUNT];
         private final byte[] surfacePixels =
                 new byte[MapSnapshotPayload.PIXEL_COUNT];
+        private final byte[] rawRegionPixels =
+                new byte[MapSnapshotPayload.PIXEL_COUNT];
+        private final byte[] attractedRegionPixels =
+                new byte[MapSnapshotPayload.PIXEL_COUNT];
         private final byte[] regionPixels =
                 new byte[MapSnapshotPayload.PIXEL_COUNT];
 
@@ -92,6 +96,9 @@ public final class ServerMapDiscoveryState {
             List<ResourceLocation> currentPalette = current.biomePalette();
             int[] currentPixels = current.biomePixels();
             byte[] currentSurfacePixels = current.surfacePixels();
+            byte[] currentRawRegionPixels = current.rawRegionPixels();
+            byte[] currentAttractedRegionPixels =
+                    current.attractedRegionPixels();
             byte[] currentRegionPixels = current.regionPixels();
 
             for (int pixel = 0; pixel < currentPixels.length; pixel++) {
@@ -110,6 +117,9 @@ public final class ServerMapDiscoveryState {
                 );
                 pixels[pixel] = storedIndex + 1;
                 surfacePixels[pixel] = currentSurfacePixels[pixel];
+                rawRegionPixels[pixel] = currentRawRegionPixels[pixel];
+                attractedRegionPixels[pixel] =
+                        currentAttractedRegionPixels[pixel];
                 regionPixels[pixel] = currentRegionPixels[pixel];
             }
         }
@@ -122,6 +132,8 @@ public final class ServerMapDiscoveryState {
                     palette,
                     pixels,
                     surfacePixels,
+                    rawRegionPixels,
+                    attractedRegionPixels,
                     regionPixels
             );
         }

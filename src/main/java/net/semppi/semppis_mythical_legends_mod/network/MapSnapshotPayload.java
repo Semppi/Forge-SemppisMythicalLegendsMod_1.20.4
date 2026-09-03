@@ -19,6 +19,8 @@ public record MapSnapshotPayload(
         List<ResourceLocation> biomePalette,
         int[] biomePixels,
         byte[] surfacePixels,
+        byte[] rawRegionPixels,
+        byte[] attractedRegionPixels,
         byte[] regionPixels
 ) {
     public static final int SIZE = 256;
@@ -32,6 +34,8 @@ public record MapSnapshotPayload(
         biomePalette = List.copyOf(biomePalette);
         biomePixels = biomePixels.clone();
         surfacePixels = surfacePixels.clone();
+        rawRegionPixels = rawRegionPixels.clone();
+        attractedRegionPixels = attractedRegionPixels.clone();
         regionPixels = regionPixels.clone();
 
         if (biomePalette.size() > MAX_PALETTE_SIZE) {
@@ -46,6 +50,13 @@ public record MapSnapshotPayload(
             throw new IllegalArgumentException(
                     "Map snapshot must contain exactly " + PIXEL_COUNT
                             + " region pixels"
+            );
+        }
+        if (rawRegionPixels.length != PIXEL_COUNT
+                || attractedRegionPixels.length != PIXEL_COUNT) {
+            throw new IllegalArgumentException(
+                    "Map snapshot diagnostic regions must contain exactly "
+                            + PIXEL_COUNT + " pixels"
             );
         }
         if (surfacePixels.length != PIXEL_COUNT) {
@@ -67,6 +78,16 @@ public record MapSnapshotPayload(
     }
 
     @Override
+    public byte[] rawRegionPixels() {
+        return rawRegionPixels.clone();
+    }
+
+    @Override
+    public byte[] attractedRegionPixels() {
+        return attractedRegionPixels.clone();
+    }
+
+    @Override
     public byte[] surfacePixels() {
         return surfacePixels.clone();
     }
@@ -81,6 +102,8 @@ public record MapSnapshotPayload(
         }
         buffer.writeVarIntArray(biomePixels);
         buffer.writeByteArray(surfacePixels);
+        buffer.writeByteArray(rawRegionPixels);
+        buffer.writeByteArray(attractedRegionPixels);
         buffer.writeByteArray(regionPixels);
     }
 
@@ -104,6 +127,8 @@ public record MapSnapshotPayload(
                 originZ,
                 palette,
                 buffer.readVarIntArray(PIXEL_COUNT),
+                buffer.readByteArray(PIXEL_COUNT),
+                buffer.readByteArray(PIXEL_COUNT),
                 buffer.readByteArray(PIXEL_COUNT),
                 buffer.readByteArray(PIXEL_COUNT)
         );

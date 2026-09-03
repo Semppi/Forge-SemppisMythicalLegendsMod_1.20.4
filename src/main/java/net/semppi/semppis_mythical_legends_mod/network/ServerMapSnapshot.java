@@ -11,6 +11,7 @@ import net.minecraft.world.level.biome.Biome;
 import net.minecraft.world.level.chunk.LevelChunk;
 import net.minecraft.world.level.levelgen.Heightmap;
 import net.semppi.semppis_mythical_legends_mod.spawn.RegionGate;
+import net.semppi.semppis_mythical_legends_mod.world.RegionSurfaceClassifier;
 
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -36,6 +37,9 @@ public final class ServerMapSnapshot {
 
         int[] pixels = new int[MapSnapshotPayload.PIXEL_COUNT];
         byte[] surfacePixels = new byte[MapSnapshotPayload.PIXEL_COUNT];
+        byte[] rawRegionPixels = new byte[MapSnapshotPayload.PIXEL_COUNT];
+        byte[] attractedRegionPixels =
+                new byte[MapSnapshotPayload.PIXEL_COUNT];
         byte[] regionPixels = new byte[MapSnapshotPayload.PIXEL_COUNT];
         List<ResourceLocation> palette = new ArrayList<>();
         Map<ResourceLocation, Integer> paletteIndices = new LinkedHashMap<>();
@@ -73,7 +77,24 @@ public final class ServerMapSnapshot {
                     originX,
                     originZ,
                     pixels,
-                    regionPixels
+                    rawRegionPixels,
+                    RegionSurfaceClassifier.DiagnosticStage.RAW
+            );
+            sampleRegionTiles(
+                    player,
+                    originX,
+                    originZ,
+                    pixels,
+                    attractedRegionPixels,
+                    RegionSurfaceClassifier.DiagnosticStage.ATTRACTED
+            );
+            sampleRegionTiles(
+                    player,
+                    originX,
+                    originZ,
+                    pixels,
+                    regionPixels,
+                    RegionSurfaceClassifier.DiagnosticStage.FINAL
             );
         }
 
@@ -84,6 +105,8 @@ public final class ServerMapSnapshot {
                 palette,
                 pixels,
                 surfacePixels,
+                rawRegionPixels,
+                attractedRegionPixels,
                 regionPixels
         );
     }
@@ -153,7 +176,8 @@ public final class ServerMapSnapshot {
             int originX,
             int originZ,
             int[] biomePixels,
-            byte[] regionPixels
+            byte[] regionPixels,
+            RegionSurfaceClassifier.DiagnosticStage stage
     ) {
         for (int z = 0; z < MapSnapshotPayload.SIZE; z += REGION_TILE_SIZE) {
             for (int x = 0; x < MapSnapshotPayload.SIZE; x += REGION_TILE_SIZE) {
@@ -165,7 +189,8 @@ public final class ServerMapSnapshot {
                         regionPixels,
                         x,
                         z,
-                        REGION_TILE_SIZE
+                        REGION_TILE_SIZE,
+                        stage
                 );
             }
         }
@@ -179,7 +204,8 @@ public final class ServerMapSnapshot {
             byte[] regionPixels,
             int startX,
             int startZ,
-            int size
+            int size,
+            RegionSurfaceClassifier.DiagnosticStage stage
     ) {
         Discovery coverage = discoveryCoverage(
                 biomePixels,
@@ -193,27 +219,31 @@ public final class ServerMapSnapshot {
 
         if (coverage == Discovery.FULL) {
             byte topLeft = resolveRegionCode(
-                    player, originX + startX, originZ + startZ
+                    player, originX + startX, originZ + startZ, stage
             );
             byte topRight = resolveRegionCode(
                     player,
                     originX + startX + size - 1,
-                    originZ + startZ
+                    originZ + startZ,
+                    stage
             );
             byte bottomLeft = resolveRegionCode(
                     player,
                     originX + startX,
-                    originZ + startZ + size - 1
+                    originZ + startZ + size - 1,
+                    stage
             );
             byte bottomRight = resolveRegionCode(
                     player,
                     originX + startX + size - 1,
-                    originZ + startZ + size - 1
+                    originZ + startZ + size - 1,
+                    stage
             );
             byte center = resolveRegionCode(
                     player,
                     originX + startX + size / 2,
-                    originZ + startZ + size / 2
+                    originZ + startZ + size / 2,
+                    stage
             );
 
             int overlayIdentity = MapRegionCode.overlayIdentity(topLeft);
@@ -238,7 +268,7 @@ public final class ServerMapSnapshot {
                     int pixel = z * MapSnapshotPayload.SIZE + x;
                     if (biomePixels[pixel] != 0) {
                         regionPixels[pixel] = resolveRegionCode(
-                                player, originX + x, originZ + z
+                                player, originX + x, originZ + z, stage
                         );
                     }
                 }
@@ -249,25 +279,35 @@ public final class ServerMapSnapshot {
         int half = size / 2;
         sampleRegionTile(
                 player, originX, originZ, biomePixels, regionPixels,
-                startX, startZ, half
+                startX, startZ, half, stage
         );
         sampleRegionTile(
                 player, originX, originZ, biomePixels, regionPixels,
-                startX + half, startZ, half
+                startX + half, startZ, half, stage
         );
         sampleRegionTile(
                 player, originX, originZ, biomePixels, regionPixels,
-                startX, startZ + half, half
+                startX, startZ + half, half, stage
         );
         sampleRegionTile(
                 player, originX, originZ, biomePixels, regionPixels,
-                startX + half, startZ + half, half
+                startX + half, startZ + half, half, stage
         );
     }
 
     private static byte resolveRegionCode(
-            ServerPlayer player, int worldX, int worldZ
+            ServerPlayer player,
+            int worldX,
+            int worldZ,
+            RegionSurfaceClassifier.DiagnosticStage stage
     ) {
+        if (stage != RegionSurfaceClassifier.DiagnosticStage.FINAL) {
+            return MapRegionCode.encode(
+                    RegionSurfaceClassifier.sample(
+                            player.serverLevel(), worldX, worldZ, stage
+                    ).region()
+            );
+        }
         return MapRegionCode.encode(
                 RegionGate.resolve(
                         player.serverLevel(), worldX, worldZ

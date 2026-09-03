@@ -87,10 +87,20 @@ public final class TestMapScreen extends Screen {
     private MapSnapshotPayload displayedSnapshot;
     private ResourceLocation mapTextureLocation;
     private Button continentalToggleButton;
+    private Button rawLayerButton;
+    private Button attractedLayerButton;
+    private Button finalLayerButton;
     private boolean mapTextureDirty = true;
 
     /** Remember the display preference while Minecraft remains open. */
     private static boolean continentalOverlayEnabled = true;
+    private static DiagnosticLayer diagnosticLayer = DiagnosticLayer.FINAL;
+
+    private enum DiagnosticLayer {
+        RAW,
+        ATTRACTED,
+        FINAL
+    }
 
     private static final Component TITLE =
             Component.translatable(
@@ -106,14 +116,17 @@ public final class TestMapScreen extends Screen {
         super.init();
         this.displayedSnapshot = null;
         this.continentalToggleButton = null;
+        this.rawLayerButton = null;
+        this.attractedLayerButton = null;
+        this.finalLayerButton = null;
         this.mapTextureDirty = true;
         releaseMapTexture();
         ClientMapSnapshotState.clear();
-        addContinentalToggle();
+        addMapControls();
         SMLNetwork.requestMapSnapshot();
     }
 
-    private void addContinentalToggle() {
+    private void addMapControls() {
         int availableSize = Math.min(this.width, this.height)
                 - SCREEN_MARGIN * 2;
         int frameSize = Math.min(MAX_FRAME_DISPLAY_SIZE, availableSize);
@@ -147,6 +160,82 @@ public final class TestMapScreen extends Screen {
                                 PANEL_BUTTON_HEIGHT
                         )
                         .build()
+        );
+
+        int layerTop = frameTop + PANEL_BUTTON_MARGIN
+                + PANEL_BUTTON_HEIGHT + PANEL_BUTTON_MARGIN;
+        this.rawLayerButton = addLayerButton(
+                DiagnosticLayer.RAW,
+                rightPanelLeft + PANEL_BUTTON_MARGIN,
+                layerTop,
+                buttonWidth
+        );
+        this.attractedLayerButton = addLayerButton(
+                DiagnosticLayer.ATTRACTED,
+                rightPanelLeft + PANEL_BUTTON_MARGIN,
+                layerTop + PANEL_BUTTON_HEIGHT + PANEL_BUTTON_MARGIN,
+                buttonWidth
+        );
+        this.finalLayerButton = addLayerButton(
+                DiagnosticLayer.FINAL,
+                rightPanelLeft + PANEL_BUTTON_MARGIN,
+                layerTop + (PANEL_BUTTON_HEIGHT + PANEL_BUTTON_MARGIN) * 2,
+                buttonWidth
+        );
+        refreshLayerButtonLabels();
+    }
+
+    private Button addLayerButton(
+            DiagnosticLayer layer,
+            int left,
+            int top,
+            int width
+    ) {
+        return addRenderableWidget(
+                Button.builder(
+                                layerLabel(layer),
+                                button -> selectDiagnosticLayer(layer)
+                        )
+                        .bounds(left, top, width, PANEL_BUTTON_HEIGHT)
+                        .build()
+        );
+    }
+
+    private void selectDiagnosticLayer(DiagnosticLayer layer) {
+        if (diagnosticLayer == layer) {
+            return;
+        }
+        diagnosticLayer = layer;
+        refreshLayerButtonLabels();
+        this.mapTextureDirty = true;
+    }
+
+    private void refreshLayerButtonLabels() {
+        if (this.rawLayerButton != null) {
+            this.rawLayerButton.setMessage(layerLabel(DiagnosticLayer.RAW));
+        }
+        if (this.attractedLayerButton != null) {
+            this.attractedLayerButton.setMessage(
+                    layerLabel(DiagnosticLayer.ATTRACTED)
+            );
+        }
+        if (this.finalLayerButton != null) {
+            this.finalLayerButton.setMessage(
+                    layerLabel(DiagnosticLayer.FINAL)
+            );
+        }
+    }
+
+    private static Component layerLabel(DiagnosticLayer layer) {
+        String name = switch (layer) {
+            case RAW -> "raw";
+            case ATTRACTED -> "attracted";
+            case FINAL -> "final";
+        };
+        String state = diagnosticLayer == layer ? "on" : "off";
+        return Component.translatable(
+                "screen.semppis_mythical_legends_mod.map_layer."
+                        + name + "." + state
         );
     }
 
@@ -193,6 +282,24 @@ public final class TestMapScreen extends Screen {
                     mouseY,
                     partialTick
             );
+        }
+        renderControl(this.rawLayerButton, guiGraphics, mouseX, mouseY,
+                partialTick);
+        renderControl(this.attractedLayerButton, guiGraphics, mouseX, mouseY,
+                partialTick);
+        renderControl(this.finalLayerButton, guiGraphics, mouseX, mouseY,
+                partialTick);
+    }
+
+    private static void renderControl(
+            Button button,
+            GuiGraphics guiGraphics,
+            int mouseX,
+            int mouseY,
+            float partialTick
+    ) {
+        if (button != null) {
+            button.render(guiGraphics, mouseX, mouseY, partialTick);
         }
     }
 
@@ -482,7 +589,11 @@ public final class TestMapScreen extends Screen {
 
         int[] biomePixels = snapshot.biomePixels();
         byte[] surfacePixels = snapshot.surfacePixels();
-        byte[] regionPixels = snapshot.regionPixels();
+        byte[] regionPixels = switch (diagnosticLayer) {
+            case RAW -> snapshot.rawRegionPixels();
+            case ATTRACTED -> snapshot.attractedRegionPixels();
+            case FINAL -> snapshot.regionPixels();
+        };
         List<ResourceLocation> palette = snapshot.biomePalette();
         int[] defaultPaletteColors = new int[palette.size()];
         int[] dryPaletteColors = new int[palette.size()];

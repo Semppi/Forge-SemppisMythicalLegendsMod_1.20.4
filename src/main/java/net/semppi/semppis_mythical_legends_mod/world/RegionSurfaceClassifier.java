@@ -71,6 +71,12 @@ public final class RegionSurfaceClassifier {
 
     public record Sample(SurfaceKind kind, Region region) {}
 
+    public enum DiagnosticStage {
+        RAW,
+        ATTRACTED,
+        FINAL
+    }
+
     private record CoastMatch(Region region) {}
 
     private record RawCoastResult(
@@ -99,11 +105,20 @@ public final class RegionSurfaceClassifier {
     }
 
     public static Sample sample(ServerLevelAccessor level, int x, int z) {
+        return sample(level, x, z, DiagnosticStage.FINAL);
+    }
+
+    public static Sample sample(
+            ServerLevelAccessor level,
+            int x,
+            int z,
+            DiagnosticStage stage
+    ) {
         int y = level.getHeight(Heightmap.Types.WORLD_SURFACE, x, z);
         y = Math.max(level.getMinBuildHeight(), Math.min(y, level.getMaxBuildHeight() - 1));
 
         Holder<Biome> biome = level.getBiome(new BlockPos(x, y, z));
-        return sampleBiome(level, x, z, biome);
+        return sampleBiome(level, x, z, biome, stage);
     }
 
     /**
@@ -125,11 +140,12 @@ public final class RegionSurfaceClassifier {
                 QuartPos.fromBlock(x), QuartPos.fromBlock(y),
                 QuartPos.fromBlock(z), randomState.sampler()
         );
-        return sampleBiome(level, x, z, biome);
+        return sampleBiome(level, x, z, biome, DiagnosticStage.FINAL);
     }
 
     private static Sample sampleBiome(ServerLevelAccessor level, int x, int z,
-                                      Holder<Biome> biome) {
+                                      Holder<Biome> biome,
+                                      DiagnosticStage stage) {
         SurfaceKind kind = classify(biome);
         long seed = level.getLevel().getSeed();
 
@@ -164,12 +180,16 @@ public final class RegionSurfaceClassifier {
         // boundary, but it can never select a region from scratch.
         Region landRegion = SAMPLER.landRegion(level, x, z);
         if (kind == SurfaceKind.LAND) {
-            Region beforeVacuum = resolveLandBeforeVacuum(
-                    level, seed, x, z, biome
-            );
-            landRegion = RegionBoundaryRouter.resolve(
-                    level, seed, x, z, biome, beforeVacuum
-            );
+            if (stage != DiagnosticStage.RAW) {
+                Region attracted = resolveLandBeforeVacuum(
+                        level, seed, x, z, biome
+                );
+                landRegion = stage == DiagnosticStage.ATTRACTED
+                        ? attracted
+                        : RegionBoundaryRouter.resolve(
+                                level, seed, x, z, biome, attracted
+                        );
+            }
         }
         return new Sample(kind, landRegion);
     }

@@ -13,7 +13,7 @@ import net.semppi.semppis_mythical_legends_mod.SemppisMythicalLegendsMod;
 public final class SMLNetwork {
     private SMLNetwork() {}
 
-    public static final int PROTOCOL = 2; // map snapshots now include regions
+    public static final int PROTOCOL = 3; // map snapshots include debug stages
     public static final ResourceLocation CHANNEL_ID =
             new ResourceLocation(SemppisMythicalLegendsMod.MOD_ID, "main");
 
