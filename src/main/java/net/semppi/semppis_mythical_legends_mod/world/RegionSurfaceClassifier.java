@@ -105,7 +105,7 @@ public final class RegionSurfaceClassifier {
     }
 
     public static Sample sample(ServerLevelAccessor level, int x, int z) {
-        return sample(level, x, z, DiagnosticStage.FINAL);
+        return sample(level, x, z, DiagnosticStage.FINAL, false);
     }
 
     public static Sample sample(
@@ -114,11 +114,23 @@ public final class RegionSurfaceClassifier {
             int z,
             DiagnosticStage stage
     ) {
+        return sample(level, x, z, stage, true);
+    }
+
+    private static Sample sample(
+            ServerLevelAccessor level,
+            int x,
+            int z,
+            DiagnosticStage stage,
+            boolean allowRoutingPreparation
+    ) {
         int y = level.getHeight(Heightmap.Types.WORLD_SURFACE, x, z);
         y = Math.max(level.getMinBuildHeight(), Math.min(y, level.getMaxBuildHeight() - 1));
 
         Holder<Biome> biome = level.getBiome(new BlockPos(x, y, z));
-        return sampleBiome(level, x, z, biome, stage);
+        return sampleBiome(
+                level, x, z, biome, stage, allowRoutingPreparation
+        );
     }
 
     /**
@@ -140,12 +152,15 @@ public final class RegionSurfaceClassifier {
                 QuartPos.fromBlock(x), QuartPos.fromBlock(y),
                 QuartPos.fromBlock(z), randomState.sampler()
         );
-        return sampleBiome(level, x, z, biome, DiagnosticStage.FINAL);
+        return sampleBiome(
+                level, x, z, biome, DiagnosticStage.FINAL, false
+        );
     }
 
     private static Sample sampleBiome(ServerLevelAccessor level, int x, int z,
                                       Holder<Biome> biome,
-                                      DiagnosticStage stage) {
+                                      DiagnosticStage stage,
+                                      boolean allowRoutingPreparation) {
         SurfaceKind kind = classify(biome);
         long seed = level.getLevel().getSeed();
 
@@ -185,11 +200,15 @@ public final class RegionSurfaceClassifier {
                         level, seed, x, z, biome
                 );
             } else if (stage == DiagnosticStage.FINAL) {
-                // FINAL is one atomic decision made directly from Raw. It
-                // deliberately does not inherit the pointwise Attracted map.
-                landRegion = RegionBoundaryRouter.resolve(
-                        level, seed, x, z, biome, landRegion
-                );
+                // Runtime only reads published results. The explicit Final
+                // diagnostic layer may prepare a complete bounded decision.
+                landRegion = allowRoutingPreparation
+                        ? RegionBoundaryRouter.prepareAndResolve(
+                                level, seed, x, z, biome, landRegion
+                        )
+                        : RegionBoundaryRouter.resolvePreparedOrRaw(
+                                level, x, z, biome, landRegion
+                        );
             }
         }
         return new Sample(kind, landRegion);

@@ -36,7 +36,30 @@ public final class RegionBoundaryRouter {
 
     private RegionBoundaryRouter() {}
 
-    public static Region resolve(
+    /**
+     * Runtime-safe lookup. This method never surveys terrain: it returns an
+     * already completed decision or immediately falls back to Raw.
+     */
+    public static Region resolvePreparedOrRaw(
+            ServerLevelAccessor level, int x, int z,
+            Holder<Biome> biome, Region rawOwner
+    ) {
+        ResourceLocation biomeId = biome.unwrapKey()
+                .map(key -> key.location()).orElse(null);
+        if (biomeId == null || rawOwner.ocean()) return rawOwner;
+
+        Region cached = cacheFor(level.getLevel()).get(
+                cellKey(QuartPos.fromBlock(x), QuartPos.fromBlock(z)),
+                biomeId
+        );
+        return cached == null ? rawOwner : cached;
+    }
+
+    /**
+     * Explicit preparation entry point for diagnostics and the future bounded
+     * segment worker. Never call this from spawning, F3, or RegionGate.
+     */
+    public static Region prepareAndResolve(
             ServerLevelAccessor level, long seed, int x, int z,
             Holder<Biome> biome, Region rawOwner
     ) {
