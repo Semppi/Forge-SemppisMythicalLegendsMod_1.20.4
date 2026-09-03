@@ -180,15 +180,16 @@ public final class RegionSurfaceClassifier {
         // boundary, but it can never select a region from scratch.
         Region landRegion = SAMPLER.landRegion(level, x, z);
         if (kind == SurfaceKind.LAND) {
-            if (stage != DiagnosticStage.RAW) {
-                Region attracted = resolveLandBeforeVacuum(
+            if (stage == DiagnosticStage.ATTRACTED) {
+                landRegion = resolveLandBeforeVacuum(
                         level, seed, x, z, biome
                 );
-                landRegion = stage == DiagnosticStage.ATTRACTED
-                        ? attracted
-                        : RegionBoundaryRouter.resolve(
-                                level, seed, x, z, biome, attracted
-                        );
+            } else if (stage == DiagnosticStage.FINAL) {
+                // FINAL is one atomic decision made directly from Raw. It
+                // deliberately does not inherit the pointwise Attracted map.
+                landRegion = RegionBoundaryRouter.resolve(
+                        level, seed, x, z, biome, landRegion
+                );
             }
         }
         return new Sample(kind, landRegion);

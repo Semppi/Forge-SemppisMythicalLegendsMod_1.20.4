@@ -10,7 +10,6 @@ import net.minecraft.world.level.Level;
 import net.minecraft.world.level.biome.Biome;
 import net.minecraft.world.level.chunk.LevelChunk;
 import net.minecraft.world.level.levelgen.Heightmap;
-import net.semppi.semppis_mythical_legends_mod.spawn.RegionGate;
 import net.semppi.semppis_mythical_legends_mod.world.RegionSurfaceClassifier;
 
 import java.util.ArrayList;
@@ -301,16 +300,11 @@ public final class ServerMapSnapshot {
             int worldZ,
             RegionSurfaceClassifier.DiagnosticStage stage
     ) {
-        if (stage != RegionSurfaceClassifier.DiagnosticStage.FINAL) {
-            return MapRegionCode.encode(
-                    RegionSurfaceClassifier.sample(
-                            player.serverLevel(), worldX, worldZ, stage
-                    ).region()
-            );
-        }
+        // Keep every layer explicit so Raw, the old pointwise attraction, and
+        // the authoritative atomic Final result remain directly comparable.
         return MapRegionCode.encode(
-                RegionGate.resolve(
-                        player.serverLevel(), worldX, worldZ
+                RegionSurfaceClassifier.sample(
+                        player.serverLevel(), worldX, worldZ, stage
                 ).region()
         );
     }
