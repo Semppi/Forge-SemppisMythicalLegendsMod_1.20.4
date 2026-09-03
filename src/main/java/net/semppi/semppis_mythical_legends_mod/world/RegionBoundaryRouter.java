@@ -6,6 +6,7 @@ import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.level.ServerLevelAccessor;
 import net.minecraft.world.level.biome.Biome;
+import net.minecraft.world.level.levelgen.Heightmap;
 
 import java.util.ArrayDeque;
 import java.util.HashMap;
@@ -27,6 +28,7 @@ public final class RegionBoundaryRouter {
     private static final int MIN_WINNING_PERCENT = 56;
     private static final int MAX_CACHE_ENTRIES = 98_304;
     private static final int NEGATIVE_TILE_SHIFT = 5;
+    private static final int BORDER_PROBE_BLOCKS = 128;
 
     private static final int[][] CARDINAL_DIRECTIONS = {
             {1, 0}, {-1, 0}, {0, 1}, {0, -1}
@@ -56,6 +58,10 @@ public final class RegionBoundaryRouter {
         Region cached = cache.get(startKey, biomeId);
         if (cached != null) return cached;
         if (cache.isOversizedTile(quartX, quartZ, biomeId)) return rawOwner;
+        if (!hasRawCompetitorNearby(level, x, z, rawOwner)) {
+            cache.putOne(startKey, biomeId, rawOwner);
+            return rawOwner;
+        }
 
         ComponentSearch component = surveyComponent(
                 level, quartX, quartZ, biomeId
@@ -75,6 +81,20 @@ public final class RegionBoundaryRouter {
         return winner;
     }
 
+    private static boolean hasRawCompetitorNearby(
+            ServerLevelAccessor level, int x, int z, Region rawOwner
+    ) {
+        for (int[] direction : CARDINAL_DIRECTIONS) {
+            Region neighbor = ClimateDirectionAssignment.landRegion(
+                    level,
+                    x + direction[0] * BORDER_PROBE_BLOCKS,
+                    z + direction[1] * BORDER_PROBE_BLOCKS
+            );
+            if (!neighbor.equals(rawOwner) && !neighbor.ocean()) return true;
+        }
+        return false;
+    }
+
     private static ComponentSearch surveyComponent(
             ServerLevelAccessor level, int startQuartX, int startQuartZ,
             ResourceLocation biomeId
@@ -83,7 +103,6 @@ public final class RegionBoundaryRouter {
         var generator = chunkSource.getGenerator();
         var biomeSource = generator.getBiomeSource();
         var climateSampler = chunkSource.randomState().sampler();
-        int quartY = QuartPos.fromBlock(generator.getSeaLevel());
 
         ArrayDeque<Cell> open = new ArrayDeque<>();
         Set<Long> cells = new HashSet<>();
@@ -112,7 +131,10 @@ public final class RegionBoundaryRouter {
                 if (cells.contains(neighborKey)) continue;
 
                 Holder<Biome> neighborBiome = biomeSource.getNoiseBiome(
-                        neighborX, quartY, neighborZ, climateSampler
+                        neighborX,
+                        surfaceQuartY(level, generator, neighborX, neighborZ),
+                        neighborZ,
+                        climateSampler
                 );
                 ResourceLocation neighborId = neighborBiome.unwrapKey()
                         .map(value -> value.location()).orElse(null);
@@ -122,6 +144,33 @@ public final class RegionBoundaryRouter {
             }
         }
         return new ComponentSearch(cells, owners, ownerCounts, false);
+    }
+
+    /**
+     * Samples the generated top surface without loading or generating a
+     * chunk. This keeps caves out of the two-dimensional region overlay and
+     * makes routing see the same exposed biome boundary as the map.
+     */
+    private static int surfaceQuartY(
+            ServerLevelAccessor level,
+            net.minecraft.world.level.chunk.ChunkGenerator generator,
+            int quartX,
+            int quartZ
+    ) {
+        int blockX = QuartPos.toBlock(quartX) + 2;
+        int blockZ = QuartPos.toBlock(quartZ) + 2;
+        int surfaceY = generator.getBaseHeight(
+                blockX,
+                blockZ,
+                Heightmap.Types.WORLD_SURFACE,
+                level,
+                level.getLevel().getChunkSource().randomState()
+        );
+        surfaceY = Math.max(
+                level.getMinBuildHeight(),
+                Math.min(surfaceY, level.getMaxBuildHeight() - 1)
+        );
+        return QuartPos.fromBlock(surfaceY);
     }
 
     private static Region selectWinner(Map<Region, Integer> ownerCounts) {
@@ -207,6 +256,12 @@ public final class RegionBoundaryRouter {
         ) {
             CachedDecision decision = new CachedDecision(biomeId, winner);
             for (long key : cells) values.put(key, decision);
+        }
+
+        private synchronized void putOne(
+                long key, ResourceLocation biomeId, Region region
+        ) {
+            values.put(key, new CachedDecision(biomeId, region));
         }
 
         private synchronized void putRaw(
