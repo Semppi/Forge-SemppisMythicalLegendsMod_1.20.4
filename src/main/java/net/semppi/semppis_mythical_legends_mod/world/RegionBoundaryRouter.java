@@ -131,7 +131,8 @@ public final class RegionBoundaryRouter {
             );
         }
         return new PreparedTile(
-                originX, originZ, route.regions(), TileResult.ROUTED
+                originX, originZ, route.regions(), TileResult.ROUTED,
+                route.changedCells()
         );
     }
 
@@ -241,18 +242,24 @@ public final class RegionBoundaryRouter {
         INVALID_PORTAL,
         NO_BOUNDED_PATH,
         UNCHANGED_PATH,
-        TOPOLOGY_REJECTED,
+        TOO_MANY_COMPONENTS,
+        NOT_TWO_COMPONENTS,
+        UNKNOWN_RAW_OWNER,
+        ENCLOSED_COMPONENT,
+        TIED_COMPONENT_OWNER,
+        SAME_COMPONENT_OWNER,
         NO_MEANINGFUL_CHANGE
     }
 
     private record PreparedTile(
-            int originX, int originZ, Region[] regions, TileResult result
+            int originX, int originZ, Region[] regions, TileResult result,
+            int changedCells
     ) {
         private static PreparedTile raw(
                 int x, int z, Region[] raw, TileResult result
         ) {
             return new PreparedTile(
-                    x, z, Arrays.copyOf(raw, raw.length), result
+                    x, z, Arrays.copyOf(raw, raw.length), result, 0
             );
         }
     }
@@ -286,10 +293,17 @@ public final class RegionBoundaryRouter {
                 }
             }
             preparedTiles.put(key, Boolean.TRUE);
-            if (prepared.result() != TileResult.ROUTED
-                    && prepared.result() != TileResult.NO_RAW_BOUNDARY) {
-                int minBlockX = QuartPos.toBlock(prepared.originX());
-                int minBlockZ = QuartPos.toBlock(prepared.originZ());
+            int minBlockX = QuartPos.toBlock(prepared.originX());
+            int minBlockZ = QuartPos.toBlock(prepared.originZ());
+            if (prepared.result() == TileResult.ROUTED) {
+                LOGGER.info(
+                        "Final border routed tile X {}..{}, Z {}..{}: "
+                                + "ROUTED ({} quart cells changed)",
+                        minBlockX, minBlockX + TILE_QUARTS * 4 - 1,
+                        minBlockZ, minBlockZ + TILE_QUARTS * 4 - 1,
+                        prepared.changedCells()
+                );
+            } else {
                 LOGGER.info(
                         "Final border kept Raw for tile X {}..{}, Z {}..{}: {}",
                         minBlockX, minBlockX + TILE_QUARTS * 4 - 1,

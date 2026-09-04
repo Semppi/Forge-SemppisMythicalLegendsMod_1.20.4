@@ -26,17 +26,21 @@ final class BoundedRegionPathRouter {
         INVALID_PORTAL,
         NO_BOUNDED_PATH,
         UNCHANGED_PATH,
-        TOPOLOGY_REJECTED,
+        TOO_MANY_COMPONENTS,
+        NOT_TWO_COMPONENTS,
+        UNKNOWN_RAW_OWNER,
+        ENCLOSED_COMPONENT,
+        TIED_COMPONENT_OWNER,
+        SAME_COMPONENT_OWNER,
         NO_MEANINGFUL_CHANGE
     }
 
-    record RouteResult(Region[] regions, RejectionReason rejectionReason) {
-        private static RouteResult accepted(Region[] regions) {
-            return new RouteResult(regions, RejectionReason.NONE);
-        }
-
+    record RouteResult(
+            Region[] regions, RejectionReason rejectionReason,
+            int changedCells
+    ) {
         private static RouteResult rejected(RejectionReason reason) {
-            return new RouteResult(null, reason);
+            return new RouteResult(null, reason, 0);
         }
     }
 
@@ -72,14 +76,17 @@ final class BoundedRegionPathRouter {
         if (path.equals(boundary.orderedPath())) {
             return RouteResult.rejected(RejectionReason.UNCHANGED_PATH);
         }
-        Region[] result = fillSides(
+        FillResult fill = fillSides(
                 raw, pathWalls(path), first, second
         );
-        if (result == null) {
-            return RouteResult.rejected(RejectionReason.TOPOLOGY_REJECTED);
+        if (fill.regions() == null) {
+            return RouteResult.rejected(fill.rejectionReason());
         }
-        return hasMeaningfulChange(raw, result)
-                ? RouteResult.accepted(result)
+        int changes = countChanges(raw, fill.regions());
+        return changes >= 4
+                ? new RouteResult(
+                        fill.regions(), RejectionReason.NONE, changes
+                )
                 : RouteResult.rejected(RejectionReason.NO_MEANINGFUL_CHANGE);
     }
 
@@ -242,7 +249,7 @@ final class BoundedRegionPathRouter {
     }
 
     /** A valid simple border must produce exactly two connected components. */
-    private static Region[] fillSides(
+    private static FillResult fillSides(
             Region[] raw, boolean[] walls, Region first, Region second
     ) {
         int[] component = new int[CELLS];
@@ -251,7 +258,11 @@ final class BoundedRegionPathRouter {
         int components = 0;
         for (int seed = 0; seed < CELLS; seed++) {
             if (component[seed] >= 0) continue;
-            if (components >= 2) return null;
+            if (components >= 2) {
+                return FillResult.rejected(
+                        RejectionReason.TOO_MANY_COMPONENTS
+                );
+            }
             component[seed] = components;
             queue.add(seed);
             while (!queue.isEmpty()) {
@@ -266,14 +277,20 @@ final class BoundedRegionPathRouter {
             }
             components++;
         }
-        if (components != 2) return null;
+        if (components != 2) {
+            return FillResult.rejected(RejectionReason.NOT_TWO_COMPONENTS);
+        }
 
         int[][] votes = new int[2][2];
         boolean[] touchesPerimeter = new boolean[2];
         for (int value = 0; value < CELLS; value++) {
             int owner = raw[value].equals(first) ? 0
                     : raw[value].equals(second) ? 1 : -1;
-            if (owner < 0) return null;
+            if (owner < 0) {
+                return FillResult.rejected(
+                        RejectionReason.UNKNOWN_RAW_OWNER
+                );
+            }
             votes[component[value]][owner]++;
             int x = value % SIZE;
             int z = value / SIZE;
@@ -281,10 +298,23 @@ final class BoundedRegionPathRouter {
                 touchesPerimeter[component[value]] = true;
             }
         }
-        if (!touchesPerimeter[0] || !touchesPerimeter[1]) return null;
+        if (!touchesPerimeter[0] || !touchesPerimeter[1]) {
+            return FillResult.rejected(
+                    RejectionReason.ENCLOSED_COMPONENT
+            );
+        }
         int owner0 = majority(votes[0]);
         int owner1 = majority(votes[1]);
-        if (owner0 < 0 || owner1 < 0 || owner0 == owner1) return null;
+        if (owner0 < 0 || owner1 < 0) {
+            return FillResult.rejected(
+                    RejectionReason.TIED_COMPONENT_OWNER
+            );
+        }
+        if (owner0 == owner1) {
+            return FillResult.rejected(
+                    RejectionReason.SAME_COMPONENT_OWNER
+            );
+        }
 
         Region[] result = new Region[CELLS];
         Region[] owners = {owner0 == 0 ? first : second,
@@ -292,7 +322,7 @@ final class BoundedRegionPathRouter {
         for (int value = 0; value < CELLS; value++) {
             result[value] = owners[component[value]];
         }
-        return result;
+        return FillResult.accepted(result);
     }
 
     private static int majority(int[] votes) {
@@ -300,14 +330,12 @@ final class BoundedRegionPathRouter {
         return votes[0] > votes[1] ? 0 : 1;
     }
 
-    private static boolean hasMeaningfulChange(Region[] raw, Region[] result) {
+    private static int countChanges(Region[] raw, Region[] result) {
         int changes = 0;
         for (int value = 0; value < CELLS; value++) {
-            if (!raw[value].equals(result[value]) && ++changes >= 4) {
-                return true;
-            }
+            if (!raw[value].equals(result[value])) changes++;
         }
-        return false;
+        return changes;
     }
 
     private static CellPair separatedCells(int from, int to) {
@@ -428,6 +456,17 @@ final class BoundedRegionPathRouter {
             List<Integer> orderedPath
     ) {}
     private record CellPair(int first, int second) {}
+    private record FillResult(
+            Region[] regions, RejectionReason rejectionReason
+    ) {
+        private static FillResult accepted(Region[] regions) {
+            return new FillResult(regions, RejectionReason.NONE);
+        }
+
+        private static FillResult rejected(RejectionReason reason) {
+            return new FillResult(null, reason);
+        }
+    }
     private record Node(int vertex, int cost) implements Comparable<Node> {
         @Override
         public int compareTo(Node other) {
