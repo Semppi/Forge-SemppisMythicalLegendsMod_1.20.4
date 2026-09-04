@@ -24,7 +24,7 @@ import java.util.WeakHashMap;
 public final class RegionBoundaryRouter {
     private static final int TILE_QUARTS = 64;
     private static final int TILE_CELLS = TILE_QUARTS * TILE_QUARTS;
-    private static final int MAX_SHIFT_QUARTS = 24;
+    private static final int MAX_SHIFT_QUARTS = 40;
     private static final int MAX_STEP_PER_ROW = 3;
     private static final int RAW_FALLBACK_COST = 24;
     private static final int TURN_COST = 3;
@@ -421,6 +421,27 @@ public final class RegionBoundaryRouter {
             Seam seam, EdgeIdentity[] edges,
             ResourceLocation[] biomes, boolean[] rivers
     ) {
+        RouteResult shrink = routeOnSide(
+                seam, edges, biomes, rivers, -1
+        );
+        RouteResult expand = routeOnSide(
+                seam, edges, biomes, rivers, 1
+        );
+        if (shrink == null) return expand == null ? null : expand.route();
+        if (expand == null) return shrink.route();
+        return shrink.cost() <= expand.cost()
+                ? shrink.route() : expand.route();
+    }
+
+    /**
+     * Keeps an accepted route entirely on one side of Raw. Following both
+     * banks of one lake or river can otherwise close a pocket even though
+     * every individual scanline looks valid.
+     */
+    private static RouteResult routeOnSide(
+            Seam seam, EdgeIdentity[] edges,
+            ResourceLocation[] biomes, boolean[] rivers, int side
+    ) {
         int positions = TILE_QUARTS - 1;
         int states = positions * (MAX_EDGE_GAP + 1);
         int[][] costs = new int[TILE_QUARTS][states];
@@ -428,7 +449,12 @@ public final class RegionBoundaryRouter {
         for (int[] row : costs) Arrays.fill(row, INF);
         for (int[] row : previous) Arrays.fill(row, -1);
 
-        int start = seam.startAnchor();
+        int start = compatibleAnchor(
+                seam.startAnchor(), seam.raw()[0], side
+        );
+        int end = compatibleAnchor(
+                seam.endAnchor(), seam.raw()[TILE_QUARTS - 1], side
+        );
         EdgeIdentity startEdge = edgeForLine(edges, 0);
         int startGap = startEdge == null
                 || startEdge.matchesAt(seam, 0, start, biomes) ? 0 : 1;
@@ -441,12 +467,14 @@ public final class RegionBoundaryRouter {
             boolean newRun = edge == null
                     ? oldEdge != null : !edge.equals(oldEdge);
             for (int position = 0; position < positions; position++) {
-                if (Math.abs(position - rawPosition)
-                        > MAX_SHIFT_QUARTS) continue;
+                int displacement = position - rawPosition;
+                if (Math.abs(displacement) > MAX_SHIFT_QUARTS
+                        || displacement != 0
+                        && Integer.signum(displacement) != side) continue;
                 boolean matchingEdge = edge != null && edge.matchesAt(
                         seam, line, position, biomes);
                 if (edge == null && position != rawPosition) continue;
-                if (endpoint && position != seam.endAnchor()) continue;
+                if (endpoint && position != end) continue;
 
                 int fromStart = Math.max(0, position - MAX_STEP_PER_ROW);
                 int fromEnd = Math.min(
@@ -480,7 +508,6 @@ public final class RegionBoundaryRouter {
             }
         }
 
-        int end = seam.endAnchor();
         int endState = -1;
         int endCost = INF;
         for (int gap = 0; gap <= MAX_EDGE_GAP; gap++) {
@@ -500,7 +527,13 @@ public final class RegionBoundaryRouter {
             route[line - 1] = cursor / (MAX_EDGE_GAP + 1);
         }
 
-        return route;
+        return new RouteResult(route, endCost);
+    }
+
+    private static int compatibleAnchor(int anchor, int raw, int side) {
+        int displacement = anchor - raw;
+        return displacement == 0 || Integer.signum(displacement) == side
+                ? anchor : raw;
     }
 
     private static EdgeIdentity edgeForLine(
@@ -572,6 +605,8 @@ public final class RegionBoundaryRouter {
             this(vertical, raw, raw[0], raw[raw.length - 1]);
         }
     }
+
+    private record RouteResult(int[] route, int cost) {}
 
     /** Unordered biome pair: direction changes do not change edge identity. */
     private record EdgeIdentity(ResourceLocation first,
