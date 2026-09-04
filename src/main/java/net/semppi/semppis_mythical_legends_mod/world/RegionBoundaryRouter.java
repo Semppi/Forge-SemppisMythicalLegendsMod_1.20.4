@@ -23,7 +23,7 @@ public final class RegionBoundaryRouter {
     private static final int TILE_QUARTS = 64;
     private static final int TILE_CELLS = TILE_QUARTS * TILE_QUARTS;
     private static final int MAX_SHIFT_QUARTS = 24;
-    private static final int ENDPOINT_ROWS = 3;
+    private static final int ENDPOINT_ROWS = 1;
     private static final int MAX_STEP_PER_ROW = 3;
     private static final int RAW_FALLBACK_COST = 24;
     private static final int TURN_COST = 3;
@@ -131,6 +131,34 @@ public final class RegionBoundaryRouter {
         }
 
         Seam seam = vertical != null ? vertical : horizontal;
+        int startAnchor;
+        int endAnchor;
+        if (seam.vertical()) {
+            startAnchor = sharedAnchor(
+                    level, true, originX, originZ,
+                    first, second, seam.raw()[0], biomeSource,
+                    climateSampler, quartY
+            );
+            endAnchor = sharedAnchor(
+                    level, true, originX, originZ + TILE_QUARTS,
+                    first, second, seam.raw()[TILE_QUARTS - 1],
+                    biomeSource, climateSampler, quartY
+            );
+        } else {
+            startAnchor = sharedAnchor(
+                    level, false, originZ, originX,
+                    first, second, seam.raw()[0], biomeSource,
+                    climateSampler, quartY
+            );
+            endAnchor = sharedAnchor(
+                    level, false, originZ, originX + TILE_QUARTS,
+                    first, second, seam.raw()[TILE_QUARTS - 1],
+                    biomeSource, climateSampler, quartY
+            );
+        }
+        seam = new Seam(
+                seam.vertical(), seam.raw(), startAnchor, endAnchor
+        );
         int[] route = route(seam, biomes, rivers);
         if (route == null) {
             return PreparedTile.raw(originX, originZ, raw);
@@ -221,6 +249,81 @@ public final class RegionBoundaryRouter {
         return new Seam(false, positions);
     }
 
+    /**
+     * Chooses an endpoint from one canonical world-coordinate line. The tile
+     * on either side of that line therefore receives exactly the same anchor,
+     * independent of preparation order or which player opened a map first.
+     */
+    private static int sharedAnchor(
+            ServerLevelAccessor level,
+            boolean vertical,
+            int varyingOrigin,
+            int fixedCoordinate,
+            Region first,
+            Region second,
+            int fallback,
+            net.minecraft.world.level.biome.BiomeSource biomeSource,
+            net.minecraft.world.level.biome.Climate.Sampler climateSampler,
+            int quartY
+    ) {
+        Region[] owners = new Region[TILE_QUARTS];
+        ResourceLocation[] biomeIds = new ResourceLocation[TILE_QUARTS];
+        boolean[] river = new boolean[TILE_QUARTS];
+        for (int position = 0; position < TILE_QUARTS; position++) {
+            int quartX = vertical
+                    ? varyingOrigin + position : fixedCoordinate;
+            int quartZ = vertical
+                    ? fixedCoordinate : varyingOrigin + position;
+            owners[position] = ClimateDirectionAssignment.landRegion(
+                    level, QuartPos.toBlock(quartX) + 2,
+                    QuartPos.toBlock(quartZ) + 2
+            );
+            Holder<Biome> sample = biomeSource.getNoiseBiome(
+                    quartX, quartY, quartZ, climateSampler
+            );
+            biomeIds[position] = sample.unwrapKey()
+                    .map(key -> key.location()).orElse(null);
+            river[position] = sample.is(BiomeTags.IS_RIVER);
+        }
+
+        int rawTransition = -1;
+        for (int position = 0; position < TILE_QUARTS - 1; position++) {
+            Region a = owners[position];
+            Region b = owners[position + 1];
+            if (!a.equals(b)) {
+                if (!isPair(a, first, second)
+                        || !isPair(b, first, second)
+                        || rawTransition >= 0) return fallback;
+                rawTransition = position;
+            }
+        }
+        if (rawTransition < 0) return fallback;
+
+        int best = rawTransition;
+        int bestCost = RAW_FALLBACK_COST;
+        int minimum = Math.max(0, rawTransition - MAX_SHIFT_QUARTS);
+        int maximum = Math.min(
+                TILE_QUARTS - 2,
+                rawTransition + MAX_SHIFT_QUARTS
+        );
+        for (int position = minimum; position <= maximum; position++) {
+            ResourceLocation a = biomeIds[position];
+            ResourceLocation b = biomeIds[position + 1];
+            if (a == null || b == null || a.equals(b)) continue;
+
+            int cost = Math.abs(position - rawTransition);
+            if (river[position] || river[position + 1]) {
+                cost = Math.max(0, cost - RIVER_BONUS);
+            }
+            if (cost < bestCost
+                    || (cost == bestCost && position < best)) {
+                best = position;
+                bestCost = cost;
+            }
+        }
+        return best;
+    }
+
     private static int[] route(
             Seam seam, ResourceLocation[] biomes, boolean[] rivers
     ) {
@@ -229,12 +332,11 @@ public final class RegionBoundaryRouter {
         for (int[] row : costs) Arrays.fill(row, INF);
         for (int[] row : previous) Arrays.fill(row, -1);
 
-        int start = seam.raw()[0];
+        int start = seam.startAnchor();
         costs[0][start] = 0;
         for (int line = 1; line < TILE_QUARTS; line++) {
             int rawPosition = seam.raw()[line];
-            boolean endpoint = line < ENDPOINT_ROWS
-                    || line >= TILE_QUARTS - ENDPOINT_ROWS;
+            boolean endpoint = line == TILE_QUARTS - 1;
             for (int position = 0; position < TILE_QUARTS - 1; position++) {
                 int localCost = candidateCost(
                         seam, line, position, rawPosition,
@@ -259,7 +361,7 @@ public final class RegionBoundaryRouter {
             }
         }
 
-        int end = seam.raw()[TILE_QUARTS - 1];
+        int end = seam.endAnchor();
         if (costs[TILE_QUARTS - 1][end] >= INF) return null;
         int[] route = new int[TILE_QUARTS];
         route[TILE_QUARTS - 1] = end;
@@ -285,7 +387,7 @@ public final class RegionBoundaryRouter {
             ResourceLocation[] biomes, boolean[] rivers, boolean endpoint
     ) {
         if (Math.abs(position - rawPosition) > MAX_SHIFT_QUARTS) return INF;
-        if (endpoint) return position == rawPosition ? 0 : INF;
+        if (endpoint) return position == seam.endAnchor() ? 0 : INF;
         boolean naturalEdge = isNaturalEdge(
                 seam, line, position, biomes
         );
@@ -338,7 +440,16 @@ public final class RegionBoundaryRouter {
         return ((long) quartX << 32) ^ (quartZ & 0xFFFFFFFFL);
     }
 
-    private record Seam(boolean vertical, int[] raw) {}
+    private record Seam(
+            boolean vertical,
+            int[] raw,
+            int startAnchor,
+            int endAnchor
+    ) {
+        private Seam(boolean vertical, int[] raw) {
+            this(vertical, raw, raw[0], raw[raw.length - 1]);
+        }
+    }
 
     private record PreparedTile(int originX, int originZ, Region[] regions) {
         private static PreparedTile raw(
