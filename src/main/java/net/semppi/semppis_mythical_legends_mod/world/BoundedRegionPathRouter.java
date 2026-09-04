@@ -22,13 +22,22 @@ final class BoundedRegionPathRouter {
 
     static Region[] route(
             Region[] raw, ResourceLocation[] biomes, boolean[] rivers,
-            Region first, Region second
+            Region first, Region second, PortalResolver portalResolver
     ) {
         RawBoundary boundary = traceRawBoundary(raw, first, second);
         if (boundary == null) return null;
+        Portal rawStart = portal(boundary.start());
+        Portal rawEnd = portal(boundary.end());
+        Portal startPortal = portalResolver.resolve(rawStart);
+        Portal endPortal = portalResolver.resolve(rawEnd);
+        if (!validPortal(rawStart, startPortal)
+                || !validPortal(rawEnd, endPortal)
+                || startPortal.equals(endPortal)) return null;
+        int start = vertex(startPortal.x(), startPortal.z());
+        int end = vertex(endPortal.x(), endPortal.z());
         int[] rawDistance = distanceFromRaw(boundary.vertices());
         List<Integer> path = shortestPath(
-                boundary.start(), boundary.end(), rawDistance,
+                start, end, rawDistance,
                 raw, biomes, rivers
         );
         if (path == null || path.equals(boundary.orderedPath())) return null;
@@ -197,47 +206,63 @@ final class BoundedRegionPathRouter {
         return walls;
     }
 
-    /** Flood filling both sides also validates that the path made no island. */
+    /** A valid simple border must produce exactly two connected components. */
     private static Region[] fillSides(
             Region[] raw, boolean[] walls, Region first, Region second
     ) {
-        Region[] result = new Region[CELLS];
+        int[] component = new int[CELLS];
+        Arrays.fill(component, -1);
         ArrayDeque<Integer> queue = new ArrayDeque<>();
-        for (int z = 0; z < SIZE; z++) {
-            seed(result, queue, raw, cell(0, z));
-            seed(result, queue, raw, cell(SIZE - 1, z));
-        }
-        for (int x = 1; x < SIZE - 1; x++) {
-            seed(result, queue, raw, cell(x, 0));
-            seed(result, queue, raw, cell(x, SIZE - 1));
-        }
-        while (!queue.isEmpty()) {
-            int current = queue.removeFirst();
-            for (int direction = 0; direction < 4; direction++) {
-                int next = cellNeighbor(current, direction);
-                if (next < 0 || walls[current * 4 + direction]) continue;
-                if (result[next] == null) {
-                    result[next] = result[current];
+        int components = 0;
+        for (int seed = 0; seed < CELLS; seed++) {
+            if (component[seed] >= 0) continue;
+            if (components >= 2) return null;
+            component[seed] = components;
+            queue.add(seed);
+            while (!queue.isEmpty()) {
+                int current = queue.removeFirst();
+                for (int direction = 0; direction < 4; direction++) {
+                    int next = cellNeighbor(current, direction);
+                    if (next < 0 || walls[current * 4 + direction]
+                            || component[next] >= 0) continue;
+                    component[next] = components;
                     queue.addLast(next);
-                } else if (!result[next].equals(result[current])) {
-                    return null;
                 }
             }
+            components++;
         }
-        for (Region value : result) {
-            if (value == null || !isPair(value, first, second)) return null;
+        if (components != 2) return null;
+
+        int[][] votes = new int[2][2];
+        boolean[] touchesPerimeter = new boolean[2];
+        for (int value = 0; value < CELLS; value++) {
+            int owner = raw[value].equals(first) ? 0
+                    : raw[value].equals(second) ? 1 : -1;
+            if (owner < 0) return null;
+            votes[component[value]][owner]++;
+            int x = value % SIZE;
+            int z = value / SIZE;
+            if (x == 0 || z == 0 || x == SIZE - 1 || z == SIZE - 1) {
+                touchesPerimeter[component[value]] = true;
+            }
+        }
+        if (!touchesPerimeter[0] || !touchesPerimeter[1]) return null;
+        int owner0 = majority(votes[0]);
+        int owner1 = majority(votes[1]);
+        if (owner0 < 0 || owner1 < 0 || owner0 == owner1) return null;
+
+        Region[] result = new Region[CELLS];
+        Region[] owners = {owner0 == 0 ? first : second,
+                owner1 == 0 ? first : second};
+        for (int value = 0; value < CELLS; value++) {
+            result[value] = owners[component[value]];
         }
         return result;
     }
 
-    private static void seed(
-            Region[] result, ArrayDeque<Integer> queue,
-            Region[] raw, int value
-    ) {
-        if (result[value] == null) {
-            result[value] = raw[value];
-            queue.addLast(value);
-        }
+    private static int majority(int[] votes) {
+        if (votes[0] == votes[1]) return -1;
+        return votes[0] > votes[1] ? 0 : 1;
     }
 
     private static boolean hasMeaningfulChange(Region[] raw, Region[] result) {
@@ -338,6 +363,20 @@ final class BoundedRegionPathRouter {
         return x == 0 || z == 0 || x == SIZE || z == SIZE;
     }
 
+    private static Portal portal(int value) {
+        return new Portal(vertexX(value), vertexZ(value));
+    }
+
+    private static boolean validPortal(Portal raw, Portal candidate) {
+        if (candidate == null || candidate.x() < 0 || candidate.x() > SIZE
+                || candidate.z() < 0 || candidate.z() > SIZE) return false;
+        if (raw.x() == 0) return candidate.x() == 0;
+        if (raw.x() == SIZE) return candidate.x() == SIZE;
+        if (raw.z() == 0) return candidate.z() == 0;
+        if (raw.z() == SIZE) return candidate.z() == SIZE;
+        return false;
+    }
+
     private static int cell(int x, int z) {
         return RegionBoundaryRouter.index(x, z);
     }
@@ -360,5 +399,12 @@ final class BoundedRegionPathRouter {
             int byCost = Integer.compare(cost, other.cost);
             return byCost != 0 ? byCost : Integer.compare(vertex, other.vertex);
         }
+    }
+
+    record Portal(int x, int z) {}
+
+    @FunctionalInterface
+    interface PortalResolver {
+        Portal resolve(Portal rawPortal);
     }
 }

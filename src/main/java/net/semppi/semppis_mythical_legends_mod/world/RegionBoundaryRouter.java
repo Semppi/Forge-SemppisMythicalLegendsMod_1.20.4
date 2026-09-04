@@ -20,6 +20,8 @@ import java.util.WeakHashMap;
 public final class RegionBoundaryRouter {
     static final int TILE_QUARTS = 64;
     private static final int TILE_CELLS = TILE_QUARTS * TILE_QUARTS;
+    private static final int PORTAL_REACH_QUARTS = 40;
+    private static final int PORTAL_RIVER_BONUS = 8;
     private static final int MAX_CACHE_ENTRIES = 131_072;
     private static final int MAX_PREPARED_TILES = 8_192;
     private static final Map<ServerLevel, RouteCache> WORLD_CACHES =
@@ -103,12 +105,101 @@ public final class RegionBoundaryRouter {
         if (first == null || second == null) {
             return PreparedTile.raw(originX, originZ, raw);
         }
+        Region routeFirst = first;
+        Region routeSecond = second;
         Region[] routed = BoundedRegionPathRouter.route(
-                raw, biomes, rivers, first, second
+                raw, biomes, rivers, routeFirst, routeSecond,
+                rawPortal -> sharedPortal(
+                        level, originX, originZ, rawPortal,
+                        routeFirst, routeSecond, biomeSource,
+                        climateSampler, quartY
+                )
         );
         return routed == null
                 ? PreparedTile.raw(originX, originZ, raw)
                 : new PreparedTile(originX, originZ, routed);
+    }
+
+    /**
+     * Resolves a portal from samples on the exact shared world-coordinate
+     * edge. Both neighboring tiles therefore select the same result without
+     * depending on preparation order or a mutable cross-tile cache.
+     */
+    private static BoundedRegionPathRouter.Portal sharedPortal(
+            ServerLevelAccessor level, int originX, int originZ,
+            BoundedRegionPathRouter.Portal rawPortal,
+            Region first, Region second,
+            net.minecraft.world.level.biome.BiomeSource biomeSource,
+            net.minecraft.world.level.biome.Climate.Sampler climateSampler,
+            int quartY
+    ) {
+        int rawX = rawPortal.x();
+        int rawZ = rawPortal.z();
+        if ((rawX == 0 || rawX == TILE_QUARTS)
+                && (rawZ == 0 || rawZ == TILE_QUARTS)) {
+            return rawPortal;
+        }
+        boolean horizontal = rawZ == 0 || rawZ == TILE_QUARTS;
+        Region[] owners = new Region[TILE_QUARTS];
+        ResourceLocation[] biomeIds = new ResourceLocation[TILE_QUARTS];
+        boolean[] river = new boolean[TILE_QUARTS];
+        for (int position = 0; position < TILE_QUARTS; position++) {
+            int quartX = horizontal ? originX + position : originX + rawX;
+            int quartZ = horizontal ? originZ + rawZ : originZ + position;
+            owners[position] = ClimateDirectionAssignment.landRegion(
+                    level, QuartPos.toBlock(quartX) + 2,
+                    QuartPos.toBlock(quartZ) + 2
+            );
+            Holder<Biome> sample = biomeSource.getNoiseBiome(
+                    quartX, quartY, quartZ, climateSampler
+            );
+            biomeIds[position] = sample.unwrapKey()
+                    .map(key -> key.location()).orElse(null);
+            river[position] = sample.is(BiomeTags.IS_RIVER);
+        }
+
+        int rawTransition = -1;
+        for (int position = 0; position < TILE_QUARTS - 1; position++) {
+            Region a = owners[position];
+            Region b = owners[position + 1];
+            if (!a.equals(b)) {
+                if (!isPair(a, first, second)
+                        || !isPair(b, first, second)
+                        || rawTransition >= 0) return null;
+                rawTransition = position + 1;
+            }
+        }
+        if (rawTransition < 0) return null;
+
+        int best = rawTransition;
+        int bestCost = PORTAL_REACH_QUARTS + 1;
+        int minimum = Math.max(1, rawTransition - PORTAL_REACH_QUARTS);
+        int maximum = Math.min(
+                TILE_QUARTS - 1,
+                rawTransition + PORTAL_REACH_QUARTS
+        );
+        for (int portal = minimum; portal <= maximum; portal++) {
+            ResourceLocation a = biomeIds[portal - 1];
+            ResourceLocation b = biomeIds[portal];
+            if (a == null || b == null || a.equals(b)) continue;
+            int cost = Math.abs(portal - rawTransition);
+            if (river[portal - 1] || river[portal]) {
+                cost = Math.max(0, cost - PORTAL_RIVER_BONUS);
+            }
+            if (cost < bestCost || cost == bestCost && portal < best) {
+                best = portal;
+                bestCost = cost;
+            }
+        }
+        return horizontal
+                ? new BoundedRegionPathRouter.Portal(best, rawZ)
+                : new BoundedRegionPathRouter.Portal(rawX, best);
+    }
+
+    private static boolean isPair(
+            Region value, Region first, Region second
+    ) {
+        return value.equals(first) || value.equals(second);
     }
 
     static int index(int x, int z) {
