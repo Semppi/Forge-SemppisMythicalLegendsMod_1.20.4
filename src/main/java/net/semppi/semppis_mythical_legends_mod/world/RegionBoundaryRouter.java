@@ -7,6 +7,8 @@ import net.minecraft.server.level.ServerLevel;
 import net.minecraft.tags.BiomeTags;
 import net.minecraft.world.level.ServerLevelAccessor;
 import net.minecraft.world.level.biome.Biome;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
 import java.util.Arrays;
 import java.util.LinkedHashMap;
@@ -18,6 +20,7 @@ import java.util.WeakHashMap;
  * runtime lookup path. A tile publishes either one complete route or Raw.
  */
 public final class RegionBoundaryRouter {
+    private static final Logger LOGGER = LogManager.getLogger();
     static final int TILE_QUARTS = 64;
     private static final int TILE_CELLS = TILE_QUARTS * TILE_QUARTS;
     private static final int PORTAL_REACH_QUARTS = 40;
@@ -91,7 +94,10 @@ public final class RegionBoundaryRouter {
                         second = owner;
                     } else if (!owner.equals(first)
                             && !owner.equals(second)) {
-                        return PreparedTile.raw(originX, originZ, raw);
+                        return PreparedTile.raw(
+                                originX, originZ, raw,
+                                TileResult.TOO_MANY_REGIONS
+                        );
                     }
                 }
                 Holder<Biome> sample = biomeSource.getNoiseBiome(
@@ -103,11 +109,14 @@ public final class RegionBoundaryRouter {
             }
         }
         if (first == null || second == null) {
-            return PreparedTile.raw(originX, originZ, raw);
+            return PreparedTile.raw(
+                    originX, originZ, raw, TileResult.NO_RAW_BOUNDARY
+            );
         }
         Region routeFirst = first;
         Region routeSecond = second;
-        Region[] routed = BoundedRegionPathRouter.route(
+        BoundedRegionPathRouter.RouteResult route =
+                BoundedRegionPathRouter.route(
                 raw, biomes, rivers, routeFirst, routeSecond,
                 rawPortal -> sharedPortal(
                         level, originX, originZ, rawPortal,
@@ -115,9 +124,15 @@ public final class RegionBoundaryRouter {
                         climateSampler, quartY
                 )
         );
-        return routed == null
-                ? PreparedTile.raw(originX, originZ, raw)
-                : new PreparedTile(originX, originZ, routed);
+        if (route.regions() == null) {
+            return PreparedTile.raw(
+                    originX, originZ, raw,
+                    TileResult.valueOf(route.rejectionReason().name())
+            );
+        }
+        return new PreparedTile(
+                originX, originZ, route.regions(), TileResult.ROUTED
+        );
     }
 
     /**
@@ -218,9 +233,27 @@ public final class RegionBoundaryRouter {
         return ((long) quartX << 32) ^ (quartZ & 0xFFFFFFFFL);
     }
 
-    private record PreparedTile(int originX, int originZ, Region[] regions) {
-        private static PreparedTile raw(int x, int z, Region[] raw) {
-            return new PreparedTile(x, z, Arrays.copyOf(raw, raw.length));
+    private enum TileResult {
+        ROUTED,
+        NO_RAW_BOUNDARY,
+        TOO_MANY_REGIONS,
+        BRANCHED_OR_DISCONNECTED_RAW,
+        INVALID_PORTAL,
+        NO_BOUNDED_PATH,
+        UNCHANGED_PATH,
+        TOPOLOGY_REJECTED,
+        NO_MEANINGFUL_CHANGE
+    }
+
+    private record PreparedTile(
+            int originX, int originZ, Region[] regions, TileResult result
+    ) {
+        private static PreparedTile raw(
+                int x, int z, Region[] raw, TileResult result
+        ) {
+            return new PreparedTile(
+                    x, z, Arrays.copyOf(raw, raw.length), result
+            );
         }
     }
 
@@ -253,6 +286,17 @@ public final class RegionBoundaryRouter {
                 }
             }
             preparedTiles.put(key, Boolean.TRUE);
+            if (prepared.result() != TileResult.ROUTED
+                    && prepared.result() != TileResult.NO_RAW_BOUNDARY) {
+                int minBlockX = QuartPos.toBlock(prepared.originX());
+                int minBlockZ = QuartPos.toBlock(prepared.originZ());
+                LOGGER.info(
+                        "Final border kept Raw for tile X {}..{}, Z {}..{}: {}",
+                        minBlockX, minBlockX + TILE_QUARTS * 4 - 1,
+                        minBlockZ, minBlockZ + TILE_QUARTS * 4 - 1,
+                        prepared.result()
+                );
+            }
         }
     }
 }

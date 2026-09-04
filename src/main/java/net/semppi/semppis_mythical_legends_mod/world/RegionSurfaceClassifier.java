@@ -190,26 +190,26 @@ public final class RegionSurfaceClassifier {
             );
         }
 
-        // Rivers use the unmodified local land overlay under their own
-        // coordinates. A surface land biome may nudge a nearby existing
-        // boundary, but it can never select a region from scratch.
+        // Land and rivers must read the same completed Final route. Leaving
+        // rivers on Raw after neighboring land moves creates old-owner
+        // freckles inside lakes and waterways. The route still comes from one
+        // atomic bounded tile decision; rivers never search independently.
         Region landRegion = SAMPLER.landRegion(level, x, z);
-        if (kind == SurfaceKind.LAND) {
-            if (stage == DiagnosticStage.ATTRACTED) {
-                landRegion = resolveLandBeforeVacuum(
-                        level, seed, x, z, biome
-                );
-            } else if (stage == DiagnosticStage.FINAL) {
-                // Runtime only reads published results. The explicit Final
-                // diagnostic layer may prepare a complete bounded decision.
-                landRegion = allowRoutingPreparation
-                        ? RegionBoundaryRouter.prepareAndResolve(
-                                level, seed, x, z, biome, landRegion
-                        )
-                        : RegionBoundaryRouter.resolvePreparedOrRaw(
-                                level, x, z, biome, landRegion
-                        );
-            }
+        if (kind == SurfaceKind.LAND && stage == DiagnosticStage.ATTRACTED) {
+            landRegion = resolveLandBeforeVacuum(
+                    level, seed, x, z, biome
+            );
+        } else if ((kind == SurfaceKind.LAND || kind == SurfaceKind.RIVER)
+                && stage == DiagnosticStage.FINAL) {
+            // Runtime only reads published results. The explicit Final
+            // diagnostic layer may prepare a complete bounded decision.
+            landRegion = allowRoutingPreparation
+                    ? RegionBoundaryRouter.prepareAndResolve(
+                            level, seed, x, z, biome, landRegion
+                    )
+                    : RegionBoundaryRouter.resolvePreparedOrRaw(
+                            level, x, z, biome, landRegion
+                    );
         }
         return new Sample(kind, landRegion);
     }

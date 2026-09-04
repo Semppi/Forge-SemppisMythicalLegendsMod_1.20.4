@@ -20,19 +20,45 @@ final class BoundedRegionPathRouter {
 
     private BoundedRegionPathRouter() {}
 
-    static Region[] route(
+    enum RejectionReason {
+        NONE,
+        BRANCHED_OR_DISCONNECTED_RAW,
+        INVALID_PORTAL,
+        NO_BOUNDED_PATH,
+        UNCHANGED_PATH,
+        TOPOLOGY_REJECTED,
+        NO_MEANINGFUL_CHANGE
+    }
+
+    record RouteResult(Region[] regions, RejectionReason rejectionReason) {
+        private static RouteResult accepted(Region[] regions) {
+            return new RouteResult(regions, RejectionReason.NONE);
+        }
+
+        private static RouteResult rejected(RejectionReason reason) {
+            return new RouteResult(null, reason);
+        }
+    }
+
+    static RouteResult route(
             Region[] raw, ResourceLocation[] biomes, boolean[] rivers,
             Region first, Region second, PortalResolver portalResolver
     ) {
         RawBoundary boundary = traceRawBoundary(raw, first, second);
-        if (boundary == null) return null;
+        if (boundary == null) {
+            return RouteResult.rejected(
+                    RejectionReason.BRANCHED_OR_DISCONNECTED_RAW
+            );
+        }
         Portal rawStart = portal(boundary.start());
         Portal rawEnd = portal(boundary.end());
         Portal startPortal = portalResolver.resolve(rawStart);
         Portal endPortal = portalResolver.resolve(rawEnd);
         if (!validPortal(rawStart, startPortal)
                 || !validPortal(rawEnd, endPortal)
-                || startPortal.equals(endPortal)) return null;
+                || startPortal.equals(endPortal)) {
+            return RouteResult.rejected(RejectionReason.INVALID_PORTAL);
+        }
         int start = vertex(startPortal.x(), startPortal.z());
         int end = vertex(endPortal.x(), endPortal.z());
         int[] rawDistance = distanceFromRaw(boundary.vertices());
@@ -40,12 +66,21 @@ final class BoundedRegionPathRouter {
                 start, end, rawDistance,
                 raw, biomes, rivers
         );
-        if (path == null || path.equals(boundary.orderedPath())) return null;
+        if (path == null) {
+            return RouteResult.rejected(RejectionReason.NO_BOUNDED_PATH);
+        }
+        if (path.equals(boundary.orderedPath())) {
+            return RouteResult.rejected(RejectionReason.UNCHANGED_PATH);
+        }
         Region[] result = fillSides(
                 raw, pathWalls(path), first, second
         );
-        return result != null && hasMeaningfulChange(raw, result)
-                ? result : null;
+        if (result == null) {
+            return RouteResult.rejected(RejectionReason.TOPOLOGY_REJECTED);
+        }
+        return hasMeaningfulChange(raw, result)
+                ? RouteResult.accepted(result)
+                : RouteResult.rejected(RejectionReason.NO_MEANINGFUL_CHANGE);
     }
 
     private static RawBoundary traceRawBoundary(
