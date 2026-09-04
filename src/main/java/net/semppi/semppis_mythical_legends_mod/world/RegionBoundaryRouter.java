@@ -17,8 +17,9 @@ import java.util.WeakHashMap;
 /**
  * Prepares short, deterministic Raw-border segments without placing a search
  * in the runtime lookup path. A successful tile contains exactly two owners
- * and one non-branching seam. Its replacement remains connected to Raw at
- * both ends and is published atomically; every other case publishes Raw.
+ * and one non-branching, consistently oriented seam. Its replacement remains
+ * connected to Raw at both ends and is published atomically; every other case
+ * publishes Raw.
  */
 public final class RegionBoundaryRouter {
     private static final int TILE_QUARTS = 64;
@@ -206,10 +207,14 @@ public final class RegionBoundaryRouter {
             Region[] raw, Region first, Region second
     ) {
         int[] positions = new int[TILE_QUARTS];
+        Region expectedLeft = raw[index(0, 0)];
+        Region expectedRight = raw[index(TILE_QUARTS - 1, 0)];
         for (int z = 0; z < TILE_QUARTS; z++) {
             Region left = raw[index(0, z)];
             Region right = raw[index(TILE_QUARTS - 1, z)];
             if (left.ocean() || right.ocean() || left.equals(right)
+                    || !left.equals(expectedLeft)
+                    || !right.equals(expectedRight)
                     || !isPair(left, first, second)
                     || !isPair(right, first, second)) return null;
 
@@ -234,10 +239,14 @@ public final class RegionBoundaryRouter {
             Region[] raw, Region first, Region second
     ) {
         int[] positions = new int[TILE_QUARTS];
+        Region expectedTop = raw[index(0, 0)];
+        Region expectedBottom = raw[index(0, TILE_QUARTS - 1)];
         for (int x = 0; x < TILE_QUARTS; x++) {
             Region top = raw[index(x, 0)];
             Region bottom = raw[index(x, TILE_QUARTS - 1)];
             if (top.ocean() || bottom.ocean() || top.equals(bottom)
+                    || !top.equals(expectedTop)
+                    || !bottom.equals(expectedBottom)
                     || !isPair(top, first, second)
                     || !isPair(bottom, first, second)) return null;
 
@@ -389,7 +398,7 @@ public final class RegionBoundaryRouter {
                     continue;
                 }
                 if (bestScore == null || score.betterThan(
-                        bestScore, candidate.getKey(), best
+                        bestScore, candidate.getKey(), best, runLines
                 )) {
                     best = candidate.getKey();
                     bestScore = score;
@@ -612,10 +621,13 @@ public final class RegionBoundaryRouter {
 
         private boolean betterThan(
                 EdgeScore other, EdgeIdentity identity,
-                EdgeIdentity otherIdentity
+                EdgeIdentity otherIdentity, int runLines
         ) {
+            int cost = distance + (runLines - lines) * 4;
+            int otherCost = other.distance
+                    + (runLines - other.lines) * 4;
+            if (cost != otherCost) return cost < otherCost;
             if (lines != other.lines) return lines > other.lines;
-            if (distance != other.distance) return distance < other.distance;
             return identity.stableKey().compareTo(
                     otherIdentity.stableKey()
             ) < 0;
