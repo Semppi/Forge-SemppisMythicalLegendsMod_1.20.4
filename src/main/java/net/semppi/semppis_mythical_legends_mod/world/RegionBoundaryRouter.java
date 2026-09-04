@@ -9,6 +9,7 @@ import net.minecraft.world.level.ServerLevelAccessor;
 import net.minecraft.world.level.biome.Biome;
 
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.WeakHashMap;
@@ -29,6 +30,8 @@ public final class RegionBoundaryRouter {
     private static final int TURN_COST = 3;
     private static final int RIVER_BONUS = 8;
     private static final int MIN_EDGE_PERCENT = 55;
+    private static final int MAX_EDGE_GAP = 3;
+    private static final int EDGE_GAP_COST = 32;
     private static final int INF = 1_000_000_000;
     private static final int MAX_CACHE_ENTRIES = 131_072;
     private static final int MAX_PREPARED_TILES = 8_192;
@@ -131,35 +134,39 @@ public final class RegionBoundaryRouter {
         }
 
         Seam seam = vertical != null ? vertical : horizontal;
+        EdgeIdentity edge = selectEdgeIdentity(seam, biomes);
+        if (edge == null) {
+            return PreparedTile.raw(originX, originZ, raw);
+        }
         int startAnchor;
         int endAnchor;
         if (seam.vertical()) {
             startAnchor = sharedAnchor(
                     level, true, originX, originZ,
-                    first, second, seam.raw()[0], biomeSource,
+                    first, second, seam.raw()[0], edge, biomeSource,
                     climateSampler, quartY
             );
             endAnchor = sharedAnchor(
                     level, true, originX, originZ + TILE_QUARTS,
-                    first, second, seam.raw()[TILE_QUARTS - 1],
+                    first, second, seam.raw()[TILE_QUARTS - 1], edge,
                     biomeSource, climateSampler, quartY
             );
         } else {
             startAnchor = sharedAnchor(
                     level, false, originZ, originX,
-                    first, second, seam.raw()[0], biomeSource,
+                    first, second, seam.raw()[0], edge, biomeSource,
                     climateSampler, quartY
             );
             endAnchor = sharedAnchor(
                     level, false, originZ, originX + TILE_QUARTS,
-                    first, second, seam.raw()[TILE_QUARTS - 1],
+                    first, second, seam.raw()[TILE_QUARTS - 1], edge,
                     biomeSource, climateSampler, quartY
             );
         }
         seam = new Seam(
                 seam.vertical(), seam.raw(), startAnchor, endAnchor
         );
-        int[] route = route(seam, biomes, rivers);
+        int[] route = route(seam, edge, biomes, rivers);
         if (route == null) {
             return PreparedTile.raw(originX, originZ, raw);
         }
@@ -262,6 +269,7 @@ public final class RegionBoundaryRouter {
             Region first,
             Region second,
             int fallback,
+            EdgeIdentity edge,
             net.minecraft.world.level.biome.BiomeSource biomeSource,
             net.minecraft.world.level.biome.Climate.Sampler climateSampler,
             int quartY
@@ -309,7 +317,7 @@ public final class RegionBoundaryRouter {
         for (int position = minimum; position <= maximum; position++) {
             ResourceLocation a = biomeIds[position];
             ResourceLocation b = biomeIds[position + 1];
-            if (a == null || b == null || a.equals(b)) continue;
+            if (!edge.matches(a, b)) continue;
 
             int cost = Math.abs(position - rawTransition);
             if (river[position] || river[position + 1]) {
@@ -324,25 +332,74 @@ public final class RegionBoundaryRouter {
         return best;
     }
 
-    private static int[] route(
-            Seam seam, ResourceLocation[] biomes, boolean[] rivers
+    private static EdgeIdentity selectEdgeIdentity(
+            Seam seam, ResourceLocation[] biomes
     ) {
-        int[][] costs = new int[TILE_QUARTS][TILE_QUARTS - 1];
-        int[][] previous = new int[TILE_QUARTS][TILE_QUARTS - 1];
+        Map<EdgeIdentity, EdgeScore> scores = new HashMap<>();
+        for (int line = 0; line < TILE_QUARTS; line++) {
+            int rawPosition = seam.raw()[line];
+            int minimum = Math.max(0, rawPosition - MAX_SHIFT_QUARTS);
+            int maximum = Math.min(
+                    TILE_QUARTS - 2, rawPosition + MAX_SHIFT_QUARTS
+            );
+            Map<EdgeIdentity, Integer> closestOnLine = new HashMap<>();
+            for (int position = minimum; position <= maximum; position++) {
+                EdgeIdentity identity = edgeAt(
+                        seam, line, position, biomes
+                );
+                if (identity == null) continue;
+                int distance = Math.abs(position - rawPosition);
+                closestOnLine.merge(identity, distance, Math::min);
+            }
+            for (Map.Entry<EdgeIdentity, Integer> candidate
+                    : closestOnLine.entrySet()) {
+                scores.computeIfAbsent(
+                        candidate.getKey(), ignored -> new EdgeScore()
+                ).add(candidate.getValue());
+            }
+        }
+
+        EdgeIdentity best = null;
+        EdgeScore bestScore = null;
+        for (Map.Entry<EdgeIdentity, EdgeScore> candidate
+                : scores.entrySet()) {
+            if (bestScore == null
+                    || candidate.getValue().betterThan(
+                            bestScore, candidate.getKey(), best
+                    )) {
+                best = candidate.getKey();
+                bestScore = candidate.getValue();
+            }
+        }
+        return bestScore != null
+                && bestScore.lines * 100
+                >= TILE_QUARTS * MIN_EDGE_PERCENT ? best : null;
+    }
+
+    private static int[] route(
+            Seam seam, EdgeIdentity edge,
+            ResourceLocation[] biomes, boolean[] rivers
+    ) {
+        int positions = TILE_QUARTS - 1;
+        int states = positions * (MAX_EDGE_GAP + 1);
+        int[][] costs = new int[TILE_QUARTS][states];
+        int[][] previous = new int[TILE_QUARTS][states];
         for (int[] row : costs) Arrays.fill(row, INF);
         for (int[] row : previous) Arrays.fill(row, -1);
 
         int start = seam.startAnchor();
-        costs[0][start] = 0;
+        int startGap = edge.matchesAt(seam, 0, start, biomes) ? 0 : 1;
+        costs[0][state(start, startGap)] = 0;
         for (int line = 1; line < TILE_QUARTS; line++) {
             int rawPosition = seam.raw()[line];
             boolean endpoint = line == TILE_QUARTS - 1;
-            for (int position = 0; position < TILE_QUARTS - 1; position++) {
-                int localCost = candidateCost(
-                        seam, line, position, rawPosition,
-                        biomes, rivers, endpoint
+            for (int position = 0; position < positions; position++) {
+                if (Math.abs(position - rawPosition)
+                        > MAX_SHIFT_QUARTS) continue;
+                boolean matchingEdge = edge.matchesAt(
+                        seam, line, position, biomes
                 );
-                if (localCost >= INF) continue;
+                if (endpoint && position != seam.endAnchor()) continue;
 
                 int fromStart = Math.max(0, position - MAX_STEP_PER_ROW);
                 int fromEnd = Math.min(
@@ -350,30 +407,55 @@ public final class RegionBoundaryRouter {
                         position + MAX_STEP_PER_ROW
                 );
                 for (int from = fromStart; from <= fromEnd; from++) {
-                    if (costs[line - 1][from] >= INF) continue;
-                    int cost = costs[line - 1][from] + localCost
-                            + Math.abs(position - from) * TURN_COST;
-                    if (cost < costs[line][position]) {
-                        costs[line][position] = cost;
-                        previous[line][position] = from;
+                    for (int oldGap = 0; oldGap <= MAX_EDGE_GAP;
+                         oldGap++) {
+                        int fromState = state(from, oldGap);
+                        if (costs[line - 1][fromState] >= INF) continue;
+                        int gap = matchingEdge ? 0 : oldGap + 1;
+                        if (gap > MAX_EDGE_GAP) {
+                            continue;
+                        }
+                        int localCost = matchingEdge
+                                ? edgeCost(seam, line, position,
+                                        rawPosition, rivers)
+                                : EDGE_GAP_COST
+                                        + Math.abs(position - rawPosition);
+                        int cost = costs[line - 1][fromState] + localCost
+                                + Math.abs(position - from) * TURN_COST;
+                        int targetState = state(position, gap);
+                        if (cost < costs[line][targetState]) {
+                            costs[line][targetState] = cost;
+                            previous[line][targetState] = fromState;
+                        }
                     }
                 }
             }
         }
 
         int end = seam.endAnchor();
-        if (costs[TILE_QUARTS - 1][end] >= INF) return null;
+        int endState = -1;
+        int endCost = INF;
+        for (int gap = 0; gap <= MAX_EDGE_GAP; gap++) {
+            int candidate = state(end, gap);
+            if (costs[TILE_QUARTS - 1][candidate] < endCost) {
+                endState = candidate;
+                endCost = costs[TILE_QUARTS - 1][candidate];
+            }
+        }
+        if (endState < 0) return null;
         int[] route = new int[TILE_QUARTS];
         route[TILE_QUARTS - 1] = end;
+        int cursor = endState;
         for (int line = TILE_QUARTS - 1; line > 0; line--) {
-            route[line - 1] = previous[line][route[line]];
-            if (route[line - 1] < 0) return null;
+            cursor = previous[line][cursor];
+            if (cursor < 0) return null;
+            route[line - 1] = cursor / (MAX_EDGE_GAP + 1);
         }
 
         int naturalEdges = 0;
         for (int line = ENDPOINT_ROWS;
              line < TILE_QUARTS - ENDPOINT_ROWS; line++) {
-            if (isNaturalEdge(seam, line, route[line], biomes)) {
+            if (edge.matchesAt(seam, line, route[line], biomes)) {
                 naturalEdges++;
             }
         }
@@ -382,19 +464,10 @@ public final class RegionBoundaryRouter {
                 ? route : null;
     }
 
-    private static int candidateCost(
+    private static int edgeCost(
             Seam seam, int line, int position, int rawPosition,
-            ResourceLocation[] biomes, boolean[] rivers, boolean endpoint
+            boolean[] rivers
     ) {
-        if (Math.abs(position - rawPosition) > MAX_SHIFT_QUARTS) return INF;
-        if (endpoint) return position == seam.endAnchor() ? 0 : INF;
-        boolean naturalEdge = isNaturalEdge(
-                seam, line, position, biomes
-        );
-        if (!naturalEdge) {
-            return position == rawPosition ? RAW_FALLBACK_COST : INF;
-        }
-
         int first = seam.vertical()
                 ? index(position, line) : index(line, position);
         int second = seam.vertical()
@@ -406,7 +479,7 @@ public final class RegionBoundaryRouter {
         return cost;
     }
 
-    private static boolean isNaturalEdge(
+    private static EdgeIdentity edgeAt(
             Seam seam, int line, int position, ResourceLocation[] biomes
     ) {
         int first = seam.vertical()
@@ -415,7 +488,11 @@ public final class RegionBoundaryRouter {
                 ? index(position + 1, line) : index(line, position + 1);
         ResourceLocation a = biomes[first];
         ResourceLocation b = biomes[second];
-        return a != null && b != null && !a.equals(b);
+        return EdgeIdentity.of(a, b);
+    }
+
+    private static int state(int position, int gap) {
+        return position * (MAX_EDGE_GAP + 1) + gap;
     }
 
     private static boolean isPair(
@@ -448,6 +525,57 @@ public final class RegionBoundaryRouter {
     ) {
         private Seam(boolean vertical, int[] raw) {
             this(vertical, raw, raw[0], raw[raw.length - 1]);
+        }
+    }
+
+    /** Unordered biome pair: direction changes do not change edge identity. */
+    private record EdgeIdentity(ResourceLocation first,
+                                ResourceLocation second) {
+        private static EdgeIdentity of(
+                ResourceLocation first, ResourceLocation second
+        ) {
+            if (first == null || second == null || first.equals(second)) {
+                return null;
+            }
+            return first.toString().compareTo(second.toString()) <= 0
+                    ? new EdgeIdentity(first, second)
+                    : new EdgeIdentity(second, first);
+        }
+
+        private boolean matches(ResourceLocation a, ResourceLocation b) {
+            return equals(of(a, b));
+        }
+
+        private boolean matchesAt(
+                Seam seam, int line, int position,
+                ResourceLocation[] biomes
+        ) {
+            return equals(edgeAt(seam, line, position, biomes));
+        }
+
+        private String stableKey() {
+            return first + "|" + second;
+        }
+    }
+
+    private static final class EdgeScore {
+        private int lines;
+        private int distance;
+
+        private void add(int candidateDistance) {
+            lines++;
+            distance += candidateDistance;
+        }
+
+        private boolean betterThan(
+                EdgeScore other, EdgeIdentity identity,
+                EdgeIdentity otherIdentity
+        ) {
+            if (lines != other.lines) return lines > other.lines;
+            if (distance != other.distance) return distance < other.distance;
+            return identity.stableKey().compareTo(
+                    otherIdentity.stableKey()
+            ) < 0;
         }
     }
 
