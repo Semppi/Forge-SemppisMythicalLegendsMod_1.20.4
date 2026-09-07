@@ -132,7 +132,8 @@ public final class RegionBoundaryRouter {
         }
         return new PreparedTile(
                 originX, originZ, route.regions(), TileResult.ROUTED,
-                route.changedCells(), route.preferredEdgeSteps()
+                route.changedCells(), route.preferredEdgeSteps(),
+                route.controlledHandoffs()
         );
     }
 
@@ -207,9 +208,13 @@ public final class RegionBoundaryRouter {
                 bestCost = cost;
             }
         }
+        BoundedRegionPathRouter.EdgeIdentity identity =
+                BoundedRegionPathRouter.EdgeIdentity.of(
+                        biomeIds[best - 1], biomeIds[best]
+                );
         return horizontal
-                ? new BoundedRegionPathRouter.Portal(best, rawZ)
-                : new BoundedRegionPathRouter.Portal(rawX, best);
+                ? new BoundedRegionPathRouter.Portal(best, rawZ, identity)
+                : new BoundedRegionPathRouter.Portal(rawX, best, identity);
     }
 
     private static boolean isPair(
@@ -254,13 +259,15 @@ public final class RegionBoundaryRouter {
 
     private record PreparedTile(
             int originX, int originZ, Region[] regions, TileResult result,
-            int changedCells, int preferredEdgeSteps
+            int changedCells, int preferredEdgeSteps,
+            int controlledHandoffs
     ) {
         private static PreparedTile raw(
                 int x, int z, Region[] raw, TileResult result
         ) {
             return new PreparedTile(
-                    x, z, Arrays.copyOf(raw, raw.length), result, 0, 0
+                    x, z, Arrays.copyOf(raw, raw.length), result,
+                    0, 0, 0
             );
         }
     }
@@ -300,11 +307,13 @@ public final class RegionBoundaryRouter {
                 LOGGER.info(
                         "Final border routed tile X {}..{}, Z {}..{}: "
                                 + "ROUTED ({} quart cells changed, "
-                                + "{} preferred edge steps)",
+                                + "{} preferred edge steps, "
+                                + "{} controlled handoffs)",
                         minBlockX, minBlockX + TILE_QUARTS * 4 - 1,
                         minBlockZ, minBlockZ + TILE_QUARTS * 4 - 1,
                         prepared.changedCells(),
-                        prepared.preferredEdgeSteps()
+                        prepared.preferredEdgeSteps(),
+                        prepared.controlledHandoffs()
                 );
             } else {
                 LOGGER.info(
