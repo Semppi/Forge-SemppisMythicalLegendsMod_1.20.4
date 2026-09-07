@@ -30,8 +30,9 @@ final class BoundedRegionPathRouter {
         NOT_TWO_COMPONENTS,
         UNKNOWN_RAW_OWNER,
         ENCLOSED_COMPONENT,
-        TIED_COMPONENT_OWNER,
-        SAME_COMPONENT_OWNER,
+        INVALID_SIDE_ANCHOR,
+        PORTAL_SIDE_CONFLICT,
+        UNANCHORED_COMPONENT,
         NO_MEANINGFUL_CHANGE
     }
 
@@ -76,8 +77,25 @@ final class BoundedRegionPathRouter {
         if (path.equals(boundary.orderedPath())) {
             return RouteResult.rejected(RejectionReason.UNCHANGED_PATH);
         }
+        List<Integer> rawPath = boundary.orderedPath();
+        SideIdentity startIdentity = sideIdentity(
+                rawPath.get(0), rawPath.get(1), raw
+        );
+        SideIdentity endIdentity = sideIdentity(
+                rawPath.get(rawPath.size() - 2),
+                rawPath.get(rawPath.size() - 1), raw
+        );
+        DirectedSides routedStart = directedSides(path.get(0), path.get(1));
+        DirectedSides routedEnd = directedSides(
+                path.get(path.size() - 2), path.get(path.size() - 1)
+        );
+        if (startIdentity == null || endIdentity == null
+                || routedStart == null || routedEnd == null) {
+            return RouteResult.rejected(RejectionReason.INVALID_SIDE_ANCHOR);
+        }
         FillResult fill = fillSides(
-                raw, pathWalls(path), first, second
+                raw, pathWalls(path), first, second,
+                startIdentity, endIdentity, routedStart, routedEnd
         );
         if (fill.regions() == null) {
             return RouteResult.rejected(fill.rejectionReason());
@@ -250,7 +268,9 @@ final class BoundedRegionPathRouter {
 
     /** A valid simple border must produce exactly two connected components. */
     private static FillResult fillSides(
-            Region[] raw, boolean[] walls, Region first, Region second
+            Region[] raw, boolean[] walls, Region first, Region second,
+            SideIdentity startIdentity, SideIdentity endIdentity,
+            DirectedSides routedStart, DirectedSides routedEnd
     ) {
         int[] component = new int[CELLS];
         Arrays.fill(component, -1);
@@ -281,7 +301,6 @@ final class BoundedRegionPathRouter {
             return FillResult.rejected(RejectionReason.NOT_TWO_COMPONENTS);
         }
 
-        int[][] votes = new int[2][2];
         boolean[] touchesPerimeter = new boolean[2];
         for (int value = 0; value < CELLS; value++) {
             int owner = raw[value].equals(first) ? 0
@@ -291,7 +310,6 @@ final class BoundedRegionPathRouter {
                         RejectionReason.UNKNOWN_RAW_OWNER
                 );
             }
-            votes[component[value]][owner]++;
             int x = value % SIZE;
             int z = value / SIZE;
             if (x == 0 || z == 0 || x == SIZE - 1 || z == SIZE - 1) {
@@ -303,31 +321,88 @@ final class BoundedRegionPathRouter {
                     RejectionReason.ENCLOSED_COMPONENT
             );
         }
-        int owner0 = majority(votes[0]);
-        int owner1 = majority(votes[1]);
-        if (owner0 < 0 || owner1 < 0) {
+        Region[] owners = new Region[2];
+        if (!anchor(owners, component[routedStart.leftCell()],
+                startIdentity.leftOwner())
+                || !anchor(owners, component[routedStart.rightCell()],
+                startIdentity.rightOwner())
+                || !anchor(owners, component[routedEnd.leftCell()],
+                endIdentity.leftOwner())
+                || !anchor(owners, component[routedEnd.rightCell()],
+                endIdentity.rightOwner())) {
             return FillResult.rejected(
-                    RejectionReason.TIED_COMPONENT_OWNER
+                    RejectionReason.PORTAL_SIDE_CONFLICT
             );
         }
-        if (owner0 == owner1) {
+        if (owners[0] == null || owners[1] == null) {
             return FillResult.rejected(
-                    RejectionReason.SAME_COMPONENT_OWNER
+                    RejectionReason.UNANCHORED_COMPONENT
+            );
+        }
+        if (owners[0].equals(owners[1])) {
+            return FillResult.rejected(
+                    RejectionReason.PORTAL_SIDE_CONFLICT
             );
         }
 
         Region[] result = new Region[CELLS];
-        Region[] owners = {owner0 == 0 ? first : second,
-                owner1 == 0 ? first : second};
         for (int value = 0; value < CELLS; value++) {
             result[value] = owners[component[value]];
         }
         return FillResult.accepted(result);
     }
 
-    private static int majority(int[] votes) {
-        if (votes[0] == votes[1]) return -1;
-        return votes[0] > votes[1] ? 0 : 1;
+    private static boolean anchor(
+            Region[] owners, int component, Region owner
+    ) {
+        if (component < 0 || component >= owners.length || owner == null) {
+            return false;
+        }
+        if (owners[component] == null) {
+            owners[component] = owner;
+            return true;
+        }
+        return owners[component].equals(owner);
+    }
+
+    private static SideIdentity sideIdentity(
+            int from, int to, Region[] raw
+    ) {
+        DirectedSides sides = directedSides(from, to);
+        return sides == null ? null : new SideIdentity(
+                raw[sides.leftCell()], raw[sides.rightCell()]
+        );
+    }
+
+    /** Cells on the geometric left and right of one directed border edge. */
+    private static DirectedSides directedSides(int from, int to) {
+        int fromX = vertexX(from);
+        int fromZ = vertexZ(from);
+        int toX = vertexX(to);
+        int toZ = vertexZ(to);
+        int dx = toX - fromX;
+        int dz = toZ - fromZ;
+        if (dx == 1 && dz == 0 && fromZ > 0 && fromZ < SIZE) {
+            return new DirectedSides(
+                    cell(fromX, fromZ - 1), cell(fromX, fromZ)
+            );
+        }
+        if (dx == -1 && dz == 0 && fromZ > 0 && fromZ < SIZE) {
+            return new DirectedSides(
+                    cell(toX, fromZ), cell(toX, fromZ - 1)
+            );
+        }
+        if (dz == 1 && dx == 0 && fromX > 0 && fromX < SIZE) {
+            return new DirectedSides(
+                    cell(fromX, fromZ), cell(fromX - 1, fromZ)
+            );
+        }
+        if (dz == -1 && dx == 0 && fromX > 0 && fromX < SIZE) {
+            return new DirectedSides(
+                    cell(fromX - 1, toZ), cell(fromX, toZ)
+            );
+        }
+        return null;
     }
 
     private static int countChanges(Region[] raw, Region[] result) {
@@ -456,6 +531,8 @@ final class BoundedRegionPathRouter {
             List<Integer> orderedPath
     ) {}
     private record CellPair(int first, int second) {}
+    private record DirectedSides(int leftCell, int rightCell) {}
+    private record SideIdentity(Region leftOwner, Region rightOwner) {}
     private record FillResult(
             Region[] regions, RejectionReason rejectionReason
     ) {

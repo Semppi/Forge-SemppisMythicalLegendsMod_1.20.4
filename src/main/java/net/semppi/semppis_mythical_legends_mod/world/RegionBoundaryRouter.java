@@ -246,8 +246,9 @@ public final class RegionBoundaryRouter {
         NOT_TWO_COMPONENTS,
         UNKNOWN_RAW_OWNER,
         ENCLOSED_COMPONENT,
-        TIED_COMPONENT_OWNER,
-        SAME_COMPONENT_OWNER,
+        INVALID_SIDE_ANCHOR,
+        PORTAL_SIDE_CONFLICT,
+        UNANCHORED_COMPONENT,
         NO_MEANINGFUL_CHANGE
     }
 
