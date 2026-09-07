@@ -16,6 +16,8 @@ final class BoundedRegionPathRouter {
     private static final int VERTICES = VERTEX_SIZE * VERTEX_SIZE;
     private static final int CELLS = SIZE * SIZE;
     private static final int MAX_DISTANCE_FROM_RAW = 40;
+    private static final int MAX_PREFERRED_EDGE_RUNS = 16;
+    private static final int MIN_PREFERRED_RUN_EDGES = 4;
     private static final int INF = 1_000_000_000;
 
     private BoundedRegionPathRouter() {}
@@ -38,10 +40,10 @@ final class BoundedRegionPathRouter {
 
     record RouteResult(
             Region[] regions, RejectionReason rejectionReason,
-            int changedCells
+            int changedCells, int preferredEdgeSteps
     ) {
         private static RouteResult rejected(RejectionReason reason) {
-            return new RouteResult(null, reason, 0);
+            return new RouteResult(null, reason, 0, 0);
         }
     }
 
@@ -67,10 +69,33 @@ final class BoundedRegionPathRouter {
         int start = vertex(startPortal.x(), startPortal.z());
         int end = vertex(endPortal.x(), endPortal.z());
         int[] rawDistance = distanceFromRaw(boundary.vertices());
-        List<Integer> path = shortestPath(
-                start, end, rawDistance,
-                raw, biomes, rivers
-        );
+        NaturalRuns naturalRuns = naturalRuns(biomes, rawDistance);
+        PathSearch selected = null;
+        for (EdgeRunCandidate candidate : naturalRuns.candidates()) {
+            PathSearch current = shortestPath(
+                    start, end, rawDistance, raw, biomes, rivers,
+                    naturalRuns.runByEdge(), candidate.runId()
+            );
+            if (current == null
+                    || current.preferredEdges() < MIN_PREFERRED_RUN_EDGES) {
+                continue;
+            }
+            if (selected == null || current.cost() < selected.cost()
+                    || current.cost() == selected.cost()
+                    && current.preferredEdges() > selected.preferredEdges()
+                    || current.cost() == selected.cost()
+                    && current.preferredEdges() == selected.preferredEdges()
+                    && candidate.runId() < selected.preferredRun()) {
+                selected = current;
+            }
+        }
+        if (selected == null) {
+            selected = shortestPath(
+                    start, end, rawDistance, raw, biomes, rivers,
+                    naturalRuns.runByEdge(), -1
+            );
+        }
+        List<Integer> path = selected == null ? null : selected.path();
         if (path == null) {
             return RouteResult.rejected(RejectionReason.NO_BOUNDED_PATH);
         }
@@ -103,7 +128,8 @@ final class BoundedRegionPathRouter {
         int changes = countChanges(raw, fill.regions());
         return changes >= 4
                 ? new RouteResult(
-                        fill.regions(), RejectionReason.NONE, changes
+                        fill.regions(), RejectionReason.NONE, changes,
+                        selected.preferredEdges()
                 )
                 : RouteResult.rejected(RejectionReason.NO_MEANINGFUL_CHANGE);
     }
@@ -196,9 +222,10 @@ final class BoundedRegionPathRouter {
         return distance;
     }
 
-    private static List<Integer> shortestPath(
+    private static PathSearch shortestPath(
             int start, int end, int[] rawDistance,
-            Region[] raw, ResourceLocation[] biomes, boolean[] rivers
+            Region[] raw, ResourceLocation[] biomes, boolean[] rivers,
+            int[] runByEdge, int preferredRun
     ) {
         int[] cost = new int[VERTICES];
         int[] previous = new int[VERTICES];
@@ -215,7 +242,8 @@ final class BoundedRegionPathRouter {
                 if (next != end && onPerimeter(next)) continue;
                 if (rawDistance[next] > MAX_DISTANCE_FROM_RAW) continue;
                 int step = edgeCost(node.vertex(), next,
-                        rawDistance[next], raw, biomes, rivers);
+                        rawDistance[next], raw, biomes, rivers,
+                        runByEdge, preferredRun);
                 if (step >= INF) continue;
                 int candidate = node.cost() + step;
                 if (candidate < cost[next]
@@ -236,12 +264,24 @@ final class BoundedRegionPathRouter {
         }
         if (path.get(path.size() - 1) != start) return null;
         Collections.reverse(path);
-        return path;
+        int preferredEdges = 0;
+        if (preferredRun >= 0) {
+            for (int index = 1; index < path.size(); index++) {
+                int slot = edgeSlot(path.get(index - 1), path.get(index));
+                if (slot >= 0 && runByEdge[slot] == preferredRun) {
+                    preferredEdges++;
+                }
+            }
+        }
+        return new PathSearch(
+                path, cost[end], preferredRun, preferredEdges
+        );
     }
 
     private static int edgeCost(
             int from, int to, int rawDistance,
-            Region[] raw, ResourceLocation[] biomes, boolean[] rivers
+            Region[] raw, ResourceLocation[] biomes, boolean[] rivers,
+            int[] runByEdge, int preferredRun
     ) {
         CellPair pair = separatedCells(from, to);
         if (pair == null) return INF;
@@ -251,10 +291,160 @@ final class BoundedRegionPathRouter {
         boolean river = rivers[pair.first()] || rivers[pair.second()];
         boolean rawEdge = !raw[pair.first()].equals(raw[pair.second()]);
         if (natural) {
+            int slot = edgeSlot(from, to);
+            if (preferredRun >= 0 && slot >= 0) {
+                if (runByEdge[slot] == preferredRun) {
+                    return Math.max(
+                            1, 2 + rawDistance / 10 - (river ? 1 : 0)
+                    );
+                }
+                return Math.max(
+                        5, 9 + rawDistance / 8 - (river ? 1 : 0)
+                );
+            }
             return Math.max(1, 2 + rawDistance / 8 - (river ? 1 : 0));
         }
         if (rawEdge) return 8;
         return 20 + rawDistance / 2;
+    }
+
+    /**
+     * Gives each connected run of one unordered biome pair a stable local id.
+     * Only a small deterministic set nearest Raw is evaluated by the router.
+     */
+    private static NaturalRuns naturalRuns(
+            ResourceLocation[] biomes, int[] rawDistance
+    ) {
+        int edgeSlots = VERTICES * 2;
+        BiomePair[] pairs = new BiomePair[edgeSlots];
+        UnionFind union = new UnionFind(edgeSlots);
+        for (int value = 0; value < VERTICES; value++) {
+            int x = vertexX(value);
+            int z = vertexZ(value);
+            if (x < SIZE) {
+                registerNaturalEdge(
+                        value, vertex(x + 1, z), biomes, pairs, union
+                );
+            }
+            if (z < SIZE) {
+                registerNaturalEdge(
+                        value, vertex(x, z + 1), biomes, pairs, union
+                );
+            }
+        }
+        for (int value = 0; value < VERTICES; value++) {
+            int[] incident = incidentEdgeSlots(value);
+            for (int first = 0; first < incident.length; first++) {
+                int firstSlot = incident[first];
+                if (pairs[firstSlot] == null) continue;
+                for (int second = first + 1;
+                     second < incident.length; second++) {
+                    int secondSlot = incident[second];
+                    if (pairs[firstSlot].equals(pairs[secondSlot])) {
+                        union.union(firstSlot, secondSlot);
+                    }
+                }
+            }
+        }
+
+        int[] rootIds = new int[edgeSlots];
+        int[] runByEdge = new int[edgeSlots];
+        Arrays.fill(rootIds, -1);
+        Arrays.fill(runByEdge, -1);
+        int runCount = 0;
+        for (int slot = 0; slot < edgeSlots; slot++) {
+            if (pairs[slot] == null) continue;
+            int root = union.find(slot);
+            if (rootIds[root] < 0) rootIds[root] = runCount++;
+            runByEdge[slot] = rootIds[root];
+        }
+
+        int[] minimumDistance = new int[runCount];
+        int[] edgeCount = new int[runCount];
+        Arrays.fill(minimumDistance, INF);
+        for (int slot = 0; slot < edgeSlots; slot++) {
+            int run = runByEdge[slot];
+            if (run < 0) continue;
+            int from = edgeFrom(slot);
+            int to = edgeTo(slot);
+            minimumDistance[run] = Math.min(
+                    minimumDistance[run],
+                    Math.min(rawDistance[from], rawDistance[to])
+            );
+            edgeCount[run]++;
+        }
+        List<EdgeRunCandidate> candidates = new ArrayList<>();
+        for (int run = 0; run < runCount; run++) {
+            if (edgeCount[run] >= MIN_PREFERRED_RUN_EDGES
+                    && minimumDistance[run] <= MAX_DISTANCE_FROM_RAW) {
+                candidates.add(new EdgeRunCandidate(
+                        run, minimumDistance[run], edgeCount[run]
+                ));
+            }
+        }
+        candidates.sort((left, right) -> {
+            int byDistance = Integer.compare(
+                    left.rawDistance(), right.rawDistance()
+            );
+            if (byDistance != 0) return byDistance;
+            int byLength = Integer.compare(
+                    right.edgeCount(), left.edgeCount()
+            );
+            return byLength != 0 ? byLength
+                    : Integer.compare(left.runId(), right.runId());
+        });
+        if (candidates.size() > MAX_PREFERRED_EDGE_RUNS) {
+            candidates = new ArrayList<>(candidates.subList(
+                    0, MAX_PREFERRED_EDGE_RUNS
+            ));
+        }
+        return new NaturalRuns(runByEdge, candidates);
+    }
+
+    private static void registerNaturalEdge(
+            int from, int to, ResourceLocation[] biomes,
+            BiomePair[] pairs, UnionFind union
+    ) {
+        CellPair cells = separatedCells(from, to);
+        if (cells == null) return;
+        ResourceLocation first = biomes[cells.first()];
+        ResourceLocation second = biomes[cells.second()];
+        if (first == null || second == null || first.equals(second)) return;
+        int slot = edgeSlot(from, to);
+        pairs[slot] = BiomePair.of(first, second);
+        union.activate(slot);
+    }
+
+    private static int[] incidentEdgeSlots(int value) {
+        int x = vertexX(value);
+        int z = vertexZ(value);
+        int[] slots = new int[4];
+        int count = 0;
+        if (x < SIZE) slots[count++] = edgeSlot(value, vertex(x + 1, z));
+        if (z < SIZE) slots[count++] = edgeSlot(value, vertex(x, z + 1));
+        if (x > 0) slots[count++] = edgeSlot(vertex(x - 1, z), value);
+        if (z > 0) slots[count++] = edgeSlot(vertex(x, z - 1), value);
+        return Arrays.copyOf(slots, count);
+    }
+
+    private static int edgeSlot(int first, int second) {
+        int firstX = vertexX(first);
+        int firstZ = vertexZ(first);
+        int secondX = vertexX(second);
+        int secondZ = vertexZ(second);
+        if (firstZ == secondZ && Math.abs(firstX - secondX) == 1) {
+            return Math.min(first, second) * 2;
+        }
+        if (firstX == secondX && Math.abs(firstZ - secondZ) == 1) {
+            return Math.min(first, second) * 2 + 1;
+        }
+        return -1;
+    }
+
+    private static int edgeFrom(int slot) { return slot / 2; }
+
+    private static int edgeTo(int slot) {
+        return edgeFrom(slot) + (slot % 2 == 0 ? 1 : VERTEX_SIZE);
     }
 
     private static boolean[] pathWalls(List<Integer> path) {
@@ -531,6 +721,27 @@ final class BoundedRegionPathRouter {
             List<Integer> orderedPath
     ) {}
     private record CellPair(int first, int second) {}
+    private record BiomePair(
+            ResourceLocation first, ResourceLocation second
+    ) {
+        private static BiomePair of(
+                ResourceLocation first, ResourceLocation second
+        ) {
+            return first.toString().compareTo(second.toString()) <= 0
+                    ? new BiomePair(first, second)
+                    : new BiomePair(second, first);
+        }
+    }
+    private record EdgeRunCandidate(
+            int runId, int rawDistance, int edgeCount
+    ) {}
+    private record NaturalRuns(
+            int[] runByEdge, List<EdgeRunCandidate> candidates
+    ) {}
+    private record PathSearch(
+            List<Integer> path, int cost, int preferredRun,
+            int preferredEdges
+    ) {}
     private record DirectedSides(int leftCell, int rightCell) {}
     private record SideIdentity(Region leftOwner, Region rightOwner) {}
     private record FillResult(
@@ -549,6 +760,42 @@ final class BoundedRegionPathRouter {
         public int compareTo(Node other) {
             int byCost = Integer.compare(cost, other.cost);
             return byCost != 0 ? byCost : Integer.compare(vertex, other.vertex);
+        }
+    }
+
+    private static final class UnionFind {
+        private final int[] parent;
+        private final byte[] rank;
+
+        private UnionFind(int size) {
+            parent = new int[size];
+            rank = new byte[size];
+            Arrays.fill(parent, -1);
+        }
+
+        private void activate(int value) { parent[value] = value; }
+
+        private int find(int value) {
+            int root = value;
+            while (parent[root] != root) root = parent[root];
+            while (value != root) {
+                int next = parent[value];
+                parent[value] = root;
+                value = next;
+            }
+            return root;
+        }
+
+        private void union(int first, int second) {
+            int firstRoot = find(first);
+            int secondRoot = find(second);
+            if (firstRoot == secondRoot) return;
+            if (rank[firstRoot] < rank[secondRoot]) {
+                parent[firstRoot] = secondRoot;
+            } else {
+                parent[secondRoot] = firstRoot;
+                if (rank[firstRoot] == rank[secondRoot]) rank[firstRoot]++;
+            }
         }
     }
 

@@ -132,7 +132,7 @@ public final class RegionBoundaryRouter {
         }
         return new PreparedTile(
                 originX, originZ, route.regions(), TileResult.ROUTED,
-                route.changedCells()
+                route.changedCells(), route.preferredEdgeSteps()
         );
     }
 
@@ -254,13 +254,13 @@ public final class RegionBoundaryRouter {
 
     private record PreparedTile(
             int originX, int originZ, Region[] regions, TileResult result,
-            int changedCells
+            int changedCells, int preferredEdgeSteps
     ) {
         private static PreparedTile raw(
                 int x, int z, Region[] raw, TileResult result
         ) {
             return new PreparedTile(
-                    x, z, Arrays.copyOf(raw, raw.length), result, 0
+                    x, z, Arrays.copyOf(raw, raw.length), result, 0, 0
             );
         }
     }
@@ -299,10 +299,12 @@ public final class RegionBoundaryRouter {
             if (prepared.result() == TileResult.ROUTED) {
                 LOGGER.info(
                         "Final border routed tile X {}..{}, Z {}..{}: "
-                                + "ROUTED ({} quart cells changed)",
+                                + "ROUTED ({} quart cells changed, "
+                                + "{} preferred edge steps)",
                         minBlockX, minBlockX + TILE_QUARTS * 4 - 1,
                         minBlockZ, minBlockZ + TILE_QUARTS * 4 - 1,
-                        prepared.changedCells()
+                        prepared.changedCells(),
+                        prepared.preferredEdgeSteps()
                 );
             } else {
                 LOGGER.info(
