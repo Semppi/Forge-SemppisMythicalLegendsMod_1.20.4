@@ -47,11 +47,24 @@ final class BoundedRegionPathRouter {
     record RouteResult(
             Region[] regions, RejectionReason rejectionReason,
             int changedCells, int preferredEdgeSteps,
-            int controlledHandoffs
+            int controlledHandoffs, int roundedBridgeSteps,
+            EdgeRunDiagnostics edgeRunDiagnostics
     ) {
         private static RouteResult rejected(RejectionReason reason) {
-            return new RouteResult(null, reason, 0, 0, 0);
+            return new RouteResult(
+                    null, reason, 0, 0, 0, 0,
+                    EdgeRunDiagnostics.EMPTY
+            );
         }
+    }
+
+    record EdgeRunDiagnostics(
+            int totalRuns, int eligibleRuns, int selectedRuns,
+            int rejectedShort, int rejectedBeyondReach,
+            int nearestBeyondReach
+    ) {
+        static final EdgeRunDiagnostics EMPTY =
+                new EdgeRunDiagnostics(0, 0, 0, 0, 0, -1);
     }
 
     static RouteResult route(
@@ -108,20 +121,158 @@ final class BoundedRegionPathRouter {
                 || routedStart == null || routedEnd == null) {
             return RouteResult.rejected(RejectionReason.INVALID_SIDE_ANCHOR);
         }
-        FillResult fill = fillSides(
-                raw, pathWalls(path), first, second,
-                startIdentity, endIdentity, routedStart, routedEnd
+        RoundedPath rounded = roundUnsupportedBridges(
+                path, rawDistance, raw, biomes
         );
+        List<Integer> finalPath = rounded.path();
+        DirectedSides roundedStart = directedSides(
+                finalPath.get(0), finalPath.get(1)
+        );
+        DirectedSides roundedEnd = directedSides(
+                finalPath.get(finalPath.size() - 2),
+                finalPath.get(finalPath.size() - 1)
+        );
+        FillResult fill = fillSides(
+                raw, pathWalls(finalPath), first, second,
+                startIdentity, endIdentity, roundedStart, roundedEnd
+        );
+        int roundedSteps = rounded.changedSteps();
+        int changes = fill.regions() == null
+                ? 0 : countChanges(raw, fill.regions());
+        // Rounding is presentation polish. Never discard a valid bounded route
+        // if a diagonalized bridge happens to create invalid local topology.
+        if ((fill.regions() == null || changes < 4) && roundedSteps > 0) {
+            roundedSteps = 0;
+            fill = fillSides(
+                    raw, pathWalls(path), first, second,
+                    startIdentity, endIdentity, routedStart, routedEnd
+            );
+            changes = fill.regions() == null
+                    ? 0 : countChanges(raw, fill.regions());
+        }
         if (fill.regions() == null) {
             return RouteResult.rejected(fill.rejectionReason());
         }
-        int changes = countChanges(raw, fill.regions());
         return changes >= 4
                 ? new RouteResult(
                         fill.regions(), RejectionReason.NONE, changes,
-                        selected.preferredEdges(), selected.handoffs()
+                        selected.preferredEdges(), selected.handoffs(),
+                        roundedSteps, naturalRuns.diagnostics()
                 )
                 : RouteResult.rejected(RejectionReason.NO_MEANINGFUL_CHANGE);
+    }
+
+    /**
+     * Replaces only unsupported bridge spans with a balanced cardinal
+     * staircase. The wall lattice stays four-connected, but long rectangular
+     * legs become deterministic map-scale diagonals with gradual approaches.
+     */
+    private static RoundedPath roundUnsupportedBridges(
+            List<Integer> path, int[] rawDistance, Region[] raw,
+            ResourceLocation[] biomes
+    ) {
+        if (path.size() < 4) return new RoundedPath(path, 0);
+        List<Integer> result = new ArrayList<>(path.size());
+        result.add(path.get(0));
+        int changedSteps = 0;
+        int edge = 0;
+        while (edge < path.size() - 1) {
+            if (!unsupportedBridgeEdge(
+                    path.get(edge), path.get(edge + 1), raw, biomes
+            )) {
+                appendIfDifferent(result, path.get(edge + 1));
+                edge++;
+                continue;
+            }
+            int startEdge = edge;
+            while (edge < path.size() - 1 && unsupportedBridgeEdge(
+                    path.get(edge), path.get(edge + 1), raw, biomes
+            )) {
+                edge++;
+            }
+            int from = path.get(startEdge);
+            int to = path.get(edge);
+            List<Integer> rounded = balancedCardinalPath(from, to);
+            if (validRoundedSpan(rounded, rawDistance)) {
+                for (int index = 1; index < rounded.size(); index++) {
+                    appendIfDifferent(result, rounded.get(index));
+                }
+                if (!rounded.equals(path.subList(startEdge, edge + 1))) {
+                    changedSteps += rounded.size() - 1;
+                }
+            } else {
+                for (int index = startEdge + 1; index <= edge; index++) {
+                    appendIfDifferent(result, path.get(index));
+                }
+            }
+        }
+        return new RoundedPath(result, changedSteps);
+    }
+
+    private static boolean unsupportedBridgeEdge(
+            int from, int to, Region[] raw, ResourceLocation[] biomes
+    ) {
+        CellPair pair = separatedCells(from, to);
+        if (pair == null) return false;
+        ResourceLocation first = biomes[pair.first()];
+        ResourceLocation second = biomes[pair.second()];
+        boolean natural = first != null && second != null
+                && !first.equals(second);
+        boolean rawEdge = !raw[pair.first()].equals(raw[pair.second()]);
+        return !natural && !rawEdge;
+    }
+
+    private static List<Integer> balancedCardinalPath(int from, int to) {
+        int x = vertexX(from);
+        int z = vertexZ(from);
+        int targetX = vertexX(to);
+        int targetZ = vertexZ(to);
+        int totalX = Math.abs(targetX - x);
+        int totalZ = Math.abs(targetZ - z);
+        int stepX = Integer.compare(targetX, x);
+        int stepZ = Integer.compare(targetZ, z);
+        int movedX = 0;
+        int movedZ = 0;
+        List<Integer> result = new ArrayList<>(totalX + totalZ + 1);
+        result.add(from);
+        while (movedX < totalX || movedZ < totalZ) {
+            boolean moveX;
+            if (movedX >= totalX) moveX = false;
+            else if (movedZ >= totalZ) moveX = true;
+            else {
+                long xProgress = (long) (movedX + 1) * totalZ;
+                long zProgress = (long) (movedZ + 1) * totalX;
+                moveX = xProgress <= zProgress;
+            }
+            if (moveX) {
+                x += stepX;
+                movedX++;
+            } else {
+                z += stepZ;
+                movedZ++;
+            }
+            result.add(vertex(x, z));
+        }
+        return result;
+    }
+
+    private static boolean validRoundedSpan(
+            List<Integer> span, int[] rawDistance
+    ) {
+        for (int index = 1; index < span.size() - 1; index++) {
+            int value = span.get(index);
+            if (onPerimeter(value)
+                    || rawDistance[value] > MAX_DISTANCE_FROM_RAW) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    private static void appendIfDifferent(
+            List<Integer> path, int value
+    ) {
+        if (path.get(path.size() - 1) != value) path.add(value);
     }
 
     private static RawBoundary traceRawBoundary(
@@ -482,6 +633,9 @@ final class BoundedRegionPathRouter {
             identityByRun[run] = pairs[slot];
         }
         List<EdgeRunCandidate> candidates = new ArrayList<>();
+        int rejectedShort = 0;
+        int rejectedBeyondReach = 0;
+        int nearestBeyondReach = INF;
         for (int run = 0; run < runCount; run++) {
             if (edgeCount[run] >= MIN_PREFERRED_RUN_EDGES
                     && minimumDistance[run] <= MAX_DISTANCE_FROM_RAW) {
@@ -489,6 +643,13 @@ final class BoundedRegionPathRouter {
                         run, minimumDistance[run], edgeCount[run],
                         identityByRun[run]
                 ));
+            } else if (edgeCount[run] < MIN_PREFERRED_RUN_EDGES) {
+                rejectedShort++;
+            } else {
+                rejectedBeyondReach++;
+                nearestBeyondReach = Math.min(
+                        nearestBeyondReach, minimumDistance[run]
+                );
             }
         }
         candidates.sort((left, right) -> {
@@ -512,6 +673,7 @@ final class BoundedRegionPathRouter {
             return byLength != 0 ? byLength
                     : Integer.compare(left.runId(), right.runId());
         });
+        int eligibleRuns = candidates.size();
         if (candidates.size() > MAX_PREFERRED_EDGE_RUNS) {
             candidates = new ArrayList<>(candidates.subList(
                     0, MAX_PREFERRED_EDGE_RUNS
@@ -523,7 +685,12 @@ final class BoundedRegionPathRouter {
             candidateByRun[candidates.get(index).runId()] = index;
         }
         return new NaturalRuns(
-                runByEdge, identityByRun, candidateByRun, candidates
+                runByEdge, identityByRun, candidateByRun, candidates,
+                new EdgeRunDiagnostics(
+                        runCount, eligibleRuns, candidates.size(),
+                        rejectedShort, rejectedBeyondReach,
+                        nearestBeyondReach >= INF ? -1 : nearestBeyondReach
+                )
         );
     }
 
@@ -877,12 +1044,14 @@ final class BoundedRegionPathRouter {
     ) {}
     private record NaturalRuns(
             int[] runByEdge, EdgeIdentity[] identityByRun,
-            int[] candidateByRun, List<EdgeRunCandidate> candidates
+            int[] candidateByRun, List<EdgeRunCandidate> candidates,
+            EdgeRunDiagnostics diagnostics
     ) {}
     private record PathSearch(
             List<Integer> path, int cost, int preferredEdges,
             int handoffs
     ) {}
+    private record RoundedPath(List<Integer> path, int changedSteps) {}
     private record DirectedSides(int leftCell, int rightCell) {}
     private record SideIdentity(Region leftOwner, Region rightOwner) {}
     private record FillResult(

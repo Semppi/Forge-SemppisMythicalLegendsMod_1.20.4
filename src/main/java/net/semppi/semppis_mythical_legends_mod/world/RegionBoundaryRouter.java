@@ -133,7 +133,8 @@ public final class RegionBoundaryRouter {
         return new PreparedTile(
                 originX, originZ, route.regions(), TileResult.ROUTED,
                 route.changedCells(), route.preferredEdgeSteps(),
-                route.controlledHandoffs()
+                route.controlledHandoffs(), route.roundedBridgeSteps(),
+                route.edgeRunDiagnostics()
         );
     }
 
@@ -260,14 +261,16 @@ public final class RegionBoundaryRouter {
     private record PreparedTile(
             int originX, int originZ, Region[] regions, TileResult result,
             int changedCells, int preferredEdgeSteps,
-            int controlledHandoffs
+            int controlledHandoffs, int roundedBridgeSteps,
+            BoundedRegionPathRouter.EdgeRunDiagnostics edgeRunDiagnostics
     ) {
         private static PreparedTile raw(
                 int x, int z, Region[] raw, TileResult result
         ) {
             return new PreparedTile(
                     x, z, Arrays.copyOf(raw, raw.length), result,
-                    0, 0, 0
+                    0, 0, 0, 0,
+                    BoundedRegionPathRouter.EdgeRunDiagnostics.EMPTY
             );
         }
     }
@@ -308,12 +311,23 @@ public final class RegionBoundaryRouter {
                         "Final border routed tile X {}..{}, Z {}..{}: "
                                 + "ROUTED ({} quart cells changed, "
                                 + "{} preferred edge steps, "
-                                + "{} controlled handoffs)",
+                                + "{} controlled handoffs, "
+                                + "{} rounded bridge steps; edge runs "
+                                + "{} selected/{} eligible/{} total, "
+                                + "{} short, {} beyond reach, "
+                                + "nearest beyond {} quart)",
                         minBlockX, minBlockX + TILE_QUARTS * 4 - 1,
                         minBlockZ, minBlockZ + TILE_QUARTS * 4 - 1,
                         prepared.changedCells(),
                         prepared.preferredEdgeSteps(),
-                        prepared.controlledHandoffs()
+                        prepared.controlledHandoffs(),
+                        prepared.roundedBridgeSteps(),
+                        prepared.edgeRunDiagnostics().selectedRuns(),
+                        prepared.edgeRunDiagnostics().eligibleRuns(),
+                        prepared.edgeRunDiagnostics().totalRuns(),
+                        prepared.edgeRunDiagnostics().rejectedShort(),
+                        prepared.edgeRunDiagnostics().rejectedBeyondReach(),
+                        prepared.edgeRunDiagnostics().nearestBeyondReach()
                 );
             } else {
                 LOGGER.info(
