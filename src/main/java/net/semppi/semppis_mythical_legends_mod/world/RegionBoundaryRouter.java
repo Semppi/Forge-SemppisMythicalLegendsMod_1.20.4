@@ -394,9 +394,43 @@ public final class RegionBoundaryRouter {
                 BoundedRegionPathRouter.EdgeIdentity.of(
                         biomeIds[best - 1], biomeIds[best]
                 );
+        int continuation = portalContinuation(
+                best, identity, biomeIds
+        );
         return horizontal
-                ? new BoundedRegionPathRouter.Portal(best, rawZ, identity)
-                : new BoundedRegionPathRouter.Portal(rawX, best, identity);
+                ? new BoundedRegionPathRouter.Portal(
+                        best, rawZ, identity, continuation
+                )
+                : new BoundedRegionPathRouter.Portal(
+                        rawX, best, identity, continuation
+                );
+    }
+
+    /**
+     * Measures the deterministic connected biome-edge span visible on the
+     * shared tile edge. Both adjacent tiles capture the same samples, so this
+     * lightweight continuation hint crosses portals without shared mutation.
+     */
+    private static int portalContinuation(
+            int portal, BoundedRegionPathRouter.EdgeIdentity identity,
+            ResourceLocation[] biomeIds
+    ) {
+        if (identity == null) return 0;
+        int length = 1;
+        for (int position = portal - 1; position > 0; position--) {
+            if (!identity.equals(BoundedRegionPathRouter.EdgeIdentity.of(
+                    biomeIds[position - 1], biomeIds[position]
+            ))) break;
+            length++;
+        }
+        for (int position = portal + 1;
+             position < TILE_QUARTS; position++) {
+            if (!identity.equals(BoundedRegionPathRouter.EdgeIdentity.of(
+                    biomeIds[position - 1], biomeIds[position]
+            ))) break;
+            length++;
+        }
+        return length;
     }
 
     private static boolean isPair(
@@ -722,7 +756,9 @@ public final class RegionBoundaryRouter {
                                 + "{} rounded bridge steps; edge runs "
                                 + "{} selected/{} eligible/{} total, "
                                 + "{} short, {} beyond reach, "
-                                + "nearest beyond {} quart)",
+                                + "nearest beyond {} quart; "
+                                + "{} selected dead ends, longest continuation "
+                                + "{} quart, portal continuation {}/{})",
                         minBlockX, minBlockX + TILE_QUARTS * 4 - 1,
                         minBlockZ, minBlockZ + TILE_QUARTS * 4 - 1,
                         prepared.changedCells(),
@@ -734,7 +770,14 @@ public final class RegionBoundaryRouter {
                         prepared.edgeRunDiagnostics().totalRuns(),
                         prepared.edgeRunDiagnostics().rejectedShort(),
                         prepared.edgeRunDiagnostics().rejectedBeyondReach(),
-                        prepared.edgeRunDiagnostics().nearestBeyondReach()
+                        prepared.edgeRunDiagnostics().nearestBeyondReach(),
+                        prepared.edgeRunDiagnostics().selectedDeadEnds(),
+                        prepared.edgeRunDiagnostics()
+                                .longestSelectedContinuation(),
+                        prepared.edgeRunDiagnostics()
+                                .startPortalContinuation(),
+                        prepared.edgeRunDiagnostics()
+                                .endPortalContinuation()
                 );
             } else {
                 LOGGER.info(
