@@ -3,17 +3,24 @@ package net.semppi.semppis_mythical_legends_mod.world;
 import net.minecraft.core.Holder;
 import net.minecraft.core.QuartPos;
 import net.minecraft.resources.ResourceLocation;
+import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.tags.BiomeTags;
 import net.minecraft.world.level.ServerLevelAccessor;
 import net.minecraft.world.level.biome.Biome;
+import net.minecraftforge.event.TickEvent;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 import java.util.Arrays;
+import java.util.ArrayList;
+import java.util.ArrayDeque;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.WeakHashMap;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 /**
  * Prepares bounded deterministic border routes without searching from the
@@ -27,8 +34,19 @@ public final class RegionBoundaryRouter {
     private static final int PORTAL_RIVER_BONUS = 8;
     private static final int MAX_CACHE_ENTRIES = 131_072;
     private static final int MAX_PREPARED_TILES = 8_192;
+    private static final long CAPTURE_BUDGET_NANOS = 1_000_000L;
+    private static final int MAX_CAPTURE_SAMPLES_PER_TICK = 32;
     private static final Map<ServerLevel, RouteCache> WORLD_CACHES =
             new WeakHashMap<>();
+    private static final Map<MinecraftServer, ArrayDeque<CaptureJob>>
+            CAPTURE_QUEUES = new WeakHashMap<>();
+    private static final ExecutorService ROUTE_WORKER =
+            Executors.newSingleThreadExecutor(task -> {
+                Thread thread = new Thread(task, "sml-border-router");
+                thread.setDaemon(true);
+                thread.setPriority(Thread.MIN_PRIORITY);
+                return thread;
+            });
 
     private RegionBoundaryRouter() {}
 
@@ -62,7 +80,117 @@ public final class RegionBoundaryRouter {
         return prepared == null ? rawOwner : prepared;
     }
 
+    /**
+     * Captures world inputs on the server thread, runs only the detached graph
+     * search on one low-priority worker, and atomically publishes back on the
+     * server thread. Players requesting the same tile share one preparation.
+     */
+    public static void prepareForMap(
+            ServerLevel level, int x, int z, Runnable completion
+    ) {
+        int tileX = Math.floorDiv(
+                QuartPos.fromBlock(x), TILE_QUARTS
+        );
+        int tileZ = Math.floorDiv(
+                QuartPos.fromBlock(z), TILE_QUARTS
+        );
+        long tileKey = cellKey(tileX, tileZ);
+        RouteCache cache = cacheFor(level);
+        if (cache.isPrepared(tileKey)) {
+            completion.run();
+            return;
+        }
+        if (!cache.beginPreparation(tileKey, completion)) {
+            return;
+        }
+
+        synchronized (CAPTURE_QUEUES) {
+            CAPTURE_QUEUES.computeIfAbsent(
+                    level.getServer(), ignored -> new ArrayDeque<>()
+            ).addLast(new CaptureJob(
+                    level, tileX, tileZ, tileKey, cache
+            ));
+        }
+    }
+
+    /** Runs a strictly budgeted slice of diagnostic world capture each tick. */
+    public static void onServerTick(TickEvent.ServerTickEvent event) {
+        if (event.phase != TickEvent.Phase.END) return;
+        CaptureJob job;
+        synchronized (CAPTURE_QUEUES) {
+            ArrayDeque<CaptureJob> queue = CAPTURE_QUEUES.get(
+                    event.getServer()
+            );
+            job = queue == null ? null : queue.peekFirst();
+        }
+        if (job == null) return;
+
+        long deadline = System.nanoTime() + CAPTURE_BUDGET_NANOS;
+        CapturedTile captured;
+        try {
+            captured = job.captureSlice(
+                    deadline, MAX_CAPTURE_SAMPLES_PER_TICK
+            );
+        } catch (RuntimeException exception) {
+            LOGGER.error("Failed to capture SML border tile", exception);
+            job.cache().failPreparation(job.tileKey());
+            removeCaptureJob(event.getServer(), job);
+            return;
+        }
+        if (captured == null) return;
+        removeCaptureJob(event.getServer(), job);
+        routeDetached(job, captured);
+    }
+
+    private static void removeCaptureJob(
+            MinecraftServer server, CaptureJob job
+    ) {
+        synchronized (CAPTURE_QUEUES) {
+            ArrayDeque<CaptureJob> queue = CAPTURE_QUEUES.get(server);
+            if (queue == null) return;
+            queue.remove(job);
+            if (queue.isEmpty()) CAPTURE_QUEUES.remove(server);
+        }
+    }
+
+    private static void routeDetached(
+            CaptureJob job, CapturedTile captured
+    ) {
+        ROUTE_WORKER.execute(() -> {
+            PreparedTile prepared;
+            long routeStarted = System.nanoTime();
+            try {
+                prepared = routeCaptured(captured);
+            } catch (RuntimeException exception) {
+                LOGGER.error(
+                        "Failed to route captured SML border tile",
+                        exception
+                );
+                job.level().getServer().execute(() ->
+                        job.cache().failPreparation(job.tileKey())
+                );
+                return;
+            }
+            long routeMillis = elapsedMillis(routeStarted);
+            job.level().getServer().execute(() -> {
+                job.cache().publish(job.tileKey(), prepared);
+                LOGGER.info(
+                        "Final border preparation timing: {} ms capture, "
+                                + "{} ms detached route",
+                        job.elapsedMillis(), routeMillis
+                );
+                job.cache().completePreparation(job.tileKey());
+            });
+        });
+    }
+
     private static PreparedTile prepareTile(
+            ServerLevelAccessor level, int tileX, int tileZ
+    ) {
+        return routeCaptured(captureTile(level, tileX, tileZ));
+    }
+
+    private static CapturedTile captureTile(
             ServerLevelAccessor level, int tileX, int tileZ
     ) {
         int originX = tileX * TILE_QUARTS;
@@ -78,6 +206,7 @@ public final class RegionBoundaryRouter {
 
         Region first = null;
         Region second = null;
+        boolean tooManyRegions = false;
         for (int z = 0; z < TILE_QUARTS; z++) {
             for (int x = 0; x < TILE_QUARTS; x++) {
                 int index = index(x, z);
@@ -94,10 +223,7 @@ public final class RegionBoundaryRouter {
                         second = owner;
                     } else if (!owner.equals(first)
                             && !owner.equals(second)) {
-                        return PreparedTile.raw(
-                                originX, originZ, raw,
-                                TileResult.TOO_MANY_REGIONS
-                        );
+                        tooManyRegions = true;
                     }
                 }
                 Holder<Biome> sample = biomeSource.getNoiseBiome(
@@ -108,30 +234,67 @@ public final class RegionBoundaryRouter {
                 rivers[index] = sample.is(BiomeTags.IS_RIVER);
             }
         }
-        if (first == null || second == null) {
-            return PreparedTile.raw(
-                    originX, originZ, raw, TileResult.NO_RAW_BOUNDARY
+        if (tooManyRegions) {
+            return CapturedTile.raw(
+                    originX, originZ, raw, biomes, rivers,
+                    TileResult.TOO_MANY_REGIONS
             );
         }
-        Region routeFirst = first;
-        Region routeSecond = second;
+        if (first == null || second == null) {
+            return CapturedTile.raw(
+                    originX, originZ, raw, biomes, rivers,
+                    TileResult.NO_RAW_BOUNDARY
+            );
+        }
+        BoundedRegionPathRouter.RawPortals rawPortals =
+                BoundedRegionPathRouter.rawPortals(raw, first, second);
+        if (rawPortals == null) {
+            return CapturedTile.raw(
+                    originX, originZ, raw, biomes, rivers,
+                    TileResult.BRANCHED_OR_DISCONNECTED_RAW
+            );
+        }
+        BoundedRegionPathRouter.Portal startPortal = sharedPortal(
+                level, originX, originZ, rawPortals.start(),
+                first, second, biomeSource, climateSampler, quartY
+        );
+        BoundedRegionPathRouter.Portal endPortal = sharedPortal(
+                level, originX, originZ, rawPortals.end(),
+                first, second, biomeSource, climateSampler, quartY
+        );
+        return new CapturedTile(
+                originX, originZ, raw, biomes, rivers, first, second,
+                rawPortals.start(), rawPortals.end(),
+                startPortal, endPortal, null
+        );
+    }
+
+    /** Pure CPU work over inputs detached from Minecraft's world state. */
+    private static PreparedTile routeCaptured(CapturedTile captured) {
+        if (captured.earlyResult() != null) {
+            return PreparedTile.raw(
+                    captured.originX(), captured.originZ(), captured.raw(),
+                    captured.earlyResult()
+            );
+        }
         BoundedRegionPathRouter.RouteResult route =
                 BoundedRegionPathRouter.route(
-                raw, biomes, rivers, routeFirst, routeSecond,
-                rawPortal -> sharedPortal(
-                        level, originX, originZ, rawPortal,
-                        routeFirst, routeSecond, biomeSource,
-                        climateSampler, quartY
-                )
+                captured.raw(), captured.biomes(), captured.rivers(),
+                captured.first(), captured.second(),
+                rawPortal -> rawPortal.equals(captured.rawStart())
+                        ? captured.startPortal()
+                        : rawPortal.equals(captured.rawEnd())
+                                ? captured.endPortal() : null
         );
         if (route.regions() == null) {
             return PreparedTile.raw(
-                    originX, originZ, raw,
+                    captured.originX(), captured.originZ(), captured.raw(),
                     TileResult.valueOf(route.rejectionReason().name())
             );
         }
         return new PreparedTile(
-                originX, originZ, route.regions(), TileResult.ROUTED,
+                captured.originX(), captured.originZ(),
+                route.regions(), TileResult.ROUTED,
                 route.changedCells(), route.preferredEdgeSteps(),
                 route.controlledHandoffs(), route.roundedBridgeSteps(),
                 route.edgeRunDiagnostics()
@@ -175,6 +338,24 @@ public final class RegionBoundaryRouter {
                     .map(key -> key.location()).orElse(null);
             river[position] = sample.is(BiomeTags.IS_RIVER);
         }
+
+        return resolveSharedPortal(
+                rawPortal, first, second, owners, biomeIds, river
+        );
+    }
+
+    private static BoundedRegionPathRouter.Portal resolveSharedPortal(
+            BoundedRegionPathRouter.Portal rawPortal,
+            Region first, Region second, Region[] owners,
+            ResourceLocation[] biomeIds, boolean[] river
+    ) {
+        int rawX = rawPortal.x();
+        int rawZ = rawPortal.z();
+        if ((rawX == 0 || rawX == TILE_QUARTS)
+                && (rawZ == 0 || rawZ == TILE_QUARTS)) {
+            return rawPortal;
+        }
+        boolean horizontal = rawZ == 0 || rawZ == TILE_QUARTS;
 
         int rawTransition = -1;
         for (int position = 0; position < TILE_QUARTS - 1; position++) {
@@ -240,6 +421,10 @@ public final class RegionBoundaryRouter {
         return ((long) quartX << 32) ^ (quartZ & 0xFFFFFFFFL);
     }
 
+    private static long elapsedMillis(long started) {
+        return (System.nanoTime() - started) / 1_000_000L;
+    }
+
     private enum TileResult {
         ROUTED,
         NO_RAW_BOUNDARY,
@@ -256,6 +441,199 @@ public final class RegionBoundaryRouter {
         PORTAL_SIDE_CONFLICT,
         UNANCHORED_COMPONENT,
         NO_MEANINGFUL_CHANGE
+    }
+
+    private static final class CaptureJob {
+        private final ServerLevel level;
+        private final int originX;
+        private final int originZ;
+        private final long tileKey;
+        private final RouteCache cache;
+        private final Region[] raw = new Region[TILE_CELLS];
+        private final ResourceLocation[] biomes =
+                new ResourceLocation[TILE_CELLS];
+        private final boolean[] rivers = new boolean[TILE_CELLS];
+        private final net.minecraft.world.level.biome.BiomeSource biomeSource;
+        private final net.minecraft.world.level.biome.Climate.Sampler
+                climateSampler;
+        private final int quartY;
+        private final long started = System.nanoTime();
+        private int cellIndex;
+        private Region first;
+        private Region second;
+        private boolean tooManyRegions;
+        private boolean boundaryInitialized;
+        private BoundedRegionPathRouter.RawPortals rawPortals;
+        private PortalCapture startCapture;
+        private PortalCapture endCapture;
+
+        private CaptureJob(
+                ServerLevel level, int tileX, int tileZ,
+                long tileKey, RouteCache cache
+        ) {
+            this.level = level;
+            this.originX = tileX * TILE_QUARTS;
+            this.originZ = tileZ * TILE_QUARTS;
+            this.tileKey = tileKey;
+            this.cache = cache;
+            var chunkSource = level.getChunkSource();
+            var generator = chunkSource.getGenerator();
+            this.biomeSource = generator.getBiomeSource();
+            this.climateSampler = chunkSource.randomState().sampler();
+            this.quartY = QuartPos.fromBlock(generator.getSeaLevel());
+        }
+
+        private CapturedTile captureSlice(long deadline, int maxSamples) {
+            int samples = 0;
+            while (samples < maxSamples && System.nanoTime() < deadline) {
+                if (cellIndex < TILE_CELLS) {
+                    sampleCell(cellIndex++);
+                    samples++;
+                    continue;
+                }
+                if (!boundaryInitialized) {
+                    boundaryInitialized = true;
+                    if (tooManyRegions) {
+                        return early(TileResult.TOO_MANY_REGIONS);
+                    }
+                    if (first == null || second == null) {
+                        return early(TileResult.NO_RAW_BOUNDARY);
+                    }
+                    rawPortals = BoundedRegionPathRouter.rawPortals(
+                            raw, first, second
+                    );
+                    if (rawPortals == null) {
+                        return early(
+                                TileResult.BRANCHED_OR_DISCONNECTED_RAW
+                        );
+                    }
+                    startCapture = new PortalCapture(rawPortals.start());
+                    endCapture = new PortalCapture(rawPortals.end());
+                }
+                if (!startCapture.complete()) {
+                    startCapture.sampleNext(this);
+                    samples++;
+                    continue;
+                }
+                if (!endCapture.complete()) {
+                    endCapture.sampleNext(this);
+                    samples++;
+                    continue;
+                }
+                return new CapturedTile(
+                        originX, originZ, raw, biomes, rivers,
+                        first, second,
+                        rawPortals.start(), rawPortals.end(),
+                        startCapture.resolve(first, second),
+                        endCapture.resolve(first, second), null
+                );
+            }
+            return null;
+        }
+
+        private void sampleCell(int index) {
+            int x = index % TILE_QUARTS;
+            int z = index / TILE_QUARTS;
+            int quartX = originX + x;
+            int quartZ = originZ + z;
+            Region owner = ClimateDirectionAssignment.landRegion(
+                    level, QuartPos.toBlock(quartX) + 2,
+                    QuartPos.toBlock(quartZ) + 2
+            );
+            raw[index] = owner;
+            if (!owner.ocean()) {
+                if (first == null) first = owner;
+                else if (!owner.equals(first) && second == null) {
+                    second = owner;
+                } else if (!owner.equals(first) && !owner.equals(second)) {
+                    tooManyRegions = true;
+                }
+            }
+            Holder<Biome> sample = biomeSource.getNoiseBiome(
+                    quartX, quartY, quartZ, climateSampler
+            );
+            biomes[index] = sample.unwrapKey()
+                    .map(key -> key.location()).orElse(null);
+            rivers[index] = sample.is(BiomeTags.IS_RIVER);
+        }
+
+        private CapturedTile early(TileResult result) {
+            return CapturedTile.raw(
+                    originX, originZ, raw, biomes, rivers, result
+            );
+        }
+
+        private long elapsedMillis() { return RegionBoundaryRouter.elapsedMillis(started); }
+        private ServerLevel level() { return level; }
+        private long tileKey() { return tileKey; }
+        private RouteCache cache() { return cache; }
+    }
+
+    private static final class PortalCapture {
+        private final BoundedRegionPathRouter.Portal rawPortal;
+        private final Region[] owners = new Region[TILE_QUARTS];
+        private final ResourceLocation[] biomes =
+                new ResourceLocation[TILE_QUARTS];
+        private final boolean[] rivers = new boolean[TILE_QUARTS];
+        private int position;
+
+        private PortalCapture(BoundedRegionPathRouter.Portal rawPortal) {
+            this.rawPortal = rawPortal;
+        }
+
+        private void sampleNext(CaptureJob job) {
+            boolean horizontal = rawPortal.z() == 0
+                    || rawPortal.z() == TILE_QUARTS;
+            int quartX = horizontal
+                    ? job.originX + position
+                    : job.originX + rawPortal.x();
+            int quartZ = horizontal
+                    ? job.originZ + rawPortal.z()
+                    : job.originZ + position;
+            owners[position] = ClimateDirectionAssignment.landRegion(
+                    job.level, QuartPos.toBlock(quartX) + 2,
+                    QuartPos.toBlock(quartZ) + 2
+            );
+            Holder<Biome> sample = job.biomeSource.getNoiseBiome(
+                    quartX, job.quartY, quartZ, job.climateSampler
+            );
+            biomes[position] = sample.unwrapKey()
+                    .map(key -> key.location()).orElse(null);
+            rivers[position] = sample.is(BiomeTags.IS_RIVER);
+            position++;
+        }
+
+        private boolean complete() { return position >= TILE_QUARTS; }
+
+        private BoundedRegionPathRouter.Portal resolve(
+                Region first, Region second
+        ) {
+            return resolveSharedPortal(
+                    rawPortal, first, second, owners, biomes, rivers
+            );
+        }
+    }
+
+    private record CapturedTile(
+            int originX, int originZ, Region[] raw,
+            ResourceLocation[] biomes, boolean[] rivers,
+            Region first, Region second,
+            BoundedRegionPathRouter.Portal rawStart,
+            BoundedRegionPathRouter.Portal rawEnd,
+            BoundedRegionPathRouter.Portal startPortal,
+            BoundedRegionPathRouter.Portal endPortal,
+            TileResult earlyResult
+    ) {
+        private static CapturedTile raw(
+                int originX, int originZ, Region[] raw,
+                ResourceLocation[] biomes, boolean[] rivers,
+                TileResult result
+        ) {
+            return new CapturedTile(
+                    originX, originZ, raw, biomes, rivers,
+                    null, null, null, null, null, null, result
+            );
+        }
     }
 
     private record PreparedTile(
@@ -290,10 +668,39 @@ public final class RegionBoundaryRouter {
                             Map.Entry<Long, Boolean> eldest
                     ) { return size() > MAX_PREPARED_TILES; }
                 };
+        private final Map<Long, List<Runnable>> preparationWaiters =
+                new LinkedHashMap<>();
 
         private synchronized Region get(long key) { return cells.get(key); }
         private synchronized boolean isPrepared(long key) {
             return preparedTiles.containsKey(key);
+        }
+        private synchronized boolean beginPreparation(
+                long key, Runnable completion
+        ) {
+            List<Runnable> waiters = preparationWaiters.get(key);
+            if (waiters != null) {
+                waiters.add(completion);
+                return false;
+            }
+            waiters = new ArrayList<>();
+            waiters.add(completion);
+            preparationWaiters.put(key, waiters);
+            return true;
+        }
+
+        private void completePreparation(long key) {
+            List<Runnable> waiters;
+            synchronized (this) {
+                waiters = preparationWaiters.remove(key);
+            }
+            if (waiters != null) {
+                for (Runnable waiter : waiters) waiter.run();
+            }
+        }
+
+        private synchronized void failPreparation(long key) {
+            preparationWaiters.remove(key);
         }
         private synchronized void publish(long key, PreparedTile prepared) {
             for (int z = 0; z < TILE_QUARTS; z++) {

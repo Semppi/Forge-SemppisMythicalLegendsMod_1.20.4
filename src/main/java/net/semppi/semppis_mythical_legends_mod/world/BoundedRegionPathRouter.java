@@ -162,6 +162,16 @@ final class BoundedRegionPathRouter {
                 : RouteResult.rejected(RejectionReason.NO_MEANINGFUL_CHANGE);
     }
 
+    /** Finds the two deterministic Raw portals before world access is left. */
+    static RawPortals rawPortals(
+            Region[] raw, Region first, Region second
+    ) {
+        RawBoundary boundary = traceRawBoundary(raw, first, second);
+        return boundary == null ? null : new RawPortals(
+                portal(boundary.start()), portal(boundary.end())
+        );
+    }
+
     /**
      * Replaces only unsupported bridge spans with a balanced cardinal
      * staircase. The wall lattice stays four-connected, but long rectangular
@@ -1023,6 +1033,7 @@ final class BoundedRegionPathRouter {
             int start, int end, boolean[] vertices,
             List<Integer> orderedPath
     ) {}
+    record RawPortals(Portal start, Portal end) {}
     private record CellPair(int first, int second) {}
     record EdgeIdentity(
             ResourceLocation first, ResourceLocation second

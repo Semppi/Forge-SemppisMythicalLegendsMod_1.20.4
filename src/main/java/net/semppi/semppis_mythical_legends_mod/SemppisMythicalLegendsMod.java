@@ -49,6 +49,7 @@ import net.semppi.semppis_mythical_legends_mod.recipe.ModRecipeTypes;
 import net.semppi.semppis_mythical_legends_mod.season.SeasonManager;
 import net.semppi.semppis_mythical_legends_mod.sound.ModSounds;
 import net.semppi.semppis_mythical_legends_mod.spawn.RegionSpawn;
+import net.semppi.semppis_mythical_legends_mod.world.RegionBoundaryRouter;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import software.bernie.geckolib.GeckoLib;
@@ -75,6 +76,9 @@ public class SemppisMythicalLegendsMod {
         modEventBus.addListener(DataGenerators::gatherData);
 
         MinecraftForge.EVENT_BUS.addListener(this::onRegisterCommands);
+        MinecraftForge.EVENT_BUS.addListener(
+                RegionBoundaryRouter::onServerTick
+        );
         MinecraftForge.EVENT_BUS.register(new TransformationEventHandler());
         MinecraftForge.EVENT_BUS.register(new PlayerTeleportHandler());
         MinecraftForge.EVENT_BUS.register(new PlayerRenderHandler());
