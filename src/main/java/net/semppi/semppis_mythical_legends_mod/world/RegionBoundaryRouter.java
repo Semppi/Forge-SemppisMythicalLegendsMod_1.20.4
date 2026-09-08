@@ -32,6 +32,9 @@ public final class RegionBoundaryRouter {
     private static final int TILE_CELLS = TILE_QUARTS * TILE_QUARTS;
     private static final int PORTAL_REACH_QUARTS = 40;
     private static final int PORTAL_RIVER_BONUS = 8;
+    private static final int PORTAL_LOOKAHEAD_DEPTH = 4;
+    private static final int PORTAL_LOOKAHEAD_SEARCH = 4;
+    private static final int PORTAL_LOOKAHEAD_WEIGHT = 8;
     private static final int MAX_CACHE_ENTRIES = 131_072;
     private static final int MAX_PREPARED_TILES = 8_192;
     private static final long CAPTURE_BUDGET_NANOS = 1_000_000L;
@@ -545,12 +548,12 @@ public final class RegionBoundaryRouter {
                     endCapture = new PortalCapture(rawPortals.end());
                 }
                 if (!startCapture.complete()) {
-                    startCapture.sampleNext(this);
+                    startCapture.sampleNext(this, first, second);
                     samples++;
                     continue;
                 }
                 if (!endCapture.complete()) {
-                    endCapture.sampleNext(this);
+                    endCapture.sampleNext(this, first, second);
                     samples++;
                     continue;
                 }
@@ -609,13 +612,38 @@ public final class RegionBoundaryRouter {
         private final ResourceLocation[] biomes =
                 new ResourceLocation[TILE_QUARTS];
         private final boolean[] rivers = new boolean[TILE_QUARTS];
+        private final ResourceLocation[] lookaheadBiomes =
+                new ResourceLocation[
+                        TILE_QUARTS * PORTAL_LOOKAHEAD_DEPTH
+                ];
         private int position;
+        private int lookaheadPosition;
+        private boolean portalResolved;
+        private BoundedRegionPathRouter.Portal resolvedPortal;
 
         private PortalCapture(BoundedRegionPathRouter.Portal rawPortal) {
             this.rawPortal = rawPortal;
         }
 
-        private void sampleNext(CaptureJob job) {
+        private void sampleNext(
+                CaptureJob job, Region first, Region second
+        ) {
+            if (position >= TILE_QUARTS) {
+                if (!portalResolved) {
+                    portalResolved = true;
+                    resolvedPortal = resolveSharedPortal(
+                            rawPortal, first, second,
+                            owners, biomes, rivers
+                    );
+                    if (resolvedPortal == null
+                            || resolvedPortal.edgeIdentity() == null) {
+                        lookaheadPosition = lookaheadBiomes.length;
+                        return;
+                    }
+                }
+                sampleLookahead(job);
+                return;
+            }
             boolean horizontal = rawPortal.z() == 0
                     || rawPortal.z() == TILE_QUARTS;
             int quartX = horizontal
@@ -637,14 +665,91 @@ public final class RegionBoundaryRouter {
             position++;
         }
 
-        private boolean complete() { return position >= TILE_QUARTS; }
+        private void sampleLookahead(CaptureJob job) {
+            int depth = lookaheadPosition / TILE_QUARTS;
+            int along = lookaheadPosition % TILE_QUARTS;
+            boolean horizontal = rawPortal.z() == 0
+                    || rawPortal.z() == TILE_QUARTS;
+            int quartX;
+            int quartZ;
+            if (horizontal) {
+                quartX = job.originX + along;
+                quartZ = rawPortal.z() == 0
+                        ? job.originZ - 1 - depth
+                        : job.originZ + TILE_QUARTS + depth;
+            } else {
+                quartX = rawPortal.x() == 0
+                        ? job.originX - 1 - depth
+                        : job.originX + TILE_QUARTS + depth;
+                quartZ = job.originZ + along;
+            }
+            Holder<Biome> sample = job.biomeSource.getNoiseBiome(
+                    quartX, job.quartY, quartZ, job.climateSampler
+            );
+            lookaheadBiomes[lookaheadPosition] = sample.unwrapKey()
+                    .map(key -> key.location()).orElse(null);
+            lookaheadPosition++;
+        }
+
+        private boolean complete() {
+            return portalResolved && (resolvedPortal == null
+                    || lookaheadPosition >= lookaheadBiomes.length);
+        }
 
         private BoundedRegionPathRouter.Portal resolve(
                 Region first, Region second
         ) {
-            return resolveSharedPortal(
-                    rawPortal, first, second, owners, biomes, rivers
+            if (resolvedPortal == null) return null;
+            int continuation = resolvedPortal.continuationSteps()
+                    + forwardContinuation(resolvedPortal);
+            return new BoundedRegionPathRouter.Portal(
+                    resolvedPortal.x(), resolvedPortal.z(),
+                    resolvedPortal.edgeIdentity(), continuation
             );
+        }
+
+        private int forwardContinuation(
+                BoundedRegionPathRouter.Portal portal
+        ) {
+            BoundedRegionPathRouter.EdgeIdentity identity =
+                    portal.edgeIdentity();
+            if (identity == null) return 0;
+            boolean horizontal = rawPortal.z() == 0
+                    || rawPortal.z() == TILE_QUARTS;
+            int previous = horizontal ? portal.x() : portal.z();
+            int followedDepth = 0;
+            for (int depth = 0; depth < PORTAL_LOOKAHEAD_DEPTH; depth++) {
+                int best = -1;
+                int bestDistance = PORTAL_LOOKAHEAD_SEARCH + 1;
+                int minimum = Math.max(
+                        1, previous - PORTAL_LOOKAHEAD_SEARCH
+                );
+                int maximum = Math.min(
+                        TILE_QUARTS - 1,
+                        previous + PORTAL_LOOKAHEAD_SEARCH
+                );
+                int row = depth * TILE_QUARTS;
+                for (int candidate = minimum;
+                     candidate <= maximum; candidate++) {
+                    BoundedRegionPathRouter.EdgeIdentity candidateIdentity =
+                            BoundedRegionPathRouter.EdgeIdentity.of(
+                                    lookaheadBiomes[row + candidate - 1],
+                                    lookaheadBiomes[row + candidate]
+                            );
+                    if (!identity.equals(candidateIdentity)) continue;
+                    int distance = Math.abs(candidate - previous);
+                    if (distance < bestDistance
+                            || distance == bestDistance
+                            && candidate < best) {
+                        best = candidate;
+                        bestDistance = distance;
+                    }
+                }
+                if (best < 0) break;
+                followedDepth++;
+                previous = best;
+            }
+            return followedDepth * PORTAL_LOOKAHEAD_WEIGHT;
         }
     }
 
@@ -758,7 +863,8 @@ public final class RegionBoundaryRouter {
                                 + "{} short, {} beyond reach, "
                                 + "nearest beyond {} quart; "
                                 + "{} selected dead ends, longest continuation "
-                                + "{} quart, portal continuation {}/{})",
+                                + "{} quart, portal continuation {}/{}; "
+                                + "candidates [{}])",
                         minBlockX, minBlockX + TILE_QUARTS * 4 - 1,
                         minBlockZ, minBlockZ + TILE_QUARTS * 4 - 1,
                         prepared.changedCells(),
@@ -777,7 +883,8 @@ public final class RegionBoundaryRouter {
                         prepared.edgeRunDiagnostics()
                                 .startPortalContinuation(),
                         prepared.edgeRunDiagnostics()
-                                .endPortalContinuation()
+                                .endPortalContinuation(),
+                        prepared.edgeRunDiagnostics().selectedCandidates()
                 );
             } else {
                 LOGGER.info(

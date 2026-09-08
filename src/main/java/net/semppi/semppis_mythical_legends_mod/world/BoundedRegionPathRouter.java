@@ -16,9 +16,9 @@ final class BoundedRegionPathRouter {
     private static final int VERTICES = VERTEX_SIZE * VERTEX_SIZE;
     private static final int CELLS = SIZE * SIZE;
     private static final int MAX_DISTANCE_FROM_RAW = 40;
-    // Four active runs across three handoff layers keep the state bound below
-    // the previous sixteen independent path searches.
-    private static final int MAX_PREFERRED_EDGE_RUNS = 4;
+    // Six active runs across three handoff layers remain small detached CPU
+    // work while reserving room for portal and through-running candidates.
+    private static final int MAX_PREFERRED_EDGE_RUNS = 6;
     private static final int MIN_PREFERRED_RUN_EDGES = 4;
     private static final int MAX_EDGE_HANDOFFS = 2;
     private static final int EDGE_ACQUIRE_COST = 4;
@@ -65,12 +65,13 @@ final class BoundedRegionPathRouter {
             int rejectedShort, int rejectedBeyondReach,
             int nearestBeyondReach, int selectedDeadEnds,
             int longestSelectedContinuation,
-            int startPortalContinuation, int endPortalContinuation
+            int startPortalContinuation, int endPortalContinuation,
+            String selectedCandidates
     ) {
         static final EdgeRunDiagnostics EMPTY =
                 new EdgeRunDiagnostics(
                         0, 0, 0, 0, 0, -1,
-                        0, 0, 0, 0
+                        0, 0, 0, 0, "none"
                 );
     }
 
@@ -97,7 +98,7 @@ final class BoundedRegionPathRouter {
         int end = vertex(endPortal.x(), endPortal.z());
         int[] rawDistance = distanceFromRaw(boundary.vertices());
         NaturalRuns naturalRuns = naturalRuns(
-                biomes, rawDistance, startPortal, endPortal
+                biomes, rawDistance, startPortal, endPortal, start, end
         );
         PathSearch selected = shortestPath(
                 start, end, rawDistance, raw, biomes, rivers,
@@ -128,7 +129,8 @@ final class BoundedRegionPathRouter {
             return RouteResult.rejected(RejectionReason.INVALID_SIDE_ANCHOR);
         }
         RoundedPath rounded = roundUnsupportedBridges(
-                path, rawDistance, biomes
+                path, rawDistance, biomes,
+                selected.handoffConnectorEdges()
         );
         List<Integer> finalPath = rounded.path();
         DirectedSides roundedStart = directedSides(
@@ -186,7 +188,7 @@ final class BoundedRegionPathRouter {
      */
     private static RoundedPath roundUnsupportedBridges(
             List<Integer> path, int[] rawDistance,
-            ResourceLocation[] biomes
+            ResourceLocation[] biomes, boolean[] forcedConnectorEdges
     ) {
         if (path.size() < 4) return new RoundedPath(path, 0);
         List<Integer> result = new ArrayList<>(path.size());
@@ -194,17 +196,18 @@ final class BoundedRegionPathRouter {
         int changedSteps = 0;
         int edge = 0;
         while (edge < path.size() - 1) {
-            if (!unsupportedBridgeEdge(
-                    path.get(edge), path.get(edge + 1), biomes
-            )) {
+            if (!forcedConnectorEdges[edge] && !unsupportedBridgeEdge(
+                    path.get(edge), path.get(edge + 1), biomes)) {
                 appendIfDifferent(result, path.get(edge + 1));
                 edge++;
                 continue;
             }
             int startEdge = edge;
-            while (edge < path.size() - 1 && unsupportedBridgeEdge(
-                    path.get(edge), path.get(edge + 1), biomes
-            )) {
+            while (edge < path.size() - 1
+                    && (forcedConnectorEdges[edge]
+                    || unsupportedBridgeEdge(
+                            path.get(edge), path.get(edge + 1), biomes
+                    ))) {
                 edge++;
             }
             int from = path.get(startEdge);
@@ -418,7 +421,9 @@ final class BoundedRegionPathRouter {
                         biomes, rivers, naturalRuns.runByEdge(),
                         active == 0 ? -1
                                 : naturalRuns.candidates()
-                                        .get(active - 1).runId()
+                                        .get(active - 1).runId(),
+                        active == 0 ? null
+                                : naturalRuns.distanceByCandidate()[active - 1]
                 );
                 if (active != 0 || edgeCandidate < 0) {
                     relax(
@@ -431,17 +436,43 @@ final class BoundedRegionPathRouter {
                     int nextActive = edgeCandidate + 1;
                     int nextHandoffs = active == 0
                             ? handoffs : handoffs + 1;
+                    EdgeRunCandidate candidate = naturalRuns.candidates()
+                            .get(edgeCandidate);
+                    if (active != 0 && candidate.deadEnd()
+                            && !candidate.reachesEndPortal()) {
+                        continue;
+                    }
                     if (nextHandoffs <= MAX_EDGE_HANDOFFS) {
-                        EdgeRunCandidate candidate = naturalRuns.candidates()
-                                .get(edgeCandidate);
                         int switchCost = edgeCost(
                                 currentVertex, next, rawDistance[next], raw,
                                 biomes, rivers, naturalRuns.runByEdge(),
-                                edgeRun
+                                edgeRun, null
                         ) + switchCost(candidate, active == 0);
                         relax(
                                 node.state(), next, nextActive,
                                 nextHandoffs, switchCost, activeStates,
+                                cost, previous, open
+                        );
+                    }
+                }
+
+                if (active == 0 && currentVertex == start) {
+                    for (int candidateIndex = 0;
+                         candidateIndex < naturalRuns.candidates().size();
+                         candidateIndex++) {
+                        EdgeRunCandidate candidate = naturalRuns.candidates()
+                                .get(candidateIndex);
+                        if (candidate.deadEnd()
+                                && !candidate.reachesEndPortal()) continue;
+                        int approachCost = edgeCost(
+                                currentVertex, next, rawDistance[next], raw,
+                                biomes, rivers, naturalRuns.runByEdge(),
+                                candidate.runId(),
+                                naturalRuns.distanceByCandidate()[candidateIndex]
+                        ) + switchCost(candidate, true);
+                        relax(
+                                node.state(), next, candidateIndex + 1,
+                                handoffs, approachCost, activeStates,
                                 cost, previous, open
                         );
                     }
@@ -483,6 +514,19 @@ final class BoundedRegionPathRouter {
         if (states.get(states.size() - 1) != startState) return null;
         Collections.reverse(path);
         Collections.reverse(states);
+        boolean[] handoffConnectorEdges = new boolean[path.size() - 1];
+        for (int index = 1; index < states.size(); index++) {
+            int before = stateActive(states.get(index - 1), activeStates);
+            int after = stateActive(states.get(index), activeStates);
+            if (before == 0 || after == 0 || before == after) continue;
+            int minimum = Math.max(0, index - 4);
+            int maximum = Math.min(
+                    handoffConnectorEdges.length - 1, index + 3
+            );
+            for (int edge = minimum; edge <= maximum; edge++) {
+                handoffConnectorEdges[edge] = true;
+            }
+        }
         int preferredEdges = 0;
         for (int index = 1; index < path.size(); index++) {
             int slot = edgeSlot(path.get(index - 1), path.get(index));
@@ -495,7 +539,8 @@ final class BoundedRegionPathRouter {
         }
         return new PathSearch(
                 path, bestCost, preferredEdges,
-                stateHandoffs(bestState, activeStates)
+                stateHandoffs(bestState, activeStates),
+                handoffConnectorEdges
         );
     }
 
@@ -568,7 +613,8 @@ final class BoundedRegionPathRouter {
     private static int edgeCost(
             int from, int to, int rawDistance,
             Region[] raw, ResourceLocation[] biomes, boolean[] rivers,
-            int[] runByEdge, int preferredRun
+            int[] runByEdge, int preferredRun,
+            int[] preferredDistance
     ) {
         CellPair pair = separatedCells(from, to);
         if (pair == null) return INF;
@@ -591,8 +637,12 @@ final class BoundedRegionPathRouter {
             }
             return Math.max(1, 2 + rawDistance / 8 - (river ? 1 : 0));
         }
-        if (rawEdge) return 8;
-        return 20 + rawDistance / 2;
+        int unsupportedCost = rawEdge ? 8 : 20 + rawDistance / 2;
+        if (preferredRun >= 0 && preferredDistance != null
+                && preferredDistance[to] < preferredDistance[from]) {
+            return Math.min(unsupportedCost, 7 + rawDistance / 12);
+        }
+        return unsupportedCost;
     }
 
     /**
@@ -601,7 +651,8 @@ final class BoundedRegionPathRouter {
      */
     private static NaturalRuns naturalRuns(
             ResourceLocation[] biomes, int[] rawDistance,
-            Portal startPortal, Portal endPortal
+            Portal startPortal, Portal endPortal,
+            int startVertex, int endVertex
     ) {
         EdgeIdentity startIdentity = startPortal.edgeIdentity();
         EdgeIdentity endIdentity = endPortal.edgeIdentity();
@@ -651,7 +702,7 @@ final class BoundedRegionPathRouter {
 
         int[] minimumDistance = new int[runCount];
         int[] edgeCount = new int[runCount];
-        int[] perimeterContacts = new int[runCount];
+        int[] perimeterSides = new int[runCount];
         EdgeIdentity[] identityByRun = new EdgeIdentity[runCount];
         Arrays.fill(minimumDistance, INF);
         for (int slot = 0; slot < edgeSlots; slot++) {
@@ -664,8 +715,8 @@ final class BoundedRegionPathRouter {
                     Math.min(rawDistance[from], rawDistance[to])
             );
             edgeCount[run]++;
-            if (onPerimeter(from)) perimeterContacts[run]++;
-            if (onPerimeter(to)) perimeterContacts[run]++;
+            perimeterSides[run] |= perimeterSideMask(from);
+            perimeterSides[run] |= perimeterSideMask(to);
             identityByRun[run] = pairs[slot];
         }
         List<EdgeRunCandidate> candidates = new ArrayList<>();
@@ -675,20 +726,34 @@ final class BoundedRegionPathRouter {
         for (int run = 0; run < runCount; run++) {
             if (edgeCount[run] >= MIN_PREFERRED_RUN_EDGES
                     && minimumDistance[run] <= MAX_DISTANCE_FROM_RAW) {
+                boolean reachesStartPortal = runTouchesVertex(
+                        run, startVertex, runByEdge
+                );
+                boolean reachesEndPortal = runTouchesVertex(
+                        run, endVertex, runByEdge
+                );
                 int portalContinuation = 0;
-                if (identityByRun[run].equals(startIdentity)) {
+                if (reachesStartPortal
+                        && identityByRun[run].equals(startIdentity)) {
                     portalContinuation += startPortal.continuationSteps();
                 }
-                if (identityByRun[run].equals(endIdentity)) {
+                if (reachesEndPortal
+                        && identityByRun[run].equals(endIdentity)) {
                     portalContinuation += endPortal.continuationSteps();
                 }
                 int projectedContinuation = edgeCount[run]
                         + portalContinuation;
-                boolean deadEnd = perimeterContacts[run] == 0
-                        && projectedContinuation < SHORT_HANDOFF_TARGET;
+                boolean throughRunning = Integer.bitCount(
+                        perimeterSides[run]
+                ) >= 2;
+                boolean deadEnd = !throughRunning
+                        && !reachesEndPortal;
                 candidates.add(new EdgeRunCandidate(
                         run, minimumDistance[run], edgeCount[run],
-                        projectedContinuation, deadEnd, identityByRun[run]
+                        projectedContinuation, deadEnd, throughRunning,
+                        reachesStartPortal, reachesEndPortal,
+                        Integer.bitCount(perimeterSides[run]),
+                        identityByRun[run]
                 ));
             } else if (edgeCount[run] < MIN_PREFERRED_RUN_EDGES) {
                 rejectedShort++;
@@ -710,6 +775,10 @@ final class BoundedRegionPathRouter {
                     rightPortalMatch, leftPortalMatch
             );
             if (byPortal != 0) return byPortal;
+            int byThroughRunning = Boolean.compare(
+                    right.throughRunning(), left.throughRunning()
+            );
+            if (byThroughRunning != 0) return byThroughRunning;
             int byDeadEnd = Boolean.compare(
                     left.deadEnd(), right.deadEnd()
             );
@@ -734,33 +803,123 @@ final class BoundedRegionPathRouter {
         });
         int eligibleRuns = candidates.size();
         if (candidates.size() > MAX_PREFERRED_EDGE_RUNS) {
-            candidates = new ArrayList<>(candidates.subList(
-                    0, MAX_PREFERRED_EDGE_RUNS
-            ));
+            List<EdgeRunCandidate> ranked = candidates;
+            candidates = new ArrayList<>(MAX_PREFERRED_EDGE_RUNS);
+            addReservedCandidates(candidates, ranked, 0);
+            addReservedCandidates(candidates, ranked, 1);
+            addReservedCandidates(candidates, ranked, 2);
+            addReservedCandidates(candidates, ranked, 3);
         }
         int[] candidateByRun = new int[runCount];
         Arrays.fill(candidateByRun, -1);
         int selectedDeadEnds = 0;
         int longestSelectedContinuation = 0;
+        StringBuilder selectedSummary = new StringBuilder();
         for (int index = 0; index < candidates.size(); index++) {
-            candidateByRun[candidates.get(index).runId()] = index;
-            if (candidates.get(index).deadEnd()) selectedDeadEnds++;
+            EdgeRunCandidate candidate = candidates.get(index);
+            candidateByRun[candidate.runId()] = index;
+            if (candidate.deadEnd()) selectedDeadEnds++;
             longestSelectedContinuation = Math.max(
                     longestSelectedContinuation,
-                    candidates.get(index).projectedContinuation()
+                    candidate.projectedContinuation()
+            );
+            if (selectedSummary.length() > 0) selectedSummary.append(" | ");
+            selectedSummary.append('#').append(candidate.runId())
+                    .append(" d=").append(candidate.rawDistance())
+                    .append(" edges=").append(candidate.edgeCount())
+                    .append(" future=")
+                    .append(candidate.projectedContinuation())
+                    .append(" sides=").append(candidate.perimeterSides())
+                    .append(candidate.throughRunning() ? " through" : " terminal")
+                    .append(candidate.reachesStartPortal() ? " start" : "")
+                    .append(candidate.reachesEndPortal() ? " end" : "");
+        }
+        int[][] distanceByCandidate = new int[candidates.size()][];
+        for (int index = 0; index < candidates.size(); index++) {
+            distanceByCandidate[index] = distanceToRun(
+                    runByEdge, candidates.get(index).runId()
             );
         }
         return new NaturalRuns(
-                runByEdge, identityByRun, candidateByRun, candidates,
+                runByEdge, identityByRun, candidateByRun,
+                distanceByCandidate, candidates,
                 new EdgeRunDiagnostics(
                         runCount, eligibleRuns, candidates.size(),
                         rejectedShort, rejectedBeyondReach,
                         nearestBeyondReach >= INF ? -1 : nearestBeyondReach,
                         selectedDeadEnds, longestSelectedContinuation,
                         startPortal.continuationSteps(),
-                        endPortal.continuationSteps()
+                        endPortal.continuationSteps(),
+                        selectedSummary.length() == 0
+                                ? "none" : selectedSummary.toString()
                 )
         );
+    }
+
+    private static int[] distanceToRun(int[] runByEdge, int run) {
+        int[] distance = new int[VERTICES];
+        Arrays.fill(distance, INF);
+        ArrayDeque<Integer> queue = new ArrayDeque<>();
+        for (int slot = 0; slot < runByEdge.length; slot++) {
+            if (runByEdge[slot] != run) continue;
+            int from = edgeFrom(slot);
+            int to = edgeTo(slot);
+            if (distance[from] != 0) {
+                distance[from] = 0;
+                queue.addLast(from);
+            }
+            if (distance[to] != 0) {
+                distance[to] = 0;
+                queue.addLast(to);
+            }
+        }
+        while (!queue.isEmpty()) {
+            int current = queue.removeFirst();
+            for (int next : neighbors(current)) {
+                if (distance[next] <= distance[current] + 1) continue;
+                distance[next] = distance[current] + 1;
+                queue.addLast(next);
+            }
+        }
+        return distance;
+    }
+
+    private static void addReservedCandidates(
+            List<EdgeRunCandidate> selected,
+            List<EdgeRunCandidate> ranked, int pass
+    ) {
+        for (EdgeRunCandidate candidate : ranked) {
+            boolean matches = switch (pass) {
+                case 0 -> candidate.reachesStartPortal();
+                case 1 -> candidate.reachesEndPortal();
+                case 2 -> candidate.throughRunning();
+                default -> true;
+            };
+            if (matches && !selected.contains(candidate)) {
+                selected.add(candidate);
+                if (selected.size() >= MAX_PREFERRED_EDGE_RUNS) return;
+            }
+        }
+    }
+
+    private static boolean runTouchesVertex(
+            int run, int vertex, int[] runByEdge
+    ) {
+        for (int slot : incidentEdgeSlots(vertex)) {
+            if (runByEdge[slot] == run) return true;
+        }
+        return false;
+    }
+
+    private static int perimeterSideMask(int value) {
+        int x = vertexX(value);
+        int z = vertexZ(value);
+        int mask = 0;
+        if (x == 0) mask |= 1;
+        if (x == SIZE) mask |= 2;
+        if (z == 0) mask |= 4;
+        if (z == SIZE) mask |= 8;
+        return mask;
     }
 
     private static int portalMatch(
@@ -1111,16 +1270,19 @@ final class BoundedRegionPathRouter {
     private record EdgeRunCandidate(
             int runId, int rawDistance, int edgeCount,
             int projectedContinuation, boolean deadEnd,
+            boolean throughRunning, boolean reachesStartPortal,
+            boolean reachesEndPortal, int perimeterSides,
             EdgeIdentity identity
     ) {}
     private record NaturalRuns(
             int[] runByEdge, EdgeIdentity[] identityByRun,
-            int[] candidateByRun, List<EdgeRunCandidate> candidates,
+            int[] candidateByRun, int[][] distanceByCandidate,
+            List<EdgeRunCandidate> candidates,
             EdgeRunDiagnostics diagnostics
     ) {}
     private record PathSearch(
             List<Integer> path, int cost, int preferredEdges,
-            int handoffs
+            int handoffs, boolean[] handoffConnectorEdges
     ) {}
     private record RoundedPath(List<Integer> path, int changedSteps) {}
     private record DirectedSides(int leftCell, int rightCell) {}
