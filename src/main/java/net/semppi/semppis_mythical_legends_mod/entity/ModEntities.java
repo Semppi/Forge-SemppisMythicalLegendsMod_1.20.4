@@ -27,7 +27,7 @@ public class ModEntities {
 
     public static final RegistryObject<EntityType<PukisEntity>> PUKIS =
             ENTITY_TYPES.register("pukis", () -> EntityType.Builder.of(PukisEntity::new, MobCategory.CREATURE)
-                    .sized(0.7f, 1.4f).build("pukis"));
+                    .sized(0.5f, 0.5f).build("pukis"));
 
     public static final RegistryObject<EntityType<MandrakeSproutlingEntity>> MANDRAKE_SPROUTLING =
             ENTITY_TYPES.register("mandrake_sproutling", () -> EntityType.Builder.of(MandrakeSproutlingEntity::new, MobCategory.CREATURE)

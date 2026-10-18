@@ -22,6 +22,8 @@ import net.minecraft.world.entity.ai.goal.target.OwnerHurtByTargetGoal;
 import net.minecraft.world.entity.ai.goal.target.OwnerHurtTargetGoal;
 import net.minecraft.world.entity.ai.navigation.GroundPathNavigation;
 import net.minecraft.world.entity.ai.util.GoalUtils;
+import net.semppi.semppis_mythical_legends_mod.entity.variant.PukisColorPalette;
+import net.minecraft.util.RandomSource;
 import net.minecraft.world.entity.ambient.Bat;
 import net.minecraft.world.entity.animal.Animal;
 import net.minecraft.world.entity.animal.Chicken;
@@ -38,7 +40,6 @@ import net.minecraft.world.scores.PlayerTeam;
 import net.minecraft.world.scores.Team;
 import net.minecraftforge.event.ForgeEventFactory;
 import net.semppi.semppis_mythical_legends_mod.entity.ModEntities;
-import net.semppi.semppis_mythical_legends_mod.entity.variant.PukisVariant;
 import net.semppi.semppis_mythical_legends_mod.item.ModItems;
 import org.jetbrains.annotations.Nullable;
 import software.bernie.geckolib.animatable.GeoEntity;
@@ -52,7 +53,13 @@ import software.bernie.geckolib.core.object.PlayState;
 public class PukisEntity extends TamableAnimal implements GeoEntity {
     private final AnimatableInstanceCache cache = new SingletonAnimatableInstanceCache(this);
 
-    private static final EntityDataAccessor<Integer> DATA_ID_TYPE_VARIANT =
+    private static final EntityDataAccessor<Integer> REGION_1_COLOR =
+            SynchedEntityData.defineId(PukisEntity.class, EntityDataSerializers.INT);
+
+    private static final EntityDataAccessor<Integer> REGION_2_COLOR =
+            SynchedEntityData.defineId(PukisEntity.class, EntityDataSerializers.INT);
+
+    private static final EntityDataAccessor<Integer> REGION_3_COLOR =
             SynchedEntityData.defineId(PukisEntity.class, EntityDataSerializers.INT);
 
     private static final EntityDataAccessor<Boolean> SITTING =
@@ -65,8 +72,8 @@ public class PukisEntity extends TamableAnimal implements GeoEntity {
 
     public static AttributeSupplier setAttributes() {
         return Animal.createMobAttributes()
-                .add(Attributes.MAX_HEALTH, 34D)
-                .add(Attributes.ATTACK_DAMAGE, 4.0f)
+                .add(Attributes.MAX_HEALTH, 10D)
+                .add(Attributes.ATTACK_DAMAGE, 1.0f)
                 .add(Attributes.ATTACK_SPEED, 1.5f)
                 .add(Attributes.MOVEMENT_SPEED, 0.4f)
                 .add(Attributes.FLYING_SPEED, 0.3F)
@@ -122,21 +129,15 @@ public class PukisEntity extends TamableAnimal implements GeoEntity {
     @Override
     public AgeableMob getBreedOffspring(ServerLevel serverLevel, AgeableMob mob) {
         PukisEntity baby = ModEntities.PUKIS.get().create(serverLevel);
-        if (random.nextFloat() < 0.05) {
-            // 5% chance to get a completely random variant
-            PukisVariant variant = PukisVariant.getRandomVariant();
-            baby.setVariant(variant);
-        } else {
-            // 95% chance to inherit the variant from one of the parents
-            if (mob instanceof PukisEntity) {
-                PukisVariant parentVariant = ((PukisEntity) mob).getVariant();
-                baby.setVariant(parentVariant);
-            } else {
-                // Fallback to random if something goes wrong
-                PukisVariant variant = PukisVariant.getRandomVariant();
-                baby.setVariant(variant);
-            }
+
+        if (baby == null) {
+            return null;
         }
+
+        baby.setRegion1Color(this.getRegion1Color());
+        baby.setRegion2Color(this.getRegion2Color());
+        baby.setRegion3Color(this.getRegion3Color());
+
         return baby;
     }
 
@@ -188,15 +189,15 @@ public class PukisEntity extends TamableAnimal implements GeoEntity {
     }
 
     protected SoundEvent getAmbientSound() {
-        return SoundEvents.SKELETON_HORSE_AMBIENT;
+        return SoundEvents.FOX_AMBIENT;
     }
 
     protected SoundEvent getHurtSound(DamageSource damageSourceIn) {
-        return SoundEvents.ENDER_DRAGON_HURT;
+        return SoundEvents.PANDA_AGGRESSIVE_AMBIENT;
     }
 
     protected SoundEvent getDeathSound() {
-        return SoundEvents.WITHER_DEATH;
+        return SoundEvents.VEX_DEATH;
     }
 
     protected float getSoundVolume() {
@@ -206,7 +207,7 @@ public class PukisEntity extends TamableAnimal implements GeoEntity {
     @Override
     protected void dropFromLootTable(DamageSource source, boolean causedByPlayer) {
         // Drop draconic meat
-        int dropCount = this.random.nextInt(2) + 1; // Randomly generate a number between 1 and 2
+        int dropCount = this.random.nextInt(1) + 0; // Randomly generate a number between 0 and 1
         for (int i = 0; i < dropCount; i++) {
             this.spawnAtLocation(new ItemStack(ModItems.DRACONIC_FLESH_PIECE.get()));
         }
@@ -258,22 +259,42 @@ public class PukisEntity extends TamableAnimal implements GeoEntity {
     @Override
     public void readAdditionalSaveData(CompoundTag tag) {
         super.readAdditionalSaveData(tag);
+
         setSitting(tag.getBoolean("isSitting"));
-        this.entityData.set(DATA_ID_TYPE_VARIANT, tag.getInt("Variant"));
+
+        if (tag.contains("PukisRegion1")) {
+            setRegion1Color(tag.getInt("PukisRegion1"));
+        }
+
+        if (tag.contains("PukisRegion2")) {
+            setRegion2Color(tag.getInt("PukisRegion2"));
+        }
+
+        if (tag.contains("PukisRegion3")) {
+            setRegion3Color(tag.getInt("PukisRegion3"));
+        }
     }
 
     @Override
     public void addAdditionalSaveData(CompoundTag tag) {
         super.addAdditionalSaveData(tag);
+
         tag.putBoolean("isSitting", this.isSitting());
-        tag.putInt("Variant", this.getTypeVariant());
+
+        tag.putInt("PukisRegion1", this.getRegion1Color());
+        tag.putInt("PukisRegion2", this.getRegion2Color());
+        tag.putInt("PukisRegion3", this.getRegion3Color());
     }
 
     @Override
     protected void defineSynchedData() {
         super.defineSynchedData();
+
         this.entityData.define(SITTING, false);
-        this.entityData.define(DATA_ID_TYPE_VARIANT, 0);
+
+        this.entityData.define(REGION_1_COLOR, 0xFFFFFF);
+        this.entityData.define(REGION_2_COLOR, 0xFFFFFF);
+        this.entityData.define(REGION_3_COLOR, 0xFFFFFF);
     }
 
     public void setSitting(boolean sitting) {
@@ -281,26 +302,69 @@ public class PukisEntity extends TamableAnimal implements GeoEntity {
         this.setOrderedToSit(sitting);
     }
 
-    /* VARIANTS */
+    public int getRegion1Color() {
+        return this.entityData.get(REGION_1_COLOR);
+    }
+
+    public int getRegion2Color() {
+        return this.entityData.get(REGION_2_COLOR);
+    }
+
+    public int getRegion3Color() {
+        return this.entityData.get(REGION_3_COLOR);
+    }
+
+    public void setRegion1Color(int color) {
+        this.entityData.set(REGION_1_COLOR, color & 0xFFFFFF);
+    }
+
+    public void setRegion2Color(int color) {
+        this.entityData.set(REGION_2_COLOR, color & 0xFFFFFF);
+    }
+
+    public void setRegion3Color(int color) {
+        this.entityData.set(REGION_3_COLOR, color & 0xFFFFFF);
+    }
+
+    private static int randomColor(int[] colors, RandomSource random) {
+        return colors[random.nextInt(colors.length)];
+    }
+
     @Override
-    public SpawnGroupData finalizeSpawn(ServerLevelAccessor serverLevelAccessor, DifficultyInstance difficultyInstance,
-                                        MobSpawnType mobSpawnType, @Nullable SpawnGroupData spawnGroupData,
+    public SpawnGroupData finalizeSpawn(ServerLevelAccessor serverLevelAccessor,
+                                        DifficultyInstance difficultyInstance,
+                                        MobSpawnType mobSpawnType,
+                                        @Nullable SpawnGroupData spawnGroupData,
                                         @Nullable CompoundTag compoundTag) {
-        PukisVariant variant = PukisVariant.getRandomVariant();
-        setVariant(variant);
-        return super.finalizeSpawn(serverLevelAccessor, difficultyInstance, mobSpawnType, spawnGroupData, compoundTag);
-    }
 
-    public PukisVariant getVariant() {
-        return PukisVariant.byId(this.getTypeVariant() & 255);
-    }
+        setRegion1Color(
+                randomColor(
+                        PukisColorPalette.REGION_1_COLORS,
+                        this.getRandom()
+                )
+        );
 
-    private int getTypeVariant() {
-        return this.entityData.get(DATA_ID_TYPE_VARIANT);
-    }
+        setRegion2Color(
+                randomColor(
+                        PukisColorPalette.REGION_2_COLORS,
+                        this.getRandom()
+                )
+        );
 
-    private void setVariant(PukisVariant variant) {
-        this.entityData.set(DATA_ID_TYPE_VARIANT, variant.getId() & 255);
+        setRegion3Color(
+                randomColor(
+                        PukisColorPalette.REGION_3_COLORS,
+                        this.getRandom()
+                )
+        );
+
+        return super.finalizeSpawn(
+                serverLevelAccessor,
+                difficultyInstance,
+                mobSpawnType,
+                spawnGroupData,
+                compoundTag
+        );
     }
 
     public boolean isSitting() {

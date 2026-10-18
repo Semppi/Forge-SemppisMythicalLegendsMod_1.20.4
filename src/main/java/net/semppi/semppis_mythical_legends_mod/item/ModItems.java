@@ -78,7 +78,7 @@ public class ModItems {
             () -> new ForgeSpawnEggItem(ModEntities.PROTO_WENDIGO, 0xababab, 0xa99393, new Item.Properties()));
 
     public static final RegistryObject<Item> PUKIS_SPAWN_EGG = ITEMS.register("pukis_spawn_egg",
-            () -> new ForgeSpawnEggItem(ModEntities.PUKIS, 0x017900, 0xB4E652, new Item.Properties()));
+            () -> new ForgeSpawnEggItem(ModEntities.PUKIS, 0x8b0d23, 0xb4e250, new Item.Properties()));
 
     public static final RegistryObject<Item> RAINBOW_SERPENT_SPAWN_EGG = ITEMS.register("rainbow_serpent_spawn_egg",
             () -> new ForgeSpawnEggItem(ModEntities.LOVELAND_FROGMAN, 0x28C13F, 0x820d8e, new Item.Properties()));
