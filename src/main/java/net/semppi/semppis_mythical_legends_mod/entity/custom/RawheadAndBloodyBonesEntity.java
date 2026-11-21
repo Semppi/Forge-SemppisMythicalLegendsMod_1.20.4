@@ -23,6 +23,7 @@ import net.minecraft.world.level.ServerLevelAccessor;
 import net.minecraft.world.level.block.state.BlockState;
 import net.semppi.semppis_mythical_legends_mod.entity.ModEntities;
 import net.semppi.semppis_mythical_legends_mod.item.ModItems;
+import net.semppi.semppis_mythical_legends_mod.territory.CreatureTerritories;
 import org.jetbrains.annotations.Nullable;
 import software.bernie.geckolib.animatable.GeoEntity;
 import software.bernie.geckolib.core.animatable.GeoAnimatable;
@@ -33,6 +34,10 @@ import software.bernie.geckolib.core.animation.AnimationState;
 import software.bernie.geckolib.core.object.PlayState;
 
 public class RawheadAndBloodyBonesEntity extends Animal implements GeoEntity {
+    private static final int BACKYARD_RADIUS = 80;
+    private static final int PATROL_RADIUS = 160;
+
+    private boolean claimTerritoryOnAdd;
     private AnimatableInstanceCache cache = new SingletonAnimatableInstanceCache(this);
 
     // Chains: on or off
@@ -125,13 +130,41 @@ public class RawheadAndBloodyBonesEntity extends Animal implements GeoEntity {
             );
         }
 
+        if (spawnType == MobSpawnType.SPAWN_EGG && !level.isClientSide()) {
+            this.claimTerritoryOnAdd = true;
+            this.setPersistenceRequired();
+        }
+
         return result;
+    }
+
+    @Override
+    public void onAddedToWorld() {
+        super.onAddedToWorld();
+        if (this.claimTerritoryOnAdd && this.level() instanceof ServerLevel level) {
+            CompoundTag ownerData = new CompoundTag();
+            this.saveAppearance(ownerData);
+            CreatureTerritories.get(level).claim(this.getUUID(), level, this.blockPosition(),
+                    BACKYARD_RADIUS, PATROL_RADIUS, ownerData);
+            this.claimTerritoryOnAdd = false;
+        }
+    }
+
+    @Override
+    public void remove(RemovalReason reason) {
+        if (reason.shouldDestroy() && this.level() instanceof ServerLevel level) {
+            CreatureTerritories.get(level).remove(this.getUUID());
+        }
+        super.remove(reason);
     }
 
     @Override
     public void addAdditionalSaveData(CompoundTag tag) {
         super.addAdditionalSaveData(tag);
+        this.saveAppearance(tag);
+    }
 
+    private void saveAppearance(CompoundTag tag) {
         tag.putBoolean("RawheadHasChains", this.hasChains());
         tag.putBoolean("RawheadHasRags", this.hasRags());
         tag.putInt("RawheadHairVariant", this.getHairVariant());
