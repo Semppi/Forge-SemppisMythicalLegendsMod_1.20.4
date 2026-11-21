@@ -5,9 +5,7 @@ import net.minecraft.client.renderer.MultiBufferSource;
 import net.minecraft.client.renderer.entity.EntityRendererProvider;
 import net.minecraft.resources.ResourceLocation;
 import net.semppi.semppis_mythical_legends_mod.SemppisMythicalLegendsMod;
-import net.semppi.semppis_mythical_legends_mod.entity.custom.PukisEntity;
 import net.semppi.semppis_mythical_legends_mod.entity.custom.SatyrEntity;
-import net.semppi.semppis_mythical_legends_mod.entity.variant.PukisVariant;
 import net.semppi.semppis_mythical_legends_mod.entity.variant.SatyrVariant;
 import software.bernie.geckolib.renderer.GeoEntityRenderer;
 

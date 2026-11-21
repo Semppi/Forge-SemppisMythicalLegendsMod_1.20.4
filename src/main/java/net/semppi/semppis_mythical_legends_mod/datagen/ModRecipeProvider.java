@@ -87,6 +87,7 @@ public class ModRecipeProvider extends RecipeProvider implements IConditionBuild
         createCookingRecipe(recipeOutput, ModItems.HUMANOID_FLESH_PIECE.get(), ModItems.HUMANOID_STEAK_PIECE.get(), 0.1f, 200, "humanoid_steak_piece");
         createCookingRecipe(recipeOutput, ModItems.HUMANOID_FLESH.get(), ModItems.HUMANOID_STEAK.get(), 0.25f, 200, "humanoid_steak");
         createCookingRecipe(recipeOutput, ModItems.HUMANOID_FLESH_CHUNK.get(), ModItems.HUMANOID_STEAK_CHUNK.get(), 0.25f, 200, "humanoid_steak_chunk");
+        createCookingRecipe(recipeOutput, ModItems.CHILD_FLESH.get(), ModItems.ROASTED_CHILD.get(), 0.1f, 200, "roasted_child");
         createCookingRecipe(recipeOutput, ModItems.RAW_SCUTTLE_PIECE.get(), ModItems.COOKED_SCUTTLE_PIECE.get(), 0.1f, 200, "cooked_scuttle_piece");
         createCookingRecipe(recipeOutput, ModItems.RAW_SCUTTLE_MEAT.get(), ModItems.COOKED_SCUTTLE_MEAT.get(), 0.25f, 200, "cooked_scuttle_meat");
         createCookingRecipe(recipeOutput, ModItems.RAW_SCUTTLE_CHUNK.get(), ModItems.COOKED_SCUTTLE_CHUNK.get(), 0.25f, 200, "cooked_scuttle_chunk");
@@ -240,7 +241,6 @@ public class ModRecipeProvider extends RecipeProvider implements IConditionBuild
 
         // Shapeless recipe for Oil
         ShapelessRecipeBuilder.shapeless(RecipeCategory.FOOD, ModItems.OIL.get())
-                .requires(Items.GLASS_BOTTLE)
                 .requires(Items.SUNFLOWER)
                 .requires(Items.SUNFLOWER)
                 .unlockedBy("has_sunflower", has(Items.SUNFLOWER))
@@ -263,6 +263,16 @@ public class ModRecipeProvider extends RecipeProvider implements IConditionBuild
                 .requires(Items.SUGAR)
                 .unlockedBy("has_glow_berries", has(Items.GLOW_BERRIES))
                 .save(recipeOutput, new ResourceLocation(SemppisMythicalLegendsMod.MOD_ID, "glow_berry_jam"));
+
+        // Shapeless recipe for Acorn Nut Butter
+        ShapelessRecipeBuilder.shapeless(RecipeCategory.FOOD, ModItems.ACORN_NUT_BUTTER.get())
+                .requires(Items.WATER_BUCKET)
+                .requires(ModItems.ACORN.get())
+                .requires(ModItems.ACORN.get())
+                .requires(ModItems.OIL.get())
+                .requires(Items.SUGAR)
+                .unlockedBy("has_acorn", has(ModItems.ACORN.get()))
+                .save(recipeOutput, new ResourceLocation(SemppisMythicalLegendsMod.MOD_ID, "acorn_nut_butter"));
 
         // Shapeless recipe for Chocolate Butter
         ShapelessRecipeBuilder.shapeless(RecipeCategory.FOOD, ModItems.CHOCOLATE_BUTTER.get())
@@ -1118,6 +1128,30 @@ public class ModRecipeProvider extends RecipeProvider implements IConditionBuild
                 .requires(ModItems.HUMANOID_STEAK_CHUNK.get())
                 .unlockedBy(getHasName(ModItems.HUMANOID_STEAK_CHUNK.get()), has(ModItems.HUMANOID_STEAK_CHUNK.get()))
                 .save(recipeOutput, new ResourceLocation(SemppisMythicalLegendsMod.MOD_ID, "chunk_to_humanoid_steak"));
+
+        // Shapeless recipe crafting a Child Flesh to 1 Humanoid Flesh Piece
+        ShapelessRecipeBuilder.shapeless(RecipeCategory.FOOD, ModItems.HUMANOID_FLESH_PIECE.get())
+                .requires(ModItems.CHILD_FLESH.get())
+                .unlockedBy(getHasName(ModItems.CHILD_FLESH.get()), has(ModItems.CHILD_FLESH.get()))
+                .save(recipeOutput, new ResourceLocation(SemppisMythicalLegendsMod.MOD_ID, "child_flesh_to_piece"));
+
+        // Shapeless recipe crafting a Roasted Child to 1 Humanoid Steak Piece
+        ShapelessRecipeBuilder.shapeless(RecipeCategory.FOOD, ModItems.HUMANOID_STEAK_PIECE.get())
+                .requires(ModItems.ROASTED_CHILD.get())
+                .unlockedBy(getHasName(ModItems.ROASTED_CHILD.get()), has(ModItems.ROASTED_CHILD.get()))
+                .save(recipeOutput, new ResourceLocation(SemppisMythicalLegendsMod.MOD_ID, "roasted_child_to_piece"));
+
+        // Shapeless recipe crafting 4 Child Flesh to a Humanoid Flesh
+        ShapelessRecipeBuilder.shapeless(RecipeCategory.FOOD, ModItems.HUMANOID_FLESH.get())
+                .requires(ModItems.CHILD_FLESH.get(), 4)
+                .unlockedBy(getHasName(ModItems.CHILD_FLESH.get()), has(ModItems.CHILD_FLESH.get()))
+                .save(recipeOutput, new ResourceLocation(SemppisMythicalLegendsMod.MOD_ID, "child_to_humanoid_flesh"));
+
+        // Shapeless recipe crafting 4 Humanoid Steak Piece to a Humanoid Steak
+        ShapelessRecipeBuilder.shapeless(RecipeCategory.FOOD, ModItems.HUMANOID_STEAK.get())
+                .requires(ModItems.ROASTED_CHILD.get(), 4)
+                .unlockedBy(getHasName(ModItems.ROASTED_CHILD.get()), has(ModItems.ROASTED_CHILD.get()))
+                .save(recipeOutput, new ResourceLocation(SemppisMythicalLegendsMod.MOD_ID, "child_to_humanoid_steak"));
 
         /////////////////////////////////////////////////////////////////////////////////
 

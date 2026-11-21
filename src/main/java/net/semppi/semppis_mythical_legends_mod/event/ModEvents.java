@@ -21,6 +21,7 @@ public class ModEvents {
         event.put(ModEntities.MANDRAKE_SPROUTLING.get(), MandrakeSproutlingEntity.setAttributes());
         event.put(ModEntities.PROTO_WENDIGO.get(), ProtoWendigoEntity.setAttributes());
         event.put(ModEntities.PUKIS.get(), PukisEntity.setAttributes());
+        event.put(ModEntities.RAWHEAD_AND_BLOODY_BONES.get(), RawheadAndBloodyBonesEntity.setAttributes());
         event.put(ModEntities.SATYR.get(), SatyrEntity.setAttributes());
         event.put(ModEntities.WENDIGO.get(), WendigoEntity.setAttributes());
     }

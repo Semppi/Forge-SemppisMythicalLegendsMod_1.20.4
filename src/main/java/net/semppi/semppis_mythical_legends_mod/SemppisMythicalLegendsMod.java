@@ -164,6 +164,7 @@ public class SemppisMythicalLegendsMod {
             EntityRenderers.register(ModEntities.MANDRAKE_SPROUTLING.get(), MandrakeSproutlingRenderer::new);
             EntityRenderers.register(ModEntities.PROTO_WENDIGO.get(), ProtoWendigoRenderer::new);
             EntityRenderers.register(ModEntities.PUKIS.get(), PukisRenderer::new);
+            EntityRenderers.register(ModEntities.RAWHEAD_AND_BLOODY_BONES.get(),RawheadAndBloodyBonesRenderer::new);
             EntityRenderers.register(ModEntities.SATYR.get(), SatyrRenderer::new);
             EntityRenderers.register(ModEntities.WENDIGO.get(), WendigoRenderer::new);
 

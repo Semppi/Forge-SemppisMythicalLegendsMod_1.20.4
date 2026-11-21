@@ -25,6 +25,7 @@ public class ModItemModelProvider extends ItemModelProvider {
         withExistingParent(ModItems.PROTO_WENDIGO_SPAWN_EGG.getId().getPath(), mcLoc("item/template_spawn_egg"));
         withExistingParent(ModItems.PUKIS_SPAWN_EGG.getId().getPath(), mcLoc("item/template_spawn_egg"));
         withExistingParent(ModItems.RAINBOW_SERPENT_SPAWN_EGG.getId().getPath(), mcLoc("item/template_spawn_egg"));
+        withExistingParent(ModItems.RAWHEAD_AND_BLOODY_BONES_SPAWN_EGG.getId().getPath(), mcLoc("item/template_spawn_egg"));
         withExistingParent(ModItems.SATYR_SPAWN_EGG.getId().getPath(), mcLoc("item/template_spawn_egg"));
         withExistingParent(ModItems.THUNDERBIRD_SPAWN_EGG.getId().getPath(), mcLoc("item/template_spawn_egg"));
         withExistingParent(ModItems.WENDIGO_SPAWN_EGG.getId().getPath(), mcLoc("item/template_spawn_egg"));

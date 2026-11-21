@@ -83,6 +83,9 @@ public class ModItems {
     public static final RegistryObject<Item> RAINBOW_SERPENT_SPAWN_EGG = ITEMS.register("rainbow_serpent_spawn_egg",
             () -> new ForgeSpawnEggItem(ModEntities.LOVELAND_FROGMAN, 0x28C13F, 0x820d8e, new Item.Properties()));
 
+    public static final RegistryObject<Item> RAWHEAD_AND_BLOODY_BONES_SPAWN_EGG = ITEMS.register("rawhead_and_bloody_bones_spawn_egg",
+            () -> new ForgeSpawnEggItem(ModEntities.RAWHEAD_AND_BLOODY_BONES, 0x6d2a2a, 0x301515, new Item.Properties()));
+
     public static final RegistryObject<Item> SATYR_SPAWN_EGG = ITEMS.register("satyr_spawn_egg",
             () -> new ForgeSpawnEggItem(ModEntities.SATYR, 0x95866d, 0x323232, new Item.Properties()));
 
@@ -126,6 +129,9 @@ public class ModItems {
     public static final RegistryObject<Item> MANDRAKE_BERRIES = ITEMS.register("mandrake_berries",
             () -> new Item(new Item.Properties().food(ModFoods.MANDRAKE_BERRIES)));
 
+    public static final RegistryObject<Item> ACORN = ITEMS.register("acorn",
+            () -> new Item(new Item.Properties().food(ModFoods.ACORN)));
+
     public static final RegistryObject<Item> GRASS_BUNDLE = ITEMS.register("grass_bundle",
             () -> new Item(new Item.Properties()));
 
@@ -167,6 +173,9 @@ public class ModItems {
 
     public static final RegistryObject<Item> GLOW_BERRY_JAM = ITEMS.register("glow_berry_jam",
             () -> new Item(new Item.Properties().food(ModFoods.GLOW_BERRY_JAM)));
+
+    public static final RegistryObject<Item> ACORN_NUT_BUTTER = ITEMS.register("acorn_nut_butter",
+            () -> new Item(new Item.Properties().food(ModFoods.ACORN_NUT_BUTTER)));
 
     public static final RegistryObject<Item> CHOCOLATE_BUTTER = ITEMS.register("chocolate_butter",
             () -> new Item(new Item.Properties().food(ModFoods.CHOCOLATE_BUTTER)));
@@ -428,6 +437,12 @@ public class ModItems {
 
     public static final RegistryObject<Item> HUMANOID_STEAK_CHUNK = ITEMS.register("humanoid_steak_chunk",
             () -> new Item(new Item.Properties().food(ModFoods.HUMANOID_STEAK_CHUNK)));
+
+    public static final RegistryObject<Item> CHILD_FLESH = ITEMS.register("child_flesh",
+            () -> new Item(new Item.Properties().food(ModFoods.CHILD_FLESH)));
+
+    public static final RegistryObject<Item> ROASTED_CHILD = ITEMS.register("roasted_child",
+            () -> new Item(new Item.Properties().food(ModFoods.ROASTED_CHILD)));
 
     public static final RegistryObject<Item> ROTTEN_FLESH_PIECE = ITEMS.register("rotten_flesh_piece",
             () -> new Item(new Item.Properties().food(ModFoods.ROTTEN_FLESH_PIECE)));

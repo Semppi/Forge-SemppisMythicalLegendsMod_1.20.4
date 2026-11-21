@@ -18,6 +18,8 @@ public class ModFoods {
     public static final FoodProperties MANDRAKE_BERRIES = new FoodProperties.Builder().nutrition(2).saturationMod(0.4f)
             .effect(() -> new MobEffectInstance(MobEffects.POISON, 280), 0.15f).build();
 
+    public static final FoodProperties ACORN = new FoodProperties.Builder().nutrition(1).saturationMod(0.2f).build();
+
     public static final FoodProperties EDIBLE_LEAF = new FoodProperties.Builder().nutrition(1).saturationMod(0.4f).build();
 
     public static final FoodProperties TROPICAL_LEAF = new FoodProperties.Builder().nutrition(1).saturationMod(0.4f).build();
@@ -41,6 +43,8 @@ public class ModFoods {
     public static final FoodProperties SWEET_BERRY_JAM = new FoodProperties.Builder().nutrition(6).saturationMod(1.7f).build();
 
     public static final FoodProperties GLOW_BERRY_JAM = new FoodProperties.Builder().nutrition(6).saturationMod(1.7f).build();
+
+    public static final FoodProperties ACORN_NUT_BUTTER = new FoodProperties.Builder().nutrition(2).saturationMod(2.6f).build();
 
     public static final FoodProperties CHOCOLATE_BUTTER = new FoodProperties.Builder().nutrition(2).saturationMod(2.6f).build();
 
@@ -218,6 +222,10 @@ public class ModFoods {
     public static final FoodProperties HUMANOID_FLESH_CHUNK = new FoodProperties.Builder().meat().build();
 
     public static final FoodProperties HUMANOID_STEAK_CHUNK = new FoodProperties.Builder().meat().build();
+
+    public static final FoodProperties CHILD_FLESH = new FoodProperties.Builder().nutrition(1).saturationMod(0.3f).meat().build();
+
+    public static final FoodProperties ROASTED_CHILD = new FoodProperties.Builder().nutrition(2).saturationMod(1.2f).meat().build();
 
     public static final FoodProperties ROTTEN_FLESH_PIECE = new FoodProperties.Builder().nutrition(1).saturationMod(0.2f).meat()
             .effect(() -> new MobEffectInstance(MobEffects.HUNGER, 160), 0.2f).build();

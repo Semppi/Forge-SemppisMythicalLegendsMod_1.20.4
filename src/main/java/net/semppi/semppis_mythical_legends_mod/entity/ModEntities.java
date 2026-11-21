@@ -61,6 +61,10 @@ public class ModEntities {
             ENTITY_TYPES.register("mandrake", () -> EntityType.Builder.of(MandrakeEntity::new, MobCategory.CREATURE)
                     .sized(0.5f, 1.7f).build("mandrake"));
 
+    public static final RegistryObject<EntityType<RawheadAndBloodyBonesEntity>> RAWHEAD_AND_BLOODY_BONES =
+            ENTITY_TYPES.register("rawhead_and_bloody_bones", () -> EntityType.Builder.of(RawheadAndBloodyBonesEntity::new, MobCategory.CREATURE)
+                    .sized(0.5f, 2.2f).build("rawhead_and_bloody_bones"));
+
     public static final RegistryObject<EntityType<TransformMountEntity>> TRANSFORM_MOUNT =
             ENTITY_TYPES.register("transform_mount", () -> EntityType.Builder.of(
                     (EntityType.EntityFactory<TransformMountEntity>) TransformMountEntity::new,

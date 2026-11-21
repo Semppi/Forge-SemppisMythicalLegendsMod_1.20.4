@@ -25,6 +25,7 @@ public class ModCreativeModeTabs {
                         pOutput.accept(ModItems.HONEYED_PORRIDGE.get());
                         pOutput.accept(ModItems.CHOCOLATE_PORRIDGE.get());
                         pOutput.accept(ModItems.MANDRAKE_BERRIES.get());
+                        pOutput.accept(ModItems.ACORN.get());
                         pOutput.accept(ModItems.GRASS_BUNDLE.get());
                         pOutput.accept(ModItems.SEAGRASS_BUNDLE.get());
                         pOutput.accept(ModItems.EDIBLE_LEAF.get());
@@ -39,6 +40,7 @@ public class ModCreativeModeTabs {
                         pOutput.accept(ModItems.OIL.get());
                         pOutput.accept(ModItems.SWEET_BERRY_JAM.get());
                         pOutput.accept(ModItems.GLOW_BERRY_JAM.get());
+                        pOutput.accept(ModItems.ACORN_NUT_BUTTER.get());
                         pOutput.accept(ModItems.CHOCOLATE_BUTTER.get());
                         pOutput.accept(ModItems.NOPALE_PASTE.get());
                         pOutput.accept(ModItems.SWEET_BERRY_JAM_ON_BREAD.get());
@@ -132,6 +134,8 @@ public class ModCreativeModeTabs {
                         pOutput.accept(ModItems.HUMANOID_STEAK.get());
                         pOutput.accept(ModItems.HUMANOID_FLESH_CHUNK.get());
                         pOutput.accept(ModItems.HUMANOID_STEAK_CHUNK.get());
+                        pOutput.accept(ModItems.CHILD_FLESH.get());
+                        pOutput.accept(ModItems.ROASTED_CHILD.get());
                         pOutput.accept(ModItems.ROTTEN_FLESH_PIECE.get());
                         pOutput.accept(Items.ROTTEN_FLESH);
                         pOutput.accept(ModItems.ROTTEN_FLESH_CHUNK.get());
@@ -201,6 +205,7 @@ public class ModCreativeModeTabs {
                         pOutput.accept(ModItems.PROTO_WENDIGO_SPAWN_EGG.get());
                         pOutput.accept(ModItems.PUKIS_SPAWN_EGG.get());
                         pOutput.accept(ModItems.RAINBOW_SERPENT_SPAWN_EGG.get());
+                        pOutput.accept(ModItems.RAWHEAD_AND_BLOODY_BONES_SPAWN_EGG.get());
                         pOutput.accept(ModItems.SATYR_SPAWN_EGG.get());
                         pOutput.accept(ModItems.THUNDERBIRD_SPAWN_EGG.get());
                         pOutput.accept(ModItems.WENDIGO_SPAWN_EGG.get());
