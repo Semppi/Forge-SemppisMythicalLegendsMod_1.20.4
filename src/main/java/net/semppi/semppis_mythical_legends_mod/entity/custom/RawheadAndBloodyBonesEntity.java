@@ -9,12 +9,13 @@ import net.minecraft.server.level.ServerLevel;
 import net.minecraft.sounds.SoundEvent;
 import net.minecraft.sounds.SoundEvents;
 import net.minecraft.world.DifficultyInstance;
+import net.minecraft.world.InteractionHand;
 import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.entity.*;
 import net.minecraft.world.entity.ai.attributes.AttributeSupplier;
 import net.minecraft.world.entity.ai.attributes.Attributes;
 import net.minecraft.world.entity.ai.goal.*;
-import net.minecraft.world.entity.ai.goal.target.HurtByTargetGoal;
+import net.minecraft.world.entity.ai.util.DefaultRandomPos;
 import net.minecraft.world.entity.animal.Animal;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
@@ -24,7 +25,14 @@ import net.minecraft.world.level.block.state.BlockState;
 import net.semppi.semppis_mythical_legends_mod.entity.ModEntities;
 import net.semppi.semppis_mythical_legends_mod.item.ModItems;
 import net.semppi.semppis_mythical_legends_mod.territory.CreatureTerritories;
+import net.minecraft.world.level.pathfinder.Path;
+import net.minecraft.world.phys.Vec3;
+import net.semppi.semppis_mythical_legends_mod.entity.personality.CreaturePersonality;
 import org.jetbrains.annotations.Nullable;
+
+import java.util.Comparator;
+import java.util.EnumSet;
+import java.util.Set;
 import software.bernie.geckolib.animatable.GeoEntity;
 import software.bernie.geckolib.core.animatable.GeoAnimatable;
 import software.bernie.geckolib.core.animatable.instance.AnimatableInstanceCache;
@@ -37,6 +45,15 @@ public class RawheadAndBloodyBonesEntity extends Animal implements GeoEntity {
     private static final int BACKYARD_RADIUS = 80;
     private static final int PATROL_RADIUS = 160;
 
+    private static final String SHY = "shy";
+    private static final String CURIOUS = "curious";
+    private static final String HOSTILE = "hostile";
+    private static final String[] TEST_TRAITS = {SHY, CURIOUS, HOSTILE};
+    private static final Set<String> CORE_TRAITS = Set.of();
+
+    private CreaturePersonality personality = new CreaturePersonality(CORE_TRAITS, Set.of());
+    @Nullable
+    private CreatureTerritories.Territory territory;
     private boolean claimTerritoryOnAdd;
     private AnimatableInstanceCache cache = new SingletonAnimatableInstanceCache(this);
 
@@ -141,13 +158,26 @@ public class RawheadAndBloodyBonesEntity extends Animal implements GeoEntity {
     @Override
     public void onAddedToWorld() {
         super.onAddedToWorld();
-        if (this.claimTerritoryOnAdd && this.level() instanceof ServerLevel level) {
-            CompoundTag ownerData = new CompoundTag();
-            this.saveAppearance(ownerData);
-            CreatureTerritories.get(level).claim(this.getUUID(), level, this.blockPosition(),
+        if (!(this.level() instanceof ServerLevel level)) {
+            return;
+        }
+
+        if (this.personality.individualTraits().isEmpty()) {
+            String trait = TEST_TRAITS[this.random.nextInt(TEST_TRAITS.length)];
+            this.personality = new CreaturePersonality(CORE_TRAITS, Set.of(trait));
+        }
+
+        CreatureTerritories territories = CreatureTerritories.get(level);
+        CompoundTag ownerData = new CompoundTag();
+        this.saveAppearance(ownerData);
+        this.personality.save(ownerData);
+        if (this.claimTerritoryOnAdd) {
+            territories.claim(this.getUUID(), level, this.blockPosition(),
                     BACKYARD_RADIUS, PATROL_RADIUS, ownerData);
             this.claimTerritoryOnAdd = false;
         }
+        territories.updateOwnerData(this.getUUID(), ownerData);
+        this.territory = territories.getTerritory(this.getUUID());
     }
 
     @Override
@@ -162,6 +192,7 @@ public class RawheadAndBloodyBonesEntity extends Animal implements GeoEntity {
     public void addAdditionalSaveData(CompoundTag tag) {
         super.addAdditionalSaveData(tag);
         this.saveAppearance(tag);
+        this.personality.save(tag);
     }
 
     private void saveAppearance(CompoundTag tag) {
@@ -173,6 +204,7 @@ public class RawheadAndBloodyBonesEntity extends Animal implements GeoEntity {
     @Override
     public void readAdditionalSaveData(CompoundTag tag) {
         super.readAdditionalSaveData(tag);
+        this.personality = CreaturePersonality.load(tag, CORE_TRAITS);
 
         if (tag.contains("RawheadHasChains")) {
             this.entityData.set(
@@ -210,35 +242,151 @@ public class RawheadAndBloodyBonesEntity extends Animal implements GeoEntity {
     @Override
     protected void registerGoals() {
         this.goalSelector.addGoal(1, new FloatGoal(this));
-        this.goalSelector.addGoal(2, new PanicGoal(this, 1.25D));
-
-        this.goalSelector.addGoal(
-                3,
-                new AvoidEntityGoal<>(
-                        this,
-                        Player.class,
-                        10.0F,
-                        1.6D,
-                        1.4D
-                )
-        );
-
-        this.goalSelector.addGoal(
-                3,
-                new LookAtPlayerGoal(this, Player.class, 8.0F)
-        );
-
-        this.goalSelector.addGoal(
-                4,
-                new WaterAvoidingRandomStrollGoal(this, 1.0D)
-        );
-
+        this.goalSelector.addGoal(2, new PersonalityGoal());
+        this.goalSelector.addGoal(3, new LookAtPlayerGoal(this, Player.class, 8.0F));
+        this.goalSelector.addGoal(4, new WaterAvoidingRandomStrollGoal(this, 1.0D) {
+            @Override
+            protected @Nullable Vec3 getPosition() {
+                if (!allowsPosition(blockPosition()) && territory != null) {
+                    Vec3 home = Vec3.atBottomCenterOf(territory.center());
+                    return DefaultRandomPos.getPosTowards(RawheadAndBloodyBonesEntity.this,
+                            10, 7, home, Math.PI / 2);
+                }
+                Vec3 position = super.getPosition();
+                return position != null && allowsPosition(BlockPos.containing(position))
+                        ? position : null;
+            }
+        });
         this.goalSelector.addGoal(5, new RandomLookAroundGoal(this));
+    }
 
-        this.targetSelector.addGoal(
-                6,
-                new HurtByTargetGoal(this).setAlertOthers()
-        );
+    private boolean allowsPosition(BlockPos pos) {
+        if (this.territory == null || !(this.level() instanceof ServerLevel level)
+                || !this.territory.dimension().equals(level.dimension().location())) {
+            return true;
+        }
+        CreatureTerritories.Zone zone = this.territory.zoneAt(level, pos);
+        return zone == CreatureTerritories.Zone.BACKYARD
+                || (zone == CreatureTerritories.Zone.PATROL && hasTrait(HOSTILE));
+    }
+
+    private boolean hasTrait(String trait) {
+        return this.personality.individualTraits().contains(trait);
+    }
+
+    @Override
+    public void move(MoverType type, Vec3 movement) {
+        if (type == MoverType.SELF && this.territory != null
+                && allowsPosition(this.blockPosition())
+                && !allowsPosition(BlockPos.containing(this.position().add(movement)))) {
+            this.getNavigation().stop();
+            movement = new Vec3(0, movement.y, 0);
+        }
+        super.move(type, movement);
+    }
+
+    private class PersonalityGoal extends Goal {
+        private static final double CURIOUS_DISTANCE_SQUARED = 36;
+        private static final double CLOSE_DISTANCE_SQUARED = 16;
+        private static final int PATH_INTERVAL = 10;
+
+        private Player player;
+        private int nextSearchTick;
+        private int nextPathTick;
+        private int nextAttackTick;
+
+        PersonalityGoal() {
+            this.setFlags(EnumSet.of(Flag.MOVE, Flag.LOOK));
+        }
+
+        @Override
+        public boolean canUse() {
+            if (tickCount < this.nextSearchTick || !allowsPosition(blockPosition())) {
+                return false;
+            }
+            this.nextSearchTick = tickCount + PATH_INTERVAL;
+
+            double range = hasTrait(SHY) ? 10 : 16;
+            this.player = level().getEntitiesOfClass(Player.class, getBoundingBox().inflate(range),
+                            candidate -> canReactTo(candidate, range * range) && hasLineOfSight(candidate))
+                    .stream()
+                    .min(Comparator.comparingDouble(RawheadAndBloodyBonesEntity.this::distanceToSqr))
+                    .orElse(null);
+            return this.player != null;
+        }
+
+        @Override
+        public boolean canContinueToUse() {
+            double range = hasTrait(SHY) ? 13 : 20;
+            return this.player != null && allowsPosition(blockPosition())
+                    && canReactTo(this.player, range * range);
+        }
+
+        private boolean canReactTo(Player candidate, double rangeSquared) {
+            return candidate.isAlive() && !candidate.isCreative() && !candidate.isSpectator()
+                    && allowsPosition(candidate.blockPosition()) && distanceToSqr(candidate) <= rangeSquared;
+        }
+
+        @Override
+        public void start() {
+            this.nextPathTick = tickCount;
+        }
+
+        @Override
+        public void stop() {
+            this.player = null;
+            getNavigation().stop();
+        }
+
+        @Override
+        public boolean requiresUpdateEveryTick() {
+            return true;
+        }
+
+        @Override
+        public void tick() {
+            if (!canContinueToUse()) {
+                getNavigation().stop();
+                return;
+            }
+
+            getLookControl().setLookAt(this.player);
+            double distanceSquared = distanceToSqr(this.player);
+            boolean hostile = hasTrait(HOSTILE);
+            boolean curious = hasTrait(CURIOUS);
+
+            if (hostile && tickCount >= this.nextAttackTick && hasLineOfSight(this.player)
+                    && isWithinMeleeAttackRange(this.player)) {
+                this.nextAttackTick = tickCount + 20;
+                swing(InteractionHand.MAIN_HAND);
+                doHurtTarget(this.player);
+            }
+
+            if (curious && distanceSquared >= CLOSE_DISTANCE_SQUARED
+                    && distanceSquared <= CURIOUS_DISTANCE_SQUARED) {
+                getNavigation().stop();
+                return;
+            }
+
+            if (tickCount < this.nextPathTick) {
+                return;
+            }
+            this.nextPathTick = tickCount + PATH_INTERVAL;
+
+            boolean retreat = hasTrait(SHY) || (curious && distanceSquared < CLOSE_DISTANCE_SQUARED);
+            Vec3 destination = retreat
+                    ? DefaultRandomPos.getPosAway(RawheadAndBloodyBonesEntity.this, 12, 5, this.player.position())
+                    : this.player.position();
+            if (destination == null || !allowsPosition(BlockPos.containing(destination))) {
+                getNavigation().stop();
+                return;
+            }
+
+            Path path = getNavigation().createPath(BlockPos.containing(destination), 0);
+            if (path != null) {
+                getNavigation().moveTo(path, hostile ? 1.35 : retreat ? 1.4 : 1.05);
+            }
+        }
     }
 
     @Override

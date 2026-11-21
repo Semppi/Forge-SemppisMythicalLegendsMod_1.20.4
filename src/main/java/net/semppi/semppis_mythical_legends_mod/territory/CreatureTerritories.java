@@ -40,6 +40,20 @@ public final class CreatureTerritories extends SavedData {
         return territories.get(owner);
     }
 
+    public void updateOwnerData(UUID owner, CompoundTag ownerData) {
+        Territory territory = territories.get(owner);
+        if (territory == null) {
+            return;
+        }
+        CompoundTag merged = territory.ownerData();
+        merged.merge(ownerData.copy());
+        if (!merged.equals(territory.ownerData())) {
+            territories.put(owner, new Territory(territory.dimension(), territory.center(),
+                    territory.backyardRadius(), territory.patrolRadius(), merged));
+            setDirty();
+        }
+    }
+
     public void remove(UUID owner) {
         if (territories.remove(owner) != null) {
             setDirty();
