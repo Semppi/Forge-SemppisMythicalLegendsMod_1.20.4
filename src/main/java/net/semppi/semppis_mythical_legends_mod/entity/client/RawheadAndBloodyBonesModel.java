@@ -29,7 +29,7 @@ public class RawheadAndBloodyBonesModel extends GeoModel<RawheadAndBloodyBonesEn
 
     @Override
     public ResourceLocation getAnimationResource(RawheadAndBloodyBonesEntity animatable) {
-        return new ResourceLocation(SemppisMythicalLegendsMod.MOD_ID, "animations/rawhead.animation.json");
+        return RawheadAndBloodyBonesEntity.ANIMATION_RESOURCE;
     }
 
     @Override
