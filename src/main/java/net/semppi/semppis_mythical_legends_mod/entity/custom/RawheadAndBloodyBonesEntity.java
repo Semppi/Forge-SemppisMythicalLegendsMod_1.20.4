@@ -34,7 +34,10 @@ import net.minecraft.world.phys.Vec3;
 import net.semppi.semppis_mythical_legends_mod.entity.personality.CreaturePersonality;
 import org.jetbrains.annotations.Nullable;
 
+import java.util.ArrayDeque;
 import java.util.Comparator;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.EnumSet;
 import java.util.Set;
 import software.bernie.geckolib.animatable.GeoEntity;
@@ -60,6 +63,8 @@ public class RawheadAndBloodyBonesEntity extends Animal implements GeoEntity {
     private static final int FLOAT = 4;
 
     private Vec3 swimVelocity = Vec3.ZERO;
+    private boolean leavingWater;
+    private int shoreCooldownUntil;
 
     private static final int BACKYARD_RADIUS = 80;
     private static final int PATROL_RADIUS = 160;
@@ -316,7 +321,7 @@ public class RawheadAndBloodyBonesEntity extends Animal implements GeoEntity {
 
     @Override
     public void travel(Vec3 input) {
-        if (!this.isOzark() && this.isInWater()) {
+        if (!this.isOzark() && (this.isInWater() || this.leavingWater)) {
             if (!this.level().isClientSide()) {
                 this.setDeltaMovement(this.swimVelocity);
                 this.move(MoverType.SELF, this.swimVelocity);
@@ -346,7 +351,7 @@ public class RawheadAndBloodyBonesEntity extends Animal implements GeoEntity {
 
         @Override
         public boolean canUse() {
-            if (isOzark() || isInWater() || tickCount < this.nextAttempt) {
+            if (isOzark() || isInWater() || tickCount < Math.max(this.nextAttempt, shoreCooldownUntil)) {
                 return false;
             }
             this.nextAttempt = tickCount + 100 + random.nextInt(100);
@@ -394,11 +399,15 @@ public class RawheadAndBloodyBonesEntity extends Animal implements GeoEntity {
     }
 
     private class WaterActivityGoal extends Goal {
+        private static final int MAX_SHORE_SEARCH_NODES = 384;
+        private final ArrayDeque<Vec3> exitRoute = new ArrayDeque<>();
         private Vec3 destination;
         private Player player;
         private int restPose;
         private int nextActivity;
         private int nextObservation;
+        private int nextShoreSearch;
+        private int nextVoluntaryExit;
 
         WaterActivityGoal() {
             this.setFlags(EnumSet.of(Flag.MOVE, Flag.LOOK, Flag.JUMP));
@@ -410,8 +419,14 @@ public class RawheadAndBloodyBonesEntity extends Animal implements GeoEntity {
         }
 
         @Override
+        public boolean canContinueToUse() {
+            return !isOzark() && (isInWater() || leavingWater);
+        }
+
+        @Override
         public void start() {
             getNavigation().stop();
+            this.nextVoluntaryExit = tickCount + 200 + random.nextInt(201);
             this.nextObservation = tickCount;
             this.nextActivity = tickCount;
         }
@@ -420,6 +435,8 @@ public class RawheadAndBloodyBonesEntity extends Animal implements GeoEntity {
         public void stop() {
             this.player = null;
             this.destination = null;
+            this.exitRoute.clear();
+            leavingWater = false;
             swimVelocity = Vec3.ZERO;
             entityData.set(WATER_POSE, LAND);
         }
@@ -431,6 +448,11 @@ public class RawheadAndBloodyBonesEntity extends Animal implements GeoEntity {
 
         @Override
         public void tick() {
+            if (leavingWater) {
+                followExitRoute();
+                return;
+            }
+
             if (tickCount >= this.nextObservation) {
                 this.nextObservation = tickCount + 10;
                 Player previous = this.player;
@@ -440,6 +462,10 @@ public class RawheadAndBloodyBonesEntity extends Animal implements GeoEntity {
                                         && allowsPosition(candidate.blockPosition()) && hasLineOfSight(candidate))
                         .stream().min(Comparator.comparingDouble(
                                 RawheadAndBloodyBonesEntity.this::distanceToSqr)).orElse(null);
+                if (tryLeaveWater()) {
+                    followExitRoute();
+                    return;
+                }
                 if (this.player != null) {
                     this.restPose = SWIM_IDLE;
                     this.destination = reactionDestination(this.player);
@@ -470,12 +496,150 @@ public class RawheadAndBloodyBonesEntity extends Animal implements GeoEntity {
             if (this.player != null && !hasTrait(SHY)) {
                 getLookControl().setLookAt(this.player);
             }
+            updateSwimHeading();
+            entityData.set(WATER_POSE, swimVelocity.lengthSqr() > 0 ? SWIM : this.restPose);
+        }
+
+        private void updateSwimHeading() {
             if (swimVelocity.horizontalDistanceSqr() > 0.0001) {
                 float yaw = (float) Math.toDegrees(Math.atan2(-swimVelocity.x, swimVelocity.z));
                 setYRot(yaw);
                 setYBodyRot(yaw);
             }
-            entityData.set(WATER_POSE, swimVelocity.lengthSqr() > 0 ? SWIM : this.restPose);
+        }
+
+        private boolean tryLeaveWater() {
+            if (tickCount < this.nextShoreSearch) {
+                return false;
+            }
+
+            Player shorePlayer = this.player;
+            if (shorePlayer != null) {
+                if (hasTrait(SHY) || shorePlayer.isInWaterOrBubble()
+                        || level().getFluidState(shorePlayer.blockPosition()).is(FluidTags.WATER)) {
+                    return false;
+                }
+            } else {
+                if (tickCount < this.nextVoluntaryExit) {
+                    return false;
+                }
+                this.nextVoluntaryExit = tickCount + 200 + random.nextInt(201);
+                if (random.nextFloat() >= 0.35F) {
+                    return false;
+                }
+            }
+
+            this.nextShoreSearch = tickCount + 40;
+            findExitRoute(shorePlayer);
+            leavingWater = !this.exitRoute.isEmpty();
+            return leavingWater;
+        }
+
+        private void findExitRoute(@Nullable Player shorePlayer) {
+            BlockPos origin = blockPosition();
+            if (!canSwimTo(origin)) {
+                return;
+            }
+
+            ArrayDeque<BlockPos> pending = new ArrayDeque<>();
+            Map<BlockPos, BlockPos> previous = new HashMap<>();
+            pending.add(origin);
+            previous.put(origin, origin);
+
+            BlockPos bestWater = null;
+            BlockPos bestLanding = null;
+            double bestDistance = shorePlayer == null ? 0 : distanceToSqr(shorePlayer);
+            while (!pending.isEmpty()) {
+                BlockPos water = pending.removeFirst();
+                for (Direction direction : Direction.Plane.HORIZONTAL) {
+                    BlockPos neighbor = water.relative(direction);
+                    for (int rise = 0; rise <= 1; rise++) {
+                        BlockPos landing = neighbor.above(rise);
+                        if (!canStandOnShore(landing)
+                                || (rise > 0 && !hasRoomAt(water.above()))) {
+                            continue;
+                        }
+
+                        double distance = shorePlayer == null ? 0
+                                : Vec3.atBottomCenterOf(landing).distanceToSqr(shorePlayer.position());
+                        if (shorePlayer == null || distance < bestDistance) {
+                            bestWater = water;
+                            bestLanding = landing;
+                            bestDistance = distance;
+                        }
+                    }
+                }
+                if (bestLanding != null && shorePlayer == null) {
+                    break;
+                }
+
+                for (Direction direction : Direction.values()) {
+                    BlockPos next = water.relative(direction);
+                    if (previous.size() < MAX_SHORE_SEARCH_NODES && !previous.containsKey(next)
+                            && Math.abs(next.getY() - origin.getY()) <= 6
+                            && Math.abs(next.getX() - origin.getX()) <= 8
+                            && Math.abs(next.getZ() - origin.getZ()) <= 8 && canSwimTo(next)) {
+                        previous.put(next, water);
+                        pending.addLast(next);
+                    }
+                }
+            }
+
+            if (bestLanding == null) {
+                return;
+            }
+
+            this.exitRoute.add(Vec3.atBottomCenterOf(bestLanding));
+            if (bestLanding.getY() > bestWater.getY()) {
+                this.exitRoute.addFirst(Vec3.atBottomCenterOf(bestWater.above()));
+            }
+            for (BlockPos step = bestWater; !step.equals(origin); step = previous.get(step)) {
+                this.exitRoute.addFirst(Vec3.atBottomCenterOf(step));
+            }
+            this.exitRoute.addFirst(Vec3.atBottomCenterOf(origin));
+        }
+
+        private boolean canStandOnShore(BlockPos pos) {
+            return hasRoomAt(pos) && level().getFluidState(pos).isEmpty()
+                    && level().getFluidState(pos.below()).isEmpty()
+                    && level().loadedAndEntityCanStandOn(pos.below(), RawheadAndBloodyBonesEntity.this);
+        }
+
+        private boolean hasRoomAt(BlockPos pos) {
+            return allowsPosition(pos) && level().hasChunkAt(pos)
+                    && level().noCollision(RawheadAndBloodyBonesEntity.this,
+                            getBoundingBox().move(Vec3.atBottomCenterOf(pos).subtract(position())));
+        }
+
+        private void followExitRoute() {
+            swimVelocity = Vec3.ZERO;
+            while (!this.exitRoute.isEmpty()) {
+                Vec3 offset = this.exitRoute.getFirst().subtract(position());
+                if (offset.lengthSqr() < 0.000001) {
+                    this.exitRoute.removeFirst();
+                    continue;
+                }
+
+                Vec3 step = offset.scale(Math.min(1, 0.16 / offset.length()));
+                BlockPos next = BlockPos.containing(position().add(step));
+                if (allowsPosition(next) && level().hasChunkAt(next)
+                        && level().noCollision(RawheadAndBloodyBonesEntity.this, getBoundingBox().move(step))) {
+                    swimVelocity = step;
+                    updateSwimHeading();
+                    entityData.set(WATER_POSE, SWIM);
+                    return;
+                }
+                break;
+            }
+
+            this.exitRoute.clear();
+            leavingWater = false;
+            this.destination = null;
+            this.restPose = SWIM_IDLE;
+            if (!isInWater()) {
+                shoreCooldownUntil = tickCount + 240;
+            }
+            entityData.set(WATER_POSE, isInWater() ? SWIM_IDLE : LAND);
         }
 
         private void chooseActivity() {
