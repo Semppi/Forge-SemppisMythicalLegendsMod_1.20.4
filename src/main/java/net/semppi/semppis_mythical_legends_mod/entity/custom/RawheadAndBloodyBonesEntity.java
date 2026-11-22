@@ -44,6 +44,7 @@ import software.bernie.geckolib.core.object.PlayState;
 public class RawheadAndBloodyBonesEntity extends Animal implements GeoEntity {
     private static final int BACKYARD_RADIUS = 80;
     private static final int PATROL_RADIUS = 160;
+    private static final int OZARK_SPAWN_CHANCE = 4;
 
     private static final String SHY = "shy";
     private static final String CURIOUS = "curious";
@@ -56,6 +57,9 @@ public class RawheadAndBloodyBonesEntity extends Animal implements GeoEntity {
     private CreatureTerritories.Territory territory;
     private boolean claimTerritoryOnAdd;
     private AnimatableInstanceCache cache = new SingletonAnimatableInstanceCache(this);
+
+    private static final EntityDataAccessor<Boolean> IS_OZARK =
+            SynchedEntityData.defineId(RawheadAndBloodyBonesEntity.class, EntityDataSerializers.BOOLEAN);
 
     // Chains: on or off
     private static final EntityDataAccessor<Boolean> HAS_CHAINS =
@@ -89,6 +93,7 @@ public class RawheadAndBloodyBonesEntity extends Animal implements GeoEntity {
     protected void defineSynchedData() {
         super.defineSynchedData();
 
+        this.entityData.define(IS_OZARK, false);
         this.entityData.define(HAS_CHAINS, false);
         this.entityData.define(HAS_RAGS, false);
         this.entityData.define(HAIR_VARIANT, 0);
@@ -96,16 +101,20 @@ public class RawheadAndBloodyBonesEntity extends Animal implements GeoEntity {
 
     // Getters used by the GeckoLib model
 
+    public boolean isOzark() {
+        return this.entityData.get(IS_OZARK);
+    }
+
     public boolean hasChains() {
-        return this.entityData.get(HAS_CHAINS);
+        return !this.isOzark() && this.entityData.get(HAS_CHAINS);
     }
 
     public boolean hasRags() {
-        return this.entityData.get(HAS_RAGS);
+        return !this.isOzark() && this.entityData.get(HAS_RAGS);
     }
 
     public int getHairVariant() {
-        return this.entityData.get(HAIR_VARIANT);
+        return this.isOzark() ? 0 : this.entityData.get(HAIR_VARIANT);
     }
 
     @Nullable
@@ -125,31 +134,17 @@ public class RawheadAndBloodyBonesEntity extends Animal implements GeoEntity {
                 spawnTag
         );
 
-        // Select appearance only on the server.
         if (!level.isClientSide()) {
+            boolean ozark = this.random.nextInt(OZARK_SPAWN_CHANCE) == 0;
+            this.entityData.set(IS_OZARK, ozark);
+            this.entityData.set(HAS_CHAINS, !ozark && this.random.nextBoolean());
+            this.entityData.set(HAS_RAGS, !ozark && this.random.nextBoolean());
+            this.entityData.set(HAIR_VARIANT, ozark ? 0 : this.random.nextInt(3));
 
-            // 50% chance of chains
-            this.entityData.set(
-                    HAS_CHAINS,
-                    this.random.nextBoolean()
-            );
-
-            // 50% chance of rags
-            this.entityData.set(
-                    HAS_RAGS,
-                    this.random.nextBoolean()
-            );
-
-            // 0 = bald, 1 = hair_1, 2 = hair_2
-            this.entityData.set(
-                    HAIR_VARIANT,
-                    this.random.nextInt(3)
-            );
-        }
-
-        if (spawnType == MobSpawnType.SPAWN_EGG && !level.isClientSide()) {
-            this.claimTerritoryOnAdd = true;
-            this.setPersistenceRequired();
+            if (spawnType == MobSpawnType.SPAWN_EGG) {
+                this.claimTerritoryOnAdd = true;
+                this.setPersistenceRequired();
+            }
         }
 
         return result;
@@ -196,6 +191,7 @@ public class RawheadAndBloodyBonesEntity extends Animal implements GeoEntity {
     }
 
     private void saveAppearance(CompoundTag tag) {
+        tag.putBoolean("RawheadIsOzark", this.isOzark());
         tag.putBoolean("RawheadHasChains", this.hasChains());
         tag.putBoolean("RawheadHasRags", this.hasRags());
         tag.putInt("RawheadHairVariant", this.getHairVariant());
@@ -205,6 +201,7 @@ public class RawheadAndBloodyBonesEntity extends Animal implements GeoEntity {
     public void readAdditionalSaveData(CompoundTag tag) {
         super.readAdditionalSaveData(tag);
         this.personality = CreaturePersonality.load(tag, CORE_TRAITS);
+        this.entityData.set(IS_OZARK, tag.getBoolean("RawheadIsOzark"));
 
         if (tag.contains("RawheadHasChains")) {
             this.entityData.set(

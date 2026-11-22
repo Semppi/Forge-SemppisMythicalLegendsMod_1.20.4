@@ -11,6 +11,12 @@ import software.bernie.geckolib.model.GeoModel;
 import software.bernie.geckolib.model.data.EntityModelData;
 
 public class RawheadAndBloodyBonesModel extends GeoModel<RawheadAndBloodyBonesEntity> {
+    private static final String[] OZARK_BONES = {
+            "ozark_tail", "ozark_skull", "ozark_jaw",
+            "ozark_left_claw1", "ozark_left_claw2", "ozark_left_claw3", "ozark_left_claw4",
+            "ozark_right_claw1", "ozark_right_claw2", "ozark_right_claw3", "ozark_right_claw4"
+    };
+
     @Override
     public ResourceLocation getModelResource(RawheadAndBloodyBonesEntity animatable) {
         return new ResourceLocation(SemppisMythicalLegendsMod.MOD_ID, "geo/rawhead_and_bloody_bones.geo.json");
@@ -55,6 +61,13 @@ public class RawheadAndBloodyBonesModel extends GeoModel<RawheadAndBloodyBonesEn
                         entityData.netHeadYaw() * Mth.DEG_TO_RAD
                 );
             }
+        }
+
+        boolean ozark = animatable.isOzark();
+        setBoneVisibility("raw_head", !ozark);
+        setBoneVisibility("jaw", !ozark);
+        for (String boneName : OZARK_BONES) {
+            setBoneVisibility(boneName, ozark);
         }
 
         // ====================================================
