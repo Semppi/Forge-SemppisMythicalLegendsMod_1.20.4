@@ -8,6 +8,12 @@ import net.minecraft.world.InteractionResult;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
+import java.util.ArrayDeque;
+import java.util.HashSet;
+import java.util.Queue;
+import java.util.Set;
+import java.util.ArrayList;
+import java.util.List;
 import net.minecraft.world.level.block.entity.BlockEntityTicker;
 import net.minecraft.world.level.block.entity.BlockEntityType;
 import net.semppi.semppis_mythical_legends_mod.block.entity.ModBlockEntities;
@@ -18,6 +24,7 @@ import net.minecraft.world.level.Level;
 import net.minecraft.world.level.LevelAccessor;
 import net.minecraft.world.level.LevelReader;
 import net.minecraft.world.level.block.BaseEntityBlock;
+import net.minecraft.tags.BlockTags;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.RenderShape;
 import net.minecraft.core.particles.ParticleTypes;
@@ -51,6 +58,14 @@ public class CraftingOvenBlock
 
     public static final BooleanProperty LIT =
             BlockStateProperties.LIT;
+
+    private static final int CHIMNEY_HORIZONTAL_RANGE = 3;
+
+    /*
+     * Number of wall blocks allowed vertically,
+     * counting the first wall directly above the oven.
+     */
+    private static final int CHIMNEY_MAX_HEIGHT = 12;
 
     /*
      * MAIN BODY:
@@ -145,7 +160,7 @@ public class CraftingOvenBlock
             )
     );
 
-    private VoxelShape getShapeForFacing(BlockState state) {
+    public static VoxelShape getShapeForFacing(BlockState state) {
 
         return switch (state.getValue(FACING)) {
 
@@ -396,53 +411,422 @@ public class CraftingOvenBlock
 
         /*
          * =================================================
-         * TOP SMOKER PARTICLE
+         * TOP SMOKE / CHIMNEY PARTICLES
          * =================================================
          *
-         * The oven is 29 model pixels tall.
+         * The oven occupies:
          *
-         * Two full blocks would be:
-         * 32 pixels tall.
+         * pos            = main oven block
+         * pos.above()    = invisible upper oven part
+         * pos.above(2)   = first possible chimney wall
+         * pos.above(3)   = second possible chimney wall
          *
-         * Your model stops 3 pixels below that:
-         * 29 / 16 = 1.8125 blocks.
+         * For this first version we support either:
          *
-         * Put the top smoke just above that roof.
+         * - one wall
+         * - two stacked walls
          */
+        BlockPos firstWallPos =
+                pos.above(2);
 
-        double roofY =
-                pos.getY()
-                        + 29.0D / 16.0D;
+        BlockPos secondWallPos =
+                pos.above(3);
+
+        boolean firstWall =
+                level.getBlockState(
+                        firstWallPos
+                ).is(BlockTags.WALLS);
+
+        boolean secondWall =
+                firstWall
+                        && level.getBlockState(
+                        secondWallPos
+                ).is(BlockTags.WALLS);
 
         /*
-         * Keep this subtle like the smoker.
+         * =================================================
+         * CHIMNEY MODE
+         * =================================================
          *
-         * Do not spawn top smoke every animate tick.
+         * If at least one wall is attached to the oven,
+         * suppress the ordinary little oven-roof smoke.
          */
-        if (random.nextDouble() < 0.20D) {
+        BlockPos chimneyOutlet =
+                findChimneyOutlet(
+                        level,
+                        pos,
+                        facing
+                );
 
-            double topX =
-                    pos.getX()
+        if (chimneyOutlet != null) {
+
+            double smokeX =
+                    chimneyOutlet.getX()
                             + 0.5D
                             + (random.nextDouble() - 0.5D)
-                            * 0.15D;
+                            * 0.12D;
 
-            double topZ =
-                    pos.getZ()
+            double smokeY =
+                    chimneyOutlet.getY()
+                            + 1.05D;
+
+            double smokeZ =
+                    chimneyOutlet.getZ()
                             + 0.5D
                             + (random.nextDouble() - 0.5D)
-                            * 0.15D;
+                            * 0.12D;
 
-            level.addParticle(
-                    ParticleTypes.SMOKE,
-                    topX,
-                    roofY + 0.02D,
-                    topZ,
-                    0.0D,
-                    0.03D,
-                    0.0D
-            );
+            if (random.nextDouble() < 0.35D) {
+
+                level.addParticle(
+                        ParticleTypes.CAMPFIRE_COSY_SMOKE,
+                        smokeX,
+                        smokeY,
+                        smokeZ,
+                        0.0D,
+                        0.07D,
+                        0.0D
+                );
+            }
         }
+        else {
+
+            /*
+             * No acceptable chimney path.
+             *
+             * Use the ordinary Crafting Oven roof smoke.
+             */
+            double roofY =
+                    pos.getY()
+                            + 29.0D / 16.0D;
+
+            if (random.nextDouble() < 0.20D) {
+
+                double topX =
+                        pos.getX()
+                                + 0.5D
+                                + (random.nextDouble() - 0.5D)
+                                * 0.15D;
+
+                double topZ =
+                        pos.getZ()
+                                + 0.5D
+                                + (random.nextDouble() - 0.5D)
+                                * 0.15D;
+
+                level.addParticle(
+                        ParticleTypes.SMOKE,
+                        topX,
+                        roofY + 0.02D,
+                        topZ,
+                        0.0D,
+                        0.03D,
+                        0.0D
+                );
+            }
+        }
+    }
+
+    @Nullable
+    private static BlockPos findChimneyOutlet(
+            Level level,
+            BlockPos ovenPos,
+            Direction ovenFacing
+    ) {
+        /*
+         * The oven occupies:
+         *
+         * ovenPos          = lower/main block
+         * ovenPos.above()  = invisible upper oven section
+         * ovenPos.above(2) = first possible chimney wall
+         */
+        BlockPos start =
+                ovenPos.above(2);
+
+        if (!level.getBlockState(start)
+                .is(net.minecraft.tags.BlockTags.WALLS)) {
+
+            return null;
+        }
+
+        Queue<BlockPos> open =
+                new ArrayDeque<>();
+
+        Set<BlockPos> visited =
+                new HashSet<>();
+
+        open.add(start);
+
+        List<BlockPos> outlets =
+                new ArrayList<>();
+
+        while (!open.isEmpty()) {
+
+            BlockPos current =
+                    open.remove();
+
+            if (!visited.add(current)) {
+                continue;
+            }
+
+            int dx =
+                    current.getX()
+                            - start.getX();
+
+            int dz =
+                    current.getZ()
+                            - start.getZ();
+
+            int height =
+                    current.getY()
+                            - start.getY();
+
+            /*
+             * Outside our accepted chimney area.
+             */
+            if (Math.abs(dx)
+                    > CHIMNEY_HORIZONTAL_RANGE
+                    || Math.abs(dz)
+                    > CHIMNEY_HORIZONTAL_RANGE
+                    || height < 0
+                    || height >= CHIMNEY_MAX_HEIGHT) {
+
+                continue;
+            }
+
+            if (!level.getBlockState(current)
+                    .is(net.minecraft.tags.BlockTags.WALLS)) {
+
+                continue;
+            }
+
+            BlockPos above =
+                    current.above();
+
+            boolean wallAbove =
+                    level.getBlockState(above)
+                            .is(net.minecraft.tags.BlockTags.WALLS);
+
+            /*
+             * An exposed top is a possible smoke outlet.
+             *
+             * However, if another wall continues immediately
+             * above the maximum permitted height, this branch
+             * is too tall and is not accepted as an outlet.
+             */
+            if (!wallAbove) {
+
+                /*
+                 * This wall has open air directly above it,
+                 * so smoke could escape from here.
+                 */
+                outlets.add(
+                        current.immutable()
+                );
+            }
+
+            /*
+             * Explore all six connected directions.
+             *
+             * Walls can therefore rise, bend sideways,
+             * and form more elaborate chimney shapes.
+             */
+            for (Direction direction
+                    : Direction.values()) {
+
+                BlockPos next =
+                        current.relative(
+                                direction
+                        );
+
+                if (visited.contains(next)) {
+                    continue;
+                }
+
+                int nextDx =
+                        next.getX()
+                                - start.getX();
+
+                int nextDz =
+                        next.getZ()
+                                - start.getZ();
+
+                int nextHeight =
+                        next.getY()
+                                - start.getY();
+
+                if (Math.abs(nextDx)
+                        > CHIMNEY_HORIZONTAL_RANGE
+                        || Math.abs(nextDz)
+                        > CHIMNEY_HORIZONTAL_RANGE
+                        || nextHeight < 0
+                        || nextHeight >= CHIMNEY_MAX_HEIGHT) {
+
+                    continue;
+                }
+
+                if (level.getBlockState(next)
+                        .is(net.minecraft.tags.BlockTags.WALLS)) {
+
+                    open.add(next);
+                }
+            }
+        }
+
+        return chooseBestChimneyOutlet(
+                outlets,
+                start,
+                ovenFacing
+        );
+    }
+
+    @Nullable
+    private static BlockPos chooseBestChimneyOutlet(
+            List<BlockPos> outlets,
+            BlockPos start,
+            Direction ovenFacing
+    ) {
+        if (outlets.isEmpty()) {
+            return null;
+        }
+
+        /*
+         * First find the absolute highest possible exit.
+         */
+        int highestY =
+                outlets.stream()
+                        .mapToInt(BlockPos::getY)
+                        .max()
+                        .orElse(start.getY());
+
+        BlockPos best = null;
+
+        for (BlockPos candidate : outlets) {
+
+            /*
+             * PATH-OF-LEAST-RESISTANCE RULE:
+             *
+             * Allow an outlet one block below the absolute
+             * maximum to compete with the highest outlets.
+             *
+             * This prevents smoke from travelling a long
+             * horizontal pipe merely to rise one extra block.
+             */
+            if (candidate.getY()
+                    < highestY - 1) {
+
+                continue;
+            }
+
+            if (best == null) {
+                best = candidate;
+                continue;
+            }
+
+            int candidateDistance =
+                    horizontalDistanceSquared(
+                            candidate,
+                            start
+                    );
+
+            int bestDistance =
+                    horizontalDistanceSquared(
+                            best,
+                            start
+                    );
+
+            /*
+             * Prefer the outlet closest to the chimney's
+             * original vertical centerline.
+             */
+            if (candidateDistance
+                    < bestDistance) {
+
+                best = candidate;
+                continue;
+            }
+
+            if (candidateDistance
+                    > bestDistance) {
+
+                continue;
+            }
+
+            /*
+             * Equal distance:
+             * prefer the oven's right side.
+             */
+            Direction right =
+                    ovenFacing.getClockWise();
+
+            int candidateRight =
+                    horizontalSideScore(
+                            candidate,
+                            start,
+                            right
+                    );
+
+            int bestRight =
+                    horizontalSideScore(
+                            best,
+                            start,
+                            right
+                    );
+
+            if (candidateRight
+                    > bestRight) {
+
+                best = candidate;
+                continue;
+            }
+
+            /*
+             * Final tie:
+             * if everything else is identical,
+             * retain the higher outlet.
+             */
+            if (candidateRight == bestRight
+                    && candidate.getY()
+                    > best.getY()) {
+
+                best = candidate;
+            }
+        }
+
+        return best;
+    }
+
+    private static int horizontalDistanceSquared(
+            BlockPos pos,
+            BlockPos start
+    ) {
+        int dx =
+                pos.getX()
+                        - start.getX();
+
+        int dz =
+                pos.getZ()
+                        - start.getZ();
+
+        return dx * dx
+                + dz * dz;
+    }
+
+    private static int horizontalSideScore(
+            BlockPos pos,
+            BlockPos start,
+            Direction direction
+    ) {
+        int dx =
+                pos.getX()
+                        - start.getX();
+
+        int dz =
+                pos.getZ()
+                        - start.getZ();
+
+        return dx * direction.getStepX()
+                + dz * direction.getStepZ();
     }
 
     @Override
@@ -536,7 +920,9 @@ public class CraftingOvenBlock
 
                 if (blockEntity instanceof CraftingOvenBlockEntity oven) {
 
-                    for (int slot = 0; slot < 3; slot++) {
+                    for (int slot = 0;
+                         slot < CraftingOvenBlockEntity.TOTAL_SLOT_COUNT;
+                         slot++) {
 
                         ItemStack stack =
                                 oven.getItemHandler()

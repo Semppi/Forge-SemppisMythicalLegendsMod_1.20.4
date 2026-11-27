@@ -184,6 +184,11 @@ public class CraftingOvenRecipe
         return this.ingredients;
     }
 
+    @Override
+    public boolean isSpecial() {
+        return false;
+    }
+
     public ItemStack getFinalResult() {
         return this.result.copy();
     }

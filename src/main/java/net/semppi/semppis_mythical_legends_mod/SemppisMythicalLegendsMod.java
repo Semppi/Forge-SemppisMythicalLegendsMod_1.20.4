@@ -10,6 +10,7 @@ import net.minecraft.world.level.levelgen.Heightmap;
 import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.client.event.RegisterColorHandlersEvent;
 import net.minecraftforge.client.event.RegisterGuiOverlaysEvent;
+import net.minecraftforge.client.event.RegisterRecipeBookCategoriesEvent;
 import net.minecraftforge.client.gui.overlay.VanillaGuiOverlay;
 import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.event.BuildCreativeModeTabContentsEvent;
@@ -27,6 +28,7 @@ import net.semppi.semppis_mythical_legends_mod.block.client.WendigoSkullRenderer
 import net.semppi.semppis_mythical_legends_mod.block.client.MediumHumanoidDropRenderer;
 import net.semppi.semppis_mythical_legends_mod.block.entity.ModBlockEntities;
 import net.semppi.semppis_mythical_legends_mod.client.hud.InteractionHudOverlay;
+import net.semppi.semppis_mythical_legends_mod.client.recipebook.ModRecipeBookCategories;
 import net.semppi.semppis_mythical_legends_mod.client.screen.CraftingOvenScreen;
 import net.semppi.semppis_mythical_legends_mod.commands.CancelTransformCommand;
 import net.semppi.semppis_mythical_legends_mod.commands.RegionDiagnosticMapCommand;
@@ -195,6 +197,15 @@ public class SemppisMythicalLegendsMod {
                         CraftingOvenScreen::new
                 );
             });
+        }
+
+        @SubscribeEvent
+        public static void registerRecipeBookCategories(
+                RegisterRecipeBookCategoriesEvent event
+        ) {
+            ModRecipeBookCategories.registerRecipeBookCategories(
+                    event
+            );
         }
 
         @SubscribeEvent

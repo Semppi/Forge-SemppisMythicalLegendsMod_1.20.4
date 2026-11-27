@@ -22,9 +22,13 @@ import net.semppi.semppis_mythical_legends_mod.menu.CraftingOvenMenu;
 import org.jetbrains.annotations.Nullable;
 import net.minecraft.sounds.SoundEvents;
 import net.minecraft.sounds.SoundSource;
-import net.minecraft.core.registries.BuiltInRegistries;
-import net.minecraft.resources.ResourceLocation;
-import net.semppi.semppis_mythical_legends_mod.item.ModItems;
+import net.minecraft.core.Direction;
+import net.minecraft.world.level.block.Blocks;
+import net.minecraft.world.level.block.ChestBlock;
+import net.minecraft.world.level.block.entity.ChestBlockEntity;
+import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.level.block.state.properties.ChestType;
+import net.semppi.semppis_mythical_legends_mod.block.custom.CraftingOvenBlock;
 import software.bernie.geckolib.animatable.GeoBlockEntity;
 import software.bernie.geckolib.core.animatable.instance.AnimatableInstanceCache;
 import software.bernie.geckolib.core.animation.AnimatableManager;
@@ -46,11 +50,135 @@ public class CraftingOvenBlockEntity
     public static final int SMOKER_INPUT_SLOT = 0;
     public static final int FUEL_SLOT = 1;
     public static final int SMOKER_OUTPUT_SLOT = 2;
+
+    public static final int CRAFTING_SLOT_START = 3;
+    public static final int CRAFTING_SLOT_COUNT = 9;
+
+    public static final int TOTAL_SLOT_COUNT =
+            3 + CRAFTING_SLOT_COUNT;
     private int burnTime = 0;
     private int burnDuration = 0;
     private int cookProgress = 0;
     private int cookTotalTime = 100;
     private float storedExperience = 0.0F;
+
+    public static final int MAX_QUEUED_CRAFTS = 64;
+
+    /*
+     * Special Crafting Oven recipe waiting to be cooked.
+     *
+     * This is NOT an ItemStack sitting in an inventory slot.
+     */
+    private boolean craftingRecipeQueued = false;
+
+    private int queuedCraftingCount = 0;
+
+    public int getQueuedCraftingCount() {
+        return this.queuedCraftingCount;
+    }
+
+    private ItemStack queuedCraftingResult =
+            ItemStack.EMPTY;
+
+    private int queuedCraftingTime = 100;
+
+    private float queuedCraftingExperience = 0.0F;
+
+    /*
+     * True once this queued recipe has actually taken control
+     * of the oven's cooking progress.
+     */
+    private boolean cookingQueuedCraftingRecipe = false;
+
+    public boolean hasQueuedCraftingRecipe() {
+        return this.craftingRecipeQueued;
+    }
+
+    public boolean isCookingQueuedCraftingRecipe() {
+        return this.cookingQueuedCraftingRecipe;
+    }
+
+    public boolean queueCraftingRecipe(
+            ItemStack result,
+            int cookingTime,
+            float experience
+    ) {
+
+        /*
+         * Make sure the crafting grid contains enough
+         * ingredients to reserve one more complete craft.
+         */
+        if (!this.canQueueAnotherCraft()) {
+            return false;
+        }
+
+        /*
+         * First queued craft:
+         * remember exactly what this batch is producing.
+         */
+        if (!this.craftingRecipeQueued) {
+
+            this.craftingRecipeQueued = true;
+
+            this.queuedCraftingResult =
+                    result.copy();
+
+            this.queuedCraftingTime =
+                    Math.max(
+                            1,
+                            cookingTime
+                    );
+
+            this.queuedCraftingExperience =
+                    experience;
+        }
+
+        /*
+         * A batch already exists.
+         *
+         * Do not allow a different recipe to somehow get
+         * appended to the same batch.
+         */
+        else {
+
+            if (!ItemStack.isSameItemSameTags(
+                    this.queuedCraftingResult,
+                    result
+            )) {
+                return false;
+            }
+
+            if (this.queuedCraftingResult.getCount()
+                    != result.getCount()) {
+                return false;
+            }
+        }
+
+        /*
+         * One more meal is now reserved.
+         */
+        /*
+         * One more meal is now reserved.
+         */
+        this.queuedCraftingCount++;
+
+        /*
+         * If nothing is currently part-way through cooking,
+         * immediately give the queued Crafting Oven recipe
+         * control of the cooking system.
+         *
+         * This prevents the recipe from entering the dangerous
+         * state where its ingredients are locked but the oven
+         * has not actually switched to special-recipe cooking.
+         */
+        if (this.cookProgress == 0) {
+            this.cookingQueuedCraftingRecipe = true;
+        }
+
+        this.setChanged();
+
+        return true;
+    }
 
 
     private final AnimatableInstanceCache cache =
@@ -61,7 +189,7 @@ public class CraftingOvenBlockEntity
      * belongs permanently to the block entity.
      */
     private final ItemStackHandler itemHandler =
-            new ItemStackHandler(3) {
+            new ItemStackHandler(TOTAL_SLOT_COUNT) {
 
                 @Override
                 protected void onContentsChanged(int slot) {
@@ -140,37 +268,261 @@ public class CraftingOvenBlockEntity
         this.setChanged();
     }
 
-    private final ContainerData data = new ContainerData() {
+    public void cancelQueuedCraftingRecipe() {
 
-        @Override
-        public int get(int index) {
-            return switch (index) {
-                case 0 -> CraftingOvenBlockEntity.this.burnTime;
-                case 1 -> CraftingOvenBlockEntity.this.burnDuration;
-                case 2 -> CraftingOvenBlockEntity.this.cookProgress;
-                case 3 -> CraftingOvenBlockEntity.this.cookTotalTime;
-                default -> 0;
-            };
+        if (!this.craftingRecipeQueued) {
+            return;
         }
 
-        @Override
-        public void set(int index, int value) {
-            switch (index) {
-                case 0 -> CraftingOvenBlockEntity.this.burnTime = value;
-                case 1 -> CraftingOvenBlockEntity.this.burnDuration = value;
-                case 2 -> CraftingOvenBlockEntity.this.cookProgress = value;
-                case 3 -> CraftingOvenBlockEntity.this.cookTotalTime = value;
+        /*
+         * Remember whether the custom recipe currently owns
+         * the cook-progress timer.
+         *
+         * If it is only waiting behind a normal smoker recipe,
+         * we must NOT destroy the normal recipe's progress.
+         */
+        boolean wasActivelyCookingCustomRecipe =
+                this.cookingQueuedCraftingRecipe;
+
+        this.craftingRecipeQueued = false;
+        this.cookingQueuedCraftingRecipe = false;
+
+        this.queuedCraftingCount = 0;
+
+        this.queuedCraftingResult =
+                ItemStack.EMPTY;
+
+        this.queuedCraftingTime = 100;
+        this.queuedCraftingExperience = 0.0F;
+
+        /*
+         * This is equivalent to removing food from a furnace:
+         * the current special-food progress is lost.
+         */
+        if (wasActivelyCookingCustomRecipe) {
+            this.cookProgress = 0;
+            this.cookTotalTime = 100;
+        }
+
+        this.setChanged();
+    }
+
+    public boolean canQueueAnotherCraft() {
+
+        if (this.queuedCraftingCount
+                >= MAX_QUEUED_CRAFTS) {
+            return false;
+        }
+
+        /*
+         * The next button press reserves one additional
+         * use of every occupied crafting-grid slot.
+         *
+         * Example:
+         *
+         * queuedCraftingCount = 4
+         *
+         * Pressing again requires at least 5 items in
+         * every occupied ingredient stack.
+         */
+        int requiredCount =
+                this.queuedCraftingCount + 1;
+
+        boolean foundIngredient = false;
+
+        for (int slot = 0;
+             slot < CRAFTING_SLOT_COUNT;
+             slot++) {
+
+            ItemStack ingredient =
+                    this.itemHandler.getStackInSlot(
+                            CRAFTING_SLOT_START + slot
+                    );
+
+            if (!ingredient.isEmpty()) {
+
+                foundIngredient = true;
+
+                if (ingredient.getCount()
+                        < requiredCount) {
+
+                    return false;
+                }
             }
         }
 
-        @Override
-        public int getCount() {
-            return 4;
-        }
-    };
+        return foundIngredient;
+    }
+
+    private final ContainerData data =
+            new ContainerData() {
+
+                @Override
+                public int get(int index) {
+                    return switch (index) {
+                        case 0 -> CraftingOvenBlockEntity.this.burnTime;
+                        case 1 -> CraftingOvenBlockEntity.this.burnDuration;
+                        case 2 -> CraftingOvenBlockEntity.this.cookProgress;
+                        case 3 -> CraftingOvenBlockEntity.this.cookTotalTime;
+
+                        /*
+                         * 1 = special Crafting Oven recipe
+                         * 0 = normal smoker cooking
+                         */
+                        case 4 ->
+                                CraftingOvenBlockEntity.this
+                                        .cookingQueuedCraftingRecipe
+                                        ? 1
+                                        : 0;
+
+                        case 5 ->
+                                CraftingOvenBlockEntity.this
+                                        .queuedCraftingCount;
+
+                        default -> 0;
+                    };
+                }
+
+                @Override
+                public void set(
+                        int index,
+                        int value
+                ) {
+                    switch (index) {
+                        case 0 ->
+                                CraftingOvenBlockEntity.this.burnTime =
+                                        value;
+
+                        case 1 ->
+                                CraftingOvenBlockEntity.this.burnDuration =
+                                        value;
+
+                        case 2 ->
+                                CraftingOvenBlockEntity.this.cookProgress =
+                                        value;
+
+                        case 3 ->
+                                CraftingOvenBlockEntity.this.cookTotalTime =
+                                        value;
+
+                        case 4 ->
+                                CraftingOvenBlockEntity.this
+                                        .cookingQueuedCraftingRecipe =
+                                        value != 0;
+
+                        case 5 ->
+                                CraftingOvenBlockEntity.this
+                                        .queuedCraftingCount =
+                                        value;
+
+                        /*
+                         * We don't need to set index 4 from the client.
+                         */
+                    }
+                }
+
+                @Override
+                public int getCount() {
+                    return 6;
+                }
+            };
 
     public ContainerData getData() {
         return this.data;
+    }
+
+    /*
+     * Finds the invisible side/table section of the Crafting Oven.
+     */
+    public BlockPos getSideTablePos() {
+
+        BlockState ovenState =
+                this.getBlockState();
+
+        Direction facing =
+                ovenState.getValue(
+                        CraftingOvenBlock.FACING
+                );
+
+        /*
+         * CraftingOvenBlock places the side section
+         * counter-clockwise from the main oven.
+         */
+        return this.worldPosition.relative(
+                facing.getCounterClockWise()
+        );
+    }
+
+    /*
+     * The chest sits directly on top of the oven's
+     * side/table section.
+     */
+    public BlockPos getAttachedChestPos() {
+
+        return this.getSideTablePos()
+                .above();
+    }
+
+    /*
+     * Returns true only for a normal SINGLE vanilla chest
+     * sitting directly on top of the side table.
+     *
+     * Double chests, trapped chests and modded containers
+     * are intentionally rejected.
+     */
+    public boolean hasAttachedChest() {
+
+        if (this.level == null) {
+            return false;
+        }
+
+        BlockPos chestPos =
+                this.getAttachedChestPos();
+
+        BlockState chestState =
+                this.level.getBlockState(
+                        chestPos
+                );
+
+        /*
+         * Exact vanilla normal chest only.
+         */
+        if (!chestState.is(Blocks.CHEST)) {
+            return false;
+        }
+
+        /*
+         * Reject double chests.
+         */
+        return chestState.getValue(
+                ChestBlock.TYPE
+        ) == ChestType.SINGLE;
+    }
+
+    /*
+     * Returns the actual attached vanilla chest block entity.
+     *
+     * Returns null if there is no supported chest.
+     */
+    @Nullable
+    public ChestBlockEntity getAttachedChest() {
+
+        if (!this.hasAttachedChest()
+                || this.level == null) {
+
+            return null;
+        }
+
+        BlockEntity blockEntity =
+                this.level.getBlockEntity(
+                        this.getAttachedChestPos()
+                );
+
+        if (blockEntity instanceof ChestBlockEntity chest) {
+            return chest;
+        }
+
+        return null;
     }
 
     @Override
@@ -186,7 +538,16 @@ public class CraftingOvenBlockEntity
             int containerId,
             Inventory inventory,
             Player player
+
     ) {
+        System.out.println(
+                "[SML CRAFTING OVEN] Side table: "
+                        + this.getSideTablePos()
+                        + " | Chest position: "
+                        + this.getAttachedChestPos()
+                        + " | Valid chest: "
+                        + this.hasAttachedChest()
+        );
         return new CraftingOvenMenu(
                 containerId,
                 inventory,
@@ -266,17 +627,120 @@ public class CraftingOvenBlockEntity
                 "StoredExperience",
                 this.storedExperience
         );
+
+        tag.putBoolean(
+                "CraftingRecipeQueued",
+                this.craftingRecipeQueued
+        );
+
+        tag.putBoolean(
+                "CookingQueuedCraftingRecipe",
+                this.cookingQueuedCraftingRecipe
+        );
+
+        tag.putInt(
+                "QueuedCraftingCount",
+                this.queuedCraftingCount
+        );
+
+        tag.putInt(
+                "QueuedCraftingTime",
+                this.queuedCraftingTime
+        );
+
+        tag.putFloat(
+                "QueuedCraftingExperience",
+                this.queuedCraftingExperience
+        );
+
+        if (!this.queuedCraftingResult.isEmpty()) {
+            tag.put(
+                    "QueuedCraftingResult",
+                    this.queuedCraftingResult.save(
+                            new CompoundTag()
+                    )
+            );
+        }
     }
 
     @Override
     public void load(CompoundTag tag) {
         super.load(tag);
 
+        boolean oldCraftingRecipeQueued =
+                tag.getBoolean(
+                        "CraftingRecipeQueued"
+                );
+
         /*
-         * Restore the inventory.
+         * New saves contain the actual quantity.
+         *
+         * An oven saved with the previous version only has
+         * CraftingRecipeQueued=true/false, so treat an old
+         * queued recipe as a batch of one.
          */
-        this.itemHandler.deserializeNBT(
+        if (tag.contains("QueuedCraftingCount")) {
+
+            this.queuedCraftingCount =
+                    Math.max(
+                            0,
+                            tag.getInt(
+                                    "QueuedCraftingCount"
+                            )
+                    );
+
+        } else {
+
+            this.queuedCraftingCount =
+                    oldCraftingRecipeQueued
+                            ? 1
+                            : 0;
+        }
+
+        this.craftingRecipeQueued =
+                this.queuedCraftingCount > 0;
+
+        this.cookingQueuedCraftingRecipe =
+                tag.getBoolean(
+                        "CookingQueuedCraftingRecipe"
+                );
+
+        this.queuedCraftingTime =
+                Math.max(
+                        1,
+                        tag.getInt(
+                                "QueuedCraftingTime"
+                        )
+                );
+
+        this.queuedCraftingExperience =
+                tag.getFloat(
+                        "QueuedCraftingExperience"
+                );
+
+        if (tag.contains("QueuedCraftingResult")) {
+            this.queuedCraftingResult =
+                    ItemStack.of(
+                            tag.getCompound(
+                                    "QueuedCraftingResult"
+                            )
+                    );
+        } else {
+            this.queuedCraftingResult =
+                    ItemStack.EMPTY;
+        }
+
+        CompoundTag inventoryTag =
                 tag.getCompound("inventory")
+                        .copy();
+
+        inventoryTag.putInt(
+                "Size",
+                TOTAL_SLOT_COUNT
+        );
+
+        this.itemHandler.deserializeNBT(
+                inventoryTag
         );
 
         /*
@@ -295,6 +759,16 @@ public class CraftingOvenBlockEntity
                 tag.getInt("CookTotalTime");
 
         /*
+         * Recover a queued Crafting Oven recipe that was saved
+         * before it successfully entered active cooking mode.
+         */
+        if (this.craftingRecipeQueued
+                && this.cookProgress == 0) {
+
+            this.cookingQueuedCraftingRecipe = true;
+        }
+
+        /*
          * Old ovens/world saves may not yet contain
          * CookTotalTime, so give them the normal
          * smoker fallback instead of leaving it at 0.
@@ -305,6 +779,71 @@ public class CraftingOvenBlockEntity
 
         this.storedExperience =
                 tag.getFloat("StoredExperience");
+    }
+
+    public boolean canQueueCraftingRecipeResult(
+            ItemStack result
+    ) {
+        if (result.isEmpty()) {
+            return false;
+        }
+
+        ItemStack output =
+                this.itemHandler.getStackInSlot(
+                        SMOKER_OUTPUT_SLOT
+                );
+
+        /*
+         * Empty output is always fine.
+         */
+        if (output.isEmpty()) {
+            return true;
+        }
+
+        /*
+         * Existing output must be the exact same item.
+         */
+        if (!ItemStack.isSameItemSameTags(
+                output,
+                result
+        )) {
+            return false;
+        }
+
+        /*
+         * And there must still be room for one result.
+         */
+        return output.getCount()
+                + result.getCount()
+                <= output.getMaxStackSize();
+    }
+
+    private boolean canAcceptQueuedCraftingResult() {
+
+        if (!this.craftingRecipeQueued
+                || this.queuedCraftingResult.isEmpty()) {
+            return false;
+        }
+
+        ItemStack output =
+                this.itemHandler.getStackInSlot(
+                        SMOKER_OUTPUT_SLOT
+                );
+
+        if (output.isEmpty()) {
+            return true;
+        }
+
+        if (!ItemStack.isSameItemSameTags(
+                output,
+                this.queuedCraftingResult
+        )) {
+            return false;
+        }
+
+        return output.getCount()
+                + this.queuedCraftingResult.getCount()
+                <= output.getMaxStackSize();
     }
 
     public static void serverTick(
@@ -320,7 +859,7 @@ public class CraftingOvenBlockEntity
                 oven.burnTime > 0;
 
         /*
-         * Existing fire loses one tick.
+         * Existing fuel loses one tick.
          */
         if (oven.burnTime > 0) {
             oven.burnTime--;
@@ -328,7 +867,7 @@ public class CraftingOvenBlockEntity
         }
 
         /*
-         * Vanilla smoker ambience while fuel is actively burning.
+         * Vanilla smoker ambience.
          */
         if (oven.burnTime > 0
                 && level.random.nextDouble() < 0.03D) {
@@ -353,7 +892,7 @@ public class CraftingOvenBlockEntity
                         FUEL_SLOT
                 );
 
-        Optional<RecipeHolder<SmokingRecipe>> recipe =
+        Optional<RecipeHolder<SmokingRecipe>> smokingRecipe =
                 level.getRecipeManager()
                         .getRecipeFor(
                                 RecipeType.SMOKING,
@@ -361,30 +900,43 @@ public class CraftingOvenBlockEntity
                                 level
                         );
 
-        boolean genericFood =
-                oven.isGenericUncookedFood(
-                        input
-                );
-
-        boolean canCookGeneric =
-                genericFood
-                        && oven.canAcceptGenericResult(
-                        input
-                );
-
         boolean canCookNormal =
-                recipe.isPresent()
+                smokingRecipe.isPresent()
                         && oven.canAcceptSmokingResult(
-                        recipe.get()
+                        smokingRecipe.get()
                 );
-
-        boolean canCook =
-                canCookGeneric
-                        || canCookNormal;
 
         /*
-         * We have something cookable but no active fire.
-         * Try consuming one fuel item.
+         * If a special recipe is waiting and no other item is
+         * currently part-way through cooking, give the queued
+         * Crafting Oven recipe control of the next cooking cycle.
+         */
+        if (oven.craftingRecipeQueued
+                && !oven.cookingQueuedCraftingRecipe
+                && oven.cookProgress == 0) {
+
+            oven.cookingQueuedCraftingRecipe = true;
+
+            changed = true;
+        }
+
+        boolean canCookQueued =
+                oven.cookingQueuedCraftingRecipe
+                        && oven.craftingRecipeQueued
+                        && oven.canAcceptQueuedCraftingResult();
+
+        /*
+         * Once a queued recipe has claimed the next cooking cycle,
+         * normal smoker food waits until it is finished.
+         */
+        boolean canCook =
+                oven.cookingQueuedCraftingRecipe
+                        ? canCookQueued
+                        : canCookNormal;
+
+        /*
+         * Something is ready to cook but there is no active fire.
+         * Consume one fuel item.
          */
         if (oven.burnTime <= 0
                 && canCook
@@ -411,46 +963,42 @@ public class CraftingOvenBlockEntity
         }
 
         /*
-         * Cook while burning.
+         * Cook while fuel is burning.
          */
         if (oven.burnTime > 0
                 && canCook) {
 
             oven.cookProgress++;
+
             changed = true;
 
-            /*
-             * Vanilla smoking recipes generally use 100 ticks,
-             * but use the recipe's own cooking time.
-             */
-            if (canCookGeneric) {
+            if (oven.cookingQueuedCraftingRecipe) {
 
                 oven.cookTotalTime =
-                        oven.getGenericCookingTime(
-                                input
-                        );
+                        oven.queuedCraftingTime;
 
             } else {
 
                 oven.cookTotalTime =
-                        recipe.get()
+                        smokingRecipe.get()
                                 .value()
                                 .getCookingTime();
             }
 
+            /*
+             * Cooking cycle completed.
+             */
             if (oven.cookProgress
                     >= oven.cookTotalTime) {
 
-                if (canCookGeneric) {
+                if (oven.cookingQueuedCraftingRecipe) {
 
-                    oven.finishGenericCooking(
-                            input
-                    );
+                    oven.finishQueuedCraftingRecipe();
 
                 } else {
 
                     oven.finishSmoking(
-                            recipe.get()
+                            smokingRecipe.get()
                     );
                 }
 
@@ -462,10 +1010,17 @@ public class CraftingOvenBlockEntity
         } else {
 
             /*
-             * No valid active cook.
+             * If a normal smoker recipe becomes invalid halfway
+             * through, discard that partial progress.
+             *
+             * A queued recipe whose output is temporarily blocked
+             * keeps ownership of the next cycle and simply waits.
              */
-            if (oven.cookProgress != 0) {
+            if (!oven.cookingQueuedCraftingRecipe
+                    && oven.cookProgress != 0) {
+
                 oven.cookProgress = 0;
+
                 changed = true;
             }
         }
@@ -498,130 +1053,116 @@ public class CraftingOvenBlockEntity
         }
     }
 
-    /*
-     * Is this one of our special prepared-food ItemStacks?
-     */
-    private boolean isGenericUncookedFood(
-            ItemStack stack
-    ) {
+    private void finishQueuedCraftingRecipe() {
 
-        return stack.is(
-                ModItems.GENERIC_UNCOOKED_FOOD.get()
-        )
-                && stack.hasTag()
-                && stack.getTag()
-                .contains(
-                        "CraftingOvenResult"
-                );
-    }
+        if (!this.craftingRecipeQueued
+                || this.queuedCraftingResult.isEmpty()) {
 
-
-    /*
-     * Read the final cooked food from the generic
-     * prepared-food ItemStack.
-     */
-    private ItemStack getGenericCookingResult(
-            ItemStack stack
-    ) {
-
-        if (!isGenericUncookedFood(stack)) {
-            return ItemStack.EMPTY;
+            return;
         }
 
-        String resultName =
-                stack.getTag()
-                        .getString(
-                                "CraftingOvenResult"
-                        );
-
-        ResourceLocation resultId =
-                ResourceLocation.tryParse(
-                        resultName
-                );
-
-        if (resultId == null) {
-            return ItemStack.EMPTY;
-        }
-
-        int resultCount =
-                Math.max(
-                        1,
-                        stack.getTag()
-                                .getInt(
-                                        "CraftingOvenResultCount"
-                                )
-                );
-
-        return new ItemStack(
-                BuiltInRegistries.ITEM.get(
-                        resultId
-                ),
-                resultCount
-        );
-    }
-
-
-    /*
-     * Read how long this prepared food should cook.
-     */
-    private int getGenericCookingTime(
-            ItemStack stack
-    ) {
-
-        if (!isGenericUncookedFood(stack)) {
-            return 100;
-        }
-
-        int cookTime =
-                stack.getTag()
-                        .getInt(
-                                "CraftingOvenCookTime"
-                        );
-
-        return Math.max(
-                1,
-                cookTime
-        );
-    }
-
-
-    /*
-     * Check whether the cooked result fits in
-     * the normal smoker output slot.
-     */
-    private boolean canAcceptGenericResult(
-            ItemStack input
-    ) {
-
-        ItemStack result =
-                getGenericCookingResult(
-                        input
-                );
-
-        if (result.isEmpty()) {
-            return false;
+        if (!this.canAcceptQueuedCraftingResult()) {
+            return;
         }
 
         ItemStack output =
-                this.itemHandler
-                        .getStackInSlot(
-                                SMOKER_OUTPUT_SLOT
-                        );
+                this.itemHandler.getStackInSlot(
+                        SMOKER_OUTPUT_SLOT
+                );
 
+        /*
+         * Produce the final cooked food.
+         */
         if (output.isEmpty()) {
-            return true;
+
+            this.itemHandler.setStackInSlot(
+                    SMOKER_OUTPUT_SLOT,
+                    this.queuedCraftingResult.copy()
+            );
+
+        } else {
+
+            output.grow(
+                    this.queuedCraftingResult.getCount()
+            );
         }
 
-        if (!ItemStack.isSameItemSameTags(
-                output,
-                result
-        )) {
-            return false;
+        /*
+         * NOW consume one item from every occupied
+         * Crafting Oven grid slot.
+         *
+         * Nothing was consumed when the queue button
+         * was originally pressed.
+         */
+        for (int slot = 0;
+             slot < CRAFTING_SLOT_COUNT;
+             slot++) {
+
+            int handlerSlot =
+                    CRAFTING_SLOT_START + slot;
+
+            ItemStack ingredient =
+                    this.itemHandler.getStackInSlot(
+                            handlerSlot
+                    );
+
+            if (!ingredient.isEmpty()) {
+                ingredient.shrink(1);
+
+                if (ingredient.isEmpty()) {
+                    this.itemHandler.setStackInSlot(
+                            handlerSlot,
+                            ItemStack.EMPTY
+                    );
+                }
+            }
         }
 
-        return output.getCount()
-                + result.getCount()
-                <= output.getMaxStackSize();
+        /*
+         * Store the recipe XP for when the player
+         * removes the cooked output.
+         */
+        this.storedExperience +=
+                this.queuedCraftingExperience;
+
+        /*
+         * One reserved meal has finished.
+         */
+        this.queuedCraftingCount--;
+
+        /*
+         * More copies remain in the batch.
+         *
+         * Keep ownership of the oven so another queued
+         * Crafting Oven recipe starts immediately on the
+         * next cooking cycle.
+         */
+        if (this.queuedCraftingCount > 0) {
+
+            this.craftingRecipeQueued = true;
+            this.cookingQueuedCraftingRecipe = true;
+        }
+
+        /*
+         * The whole batch is finished.
+         *
+         * Release the oven back to normal smoker cooking.
+         */
+        else {
+
+            this.queuedCraftingCount = 0;
+
+            this.craftingRecipeQueued = false;
+            this.cookingQueuedCraftingRecipe = false;
+
+            this.queuedCraftingResult =
+                    ItemStack.EMPTY;
+
+            this.queuedCraftingTime = 100;
+            this.queuedCraftingExperience = 0.0F;
+        }
+
+        this.setChanged();
     }
 
     private boolean canAcceptSmokingResult(
@@ -707,66 +1248,6 @@ public class CraftingOvenBlockEntity
 
         this.storedExperience +=
                 recipe.value().getExperience();
-
-        this.setChanged();
-    }
-
-    private void finishGenericCooking(
-            ItemStack input
-    ) {
-
-        ItemStack result =
-                getGenericCookingResult(
-                        input
-                );
-
-        if (result.isEmpty()) {
-            return;
-        }
-
-        /*
-         * Remember the XP before consuming the generic item.
-         */
-        float experience =
-                input.hasTag()
-                        ? input.getTag()
-                        .getFloat(
-                                "CraftingOvenExperience"
-                        )
-                        : 0.0F;
-
-        /*
-         * Consume one prepared food.
-         */
-        input.shrink(1);
-
-        ItemStack output =
-                this.itemHandler
-                        .getStackInSlot(
-                                SMOKER_OUTPUT_SLOT
-                        );
-
-        if (output.isEmpty()) {
-
-            this.itemHandler
-                    .setStackInSlot(
-                            SMOKER_OUTPUT_SLOT,
-                            result.copy()
-                    );
-
-        } else {
-
-            output.grow(
-                    result.getCount()
-            );
-        }
-
-        /*
-         * Use the same XP-storage system that already
-         * works for normal smoked food.
-         */
-        this.storedExperience +=
-                experience;
 
         this.setChanged();
     }

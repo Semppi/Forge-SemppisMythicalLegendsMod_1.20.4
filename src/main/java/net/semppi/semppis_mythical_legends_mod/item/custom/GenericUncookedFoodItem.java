@@ -1,16 +1,10 @@
 package net.semppi.semppis_mythical_legends_mod.item.custom;
 
-import net.minecraft.ChatFormatting;
 import net.minecraft.core.registries.BuiltInRegistries;
-import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
-import net.minecraft.world.item.TooltipFlag;
-import net.minecraft.world.level.Level;
-import org.jetbrains.annotations.Nullable;
 
-import java.util.List;
 
 public class GenericUncookedFoodItem extends Item {
 
@@ -160,46 +154,5 @@ public class GenericUncookedFoodItem extends Item {
                 .getFloat(
                         EXPERIENCE_TAG
                 );
-    }
-
-    /*
-     * Adds the useful hover text.
-     *
-     * Example:
-     *
-     * Generic Uncooked Food
-     * Cooks into: Pepes Telur Kodok
-     */
-    @Override
-    public void appendHoverText(
-            ItemStack stack,
-            @Nullable Level level,
-            List<Component> tooltip,
-            TooltipFlag flag
-    ) {
-
-        super.appendHoverText(
-                stack,
-                level,
-                tooltip,
-                flag
-        );
-
-        ItemStack result =
-                getCookingResult(
-                        stack
-                );
-
-        if (!result.isEmpty()) {
-
-            tooltip.add(
-                    Component.translatable(
-                            "tooltip.semppis_mythical_legends_mod.cooks_into",
-                            result.getHoverName()
-                    ).withStyle(
-                            ChatFormatting.GRAY
-                    )
-            );
-        }
     }
 }

@@ -7,6 +7,10 @@ import net.minecraft.tags.ItemTags;
 import net.minecraft.core.NonNullList;
 import net.minecraft.world.item.ItemStack;
 import net.semppi.semppis_mythical_legends_mod.recipe.CraftingOvenRecipe;
+import net.minecraft.advancements.AdvancementRequirements;
+import net.minecraft.advancements.AdvancementRewards;
+import net.minecraft.advancements.Criterion;
+import net.minecraft.advancements.critereon.RecipeUnlockedTrigger;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.item.crafting.*;
 import net.minecraft.world.level.ItemLike;
@@ -32,14 +36,18 @@ public class ModRecipeProvider extends RecipeProvider implements IConditionBuild
         // Crafting Oven recipe: Pepes Telur Kodok
         createCraftingOvenRecipe(recipeOutput, "pepes_telur_kodok",
                 ModItems.PEPES_TELUR_KODOK.get(), 0.35F, 100,
+                "has_frogspawn", has(Items.FROGSPAWN),
                 Ingredient.of(ModItems.TROPICAL_LEAF.get()),
                 Ingredient.of(ModItems.EDIBLE_LEAF.get()),
-                Ingredient.of(Items.FROGSPAWN)
+                Ingredient.of(Items.FROGSPAWN),
+                Ingredient.of(ModItems.GARLIC.get()),
+                Ingredient.of(ModItems.OIL.get())
         );
 
         // Crafting Oven recipe: Rabbit Stew
         createCraftingOvenRecipe(recipeOutput, "rabbit_stew",
                 Items.RABBIT_STEW, 0.35F, 100,
+                "has_cooked_rabbit", has(Items.COOKED_RABBIT),
                 Ingredient.of(Items.BOWL),
                 Ingredient.of(Items.RABBIT),
                 Ingredient.of(
@@ -1622,9 +1630,15 @@ public class ModRecipeProvider extends RecipeProvider implements IConditionBuild
             ItemLike result,
             float experience,
             int cookingTime,
+            String unlockName,
+            Criterion<?> unlockCriterion,
             Ingredient... ingredients
     ) {
 
+        /*
+         * Build the ingredient list used by the
+         * custom Crafting Oven recipe.
+         */
         NonNullList<Ingredient> ingredientList =
                 NonNullList.create();
 
@@ -1634,6 +1648,21 @@ public class ModRecipeProvider extends RecipeProvider implements IConditionBuild
             );
         }
 
+        /*
+         * The actual recipe ID.
+         *
+         * Example:
+         * semppis_mythical_legends_mod:pepes_telur_kodok
+         */
+        ResourceLocation recipeId =
+                new ResourceLocation(
+                        SemppisMythicalLegendsMod.MOD_ID,
+                        recipeName
+                );
+
+        /*
+         * Create the actual custom recipe.
+         */
         CraftingOvenRecipe recipe =
                 new CraftingOvenRecipe(
                         ingredientList,
@@ -1644,13 +1673,81 @@ public class ModRecipeProvider extends RecipeProvider implements IConditionBuild
                         cookingTime
                 );
 
-        recipeOutput.accept(
+        /*
+         * Hidden recipe advancement.
+         *
+         * This is what teaches the recipe to the
+         * player's recipe book.
+         */
+        var advancement =
+                recipeOutput
+                        .advancement()
+
+                        /*
+                         * Standard recipe-book criterion.
+                         */
+                        .addCriterion(
+                                "has_the_recipe",
+                                RecipeUnlockedTrigger.unlocked(
+                                        recipeId
+                                )
+                        )
+
+                        /*
+                         * Recipe-specific discovery condition.
+                         *
+                         * Pepes:
+                         * obtain Frogspawn.
+                         *
+                         * Rabbit Stew:
+                         * unlock vanilla Rabbit Stew.
+                         */
+                        .addCriterion(
+                                unlockName,
+                                unlockCriterion
+                        )
+
+                        /*
+                         * Completing the advancement awards
+                         * this Crafting Oven recipe.
+                         */
+                        .rewards(
+                                AdvancementRewards.Builder.recipe(
+                                        recipeId
+                                )
+                        )
+
+                        /*
+                         * Either criterion is enough.
+                         */
+                        .requirements(
+                                AdvancementRequirements.Strategy.OR
+                        );
+
+        /*
+         * Hidden advancement ID.
+         *
+         * Example:
+         * semppis_mythical_legends_mod:
+         * recipes/food/pepes_telur_kodok
+         */
+        ResourceLocation advancementId =
                 new ResourceLocation(
                         SemppisMythicalLegendsMod.MOD_ID,
-                        recipeName
-                ),
+                        "recipes/food/" + recipeName
+                );
+
+        /*
+         * Save both:
+         * - the Crafting Oven recipe
+         * - its recipe-book unlock advancement
+         */
+        recipeOutput.accept(
+                recipeId,
                 recipe,
-                null
+                advancement.build(
+                        advancementId
+                )
         );
     }
 

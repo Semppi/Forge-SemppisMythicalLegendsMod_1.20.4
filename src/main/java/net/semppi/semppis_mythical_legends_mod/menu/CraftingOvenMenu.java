@@ -7,6 +7,7 @@ import net.minecraft.world.inventory.*;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.crafting.CraftingRecipe;
 import net.minecraft.world.entity.player.StackedContents;
+import net.semppi.semppis_mythical_legends_mod.client.recipebook.ModRecipeBookTypes;
 import net.semppi.semppis_mythical_legends_mod.item.ModItems;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.resources.ResourceLocation;
@@ -17,6 +18,10 @@ import net.minecraft.world.inventory.RecipeBookType;
 import net.minecraft.world.item.crafting.Recipe;
 import net.minecraft.world.item.crafting.RecipeHolder;
 import net.minecraft.world.item.crafting.RecipeType;
+import net.minecraft.world.level.block.entity.ChestBlockEntity;
+import org.jetbrains.annotations.Nullable;
+import java.util.ArrayList;
+import java.util.List;
 import net.minecraft.world.level.Level;
 import net.minecraftforge.common.ForgeHooks;
 import net.minecraftforge.items.SlotItemHandler;
@@ -32,14 +37,20 @@ public class CraftingOvenMenu
     private final ContainerData ovenData;
 
     /*
+     * Optional vanilla chest attached to the Crafting Oven's
+     * side table.
+     *
+     * Null means the oven was opened without a supported chest.
+     */
+    @Nullable
+    private final ChestBlockEntity attachedChest;
+
+    private final boolean hasAttachedChest;
+
+    /*
      * Normal vanilla-style crafting table containers.
      */
-    private final CraftingContainer craftSlots =
-            new TransientCraftingContainer(
-                    this,
-                    3,
-                    3
-            );
+    private final CraftingContainer craftSlots;
 
     private final ResultContainer craftResult =
             new ResultContainer();
@@ -80,6 +91,20 @@ public class CraftingOvenMenu
     public static final int SPECIAL_PREVIEW_X = 168;
     public static final int SPECIAL_PREVIEW_Y = 28;
 
+    public static final int CHEST_EXTRA_HEIGHT = 72;
+
+    public int getQueuedCraftingCount() {
+        return this.ovenData.get(5);
+    }
+
+    private int getOvenYOffset() {
+        return this.hasAttachedChest
+                ? CHEST_EXTRA_HEIGHT
+                : 0;
+    }
+
+    private boolean updatingCraftingResult = false;
+
     public CraftingOvenMenu(
             int containerId,
             Inventory playerInventory,
@@ -108,6 +133,18 @@ public class CraftingOvenMenu
 
         this.blockEntity =
                 blockEntity;
+
+        this.attachedChest =
+                blockEntity.getAttachedChest();
+
+        this.hasAttachedChest =
+                this.attachedChest != null;
+
+        this.craftSlots =
+                new PersistentCraftingContainer(
+                        this,
+                        blockEntity
+                );
 
         this.level =
                 playerInventory.player.level();
@@ -143,6 +180,10 @@ public class CraftingOvenMenu
         );
 
         addSpecialPreviewSlot();
+
+        if (this.hasAttachedChest) {
+            addAttachedChestSlots();
+        }
     }
 
     private void addSmokerSlots() {
@@ -151,10 +192,6 @@ public class CraftingOvenMenu
          * ------------------------------------------------
          * SMOKER INPUT
          * ------------------------------------------------
-         *
-         * For now this is a normal input slot.
-         * The server will simply refuse to cook anything
-         * that has no minecraft:smoking recipe.
          */
         this.addSlot(
                 new SlotItemHandler(
@@ -162,6 +199,7 @@ public class CraftingOvenMenu
                         CraftingOvenBlockEntity.SMOKER_INPUT_SLOT,
                         SMOKER_INPUT_X,
                         SMOKER_INPUT_Y
+                                + getOvenYOffset()
                 )
         );
 
@@ -169,8 +207,6 @@ public class CraftingOvenMenu
          * ------------------------------------------------
          * FUEL
          * ------------------------------------------------
-         *
-         * Only actual furnace/smoker fuel may be inserted.
          */
         this.addSlot(
                 new SlotItemHandler(
@@ -178,9 +214,12 @@ public class CraftingOvenMenu
                         CraftingOvenBlockEntity.FUEL_SLOT,
                         FUEL_X,
                         FUEL_Y
+                                + getOvenYOffset()
                 ) {
+
                     @Override
                     public boolean mayPlace(ItemStack stack) {
+
                         return ForgeHooks.getBurnTime(
                                 stack,
                                 RecipeType.SMOKING
@@ -193,9 +232,6 @@ public class CraftingOvenMenu
          * ------------------------------------------------
          * SMOKER OUTPUT
          * ------------------------------------------------
-         *
-         * Players may remove cooked food,
-         * but cannot manually put items into this slot.
          */
         this.addSlot(
                 new SlotItemHandler(
@@ -203,11 +239,12 @@ public class CraftingOvenMenu
                         CraftingOvenBlockEntity.SMOKER_OUTPUT_SLOT,
                         SMOKER_OUTPUT_X,
                         SMOKER_OUTPUT_Y
+                                + getOvenYOffset()
                 ) {
 
                     /*
-                     * Nothing may be manually inserted into
-                     * the cooked-food output slot.
+                     * Players may take cooked food out,
+                     * but cannot manually put food in.
                      */
                     @Override
                     public boolean mayPlace(ItemStack stack) {
@@ -215,8 +252,8 @@ public class CraftingOvenMenu
                     }
 
                     /*
-                     * When the player takes cooked food,
-                     * release all cooking XP stored by the oven.
+                     * Award any stored oven XP when the
+                     * player takes cooked food.
                      */
                     @Override
                     public void onTake(
@@ -237,6 +274,81 @@ public class CraftingOvenMenu
                     }
                 }
         );
+    }
+
+    private void addAttachedChestSlots() {
+
+        if (this.attachedChest == null) {
+            return;
+        }
+
+        /*
+         * TEMPORARY TEST POSITION.
+         *
+         * These coordinates intentionally place the chest
+         * inventory above the existing Crafting Oven GUI.
+         *
+         * Once the slots work, we'll design the enlarged PNG
+         * and choose their exact final positions.
+         */
+        int startX = 18;
+        int startY = 18;
+
+        /*
+         * Vanilla single chest:
+         *
+         * 3 rows
+         * 9 columns
+         * 27 total slots
+         */
+        for (int row = 0; row < 3; row++) {
+
+            for (int column = 0; column < 9; column++) {
+
+                int chestSlot =
+                        column
+                                + row * 9;
+
+                this.addSlot(
+                        new Slot(
+                                this.attachedChest,
+                                chestSlot,
+                                startX
+                                        + column * 18,
+                                startY
+                                        + row * 18
+                        )
+                );
+            }
+        }
+    }
+
+    public boolean hasAttachedChest() {
+        return this.hasAttachedChest;
+    }
+
+    @Override
+    public void broadcastChanges() {
+
+        /*
+         * The Crafting Oven can consume crafting-grid ingredients
+         * internally while cooking finishes.
+         *
+         * Re-check the crafting result during normal menu syncing
+         * so the Generic Uncooked Food preview disappears as soon
+         * as the final required ingredients are gone.
+         */
+        if (!this.level.isClientSide
+                && !this.updatingCraftingResult) {
+
+            this.updatingCraftingResult = true;
+
+            this.updateCraftingResult();
+
+            this.updatingCraftingResult = false;
+        }
+
+        super.broadcastChanges();
     }
 
     private void addSpecialPreviewSlot() {
@@ -263,6 +375,7 @@ public class CraftingOvenMenu
                         0,
                         SPECIAL_PREVIEW_X,
                         SPECIAL_PREVIEW_Y
+                                + getOvenYOffset()
                 ) {
 
                     @Override
@@ -283,10 +396,7 @@ public class CraftingOvenMenu
     ) {
 
         /*
-         * Result slot first.
-         *
-         * This mirrors vanilla crafting menus internally
-         * and makes recipe-book placement much cleaner.
+         * Normal crafting result.
          */
         this.addSlot(
                 new ResultSlot(
@@ -296,12 +406,17 @@ public class CraftingOvenMenu
                         0,
                         CRAFT_RESULT_X,
                         CRAFT_RESULT_Y
+                                + getOvenYOffset()
                 )
         );
 
         /*
-         * Then the 3 x 3 crafting grid.
-         * These become menu slots 1 through 9.
+         * Persistent 3 x 3 Crafting Oven grid.
+         *
+         * These slots deliberately remain editable even
+         * while a special recipe is queued.
+         *
+         * Changing one of them will cancel that queue.
          */
         for (int row = 0; row < 3; row++) {
 
@@ -312,7 +427,9 @@ public class CraftingOvenMenu
                                 this.craftSlots,
                                 column + row * 3,
                                 CRAFT_X + column * 18,
-                                CRAFT_Y + row * 18
+                                CRAFT_Y
+                                        + getOvenYOffset()
+                                        + row * 18
                         )
                 );
             }
@@ -387,6 +504,19 @@ public class CraftingOvenMenu
                     new ItemStack(
                             ModItems.GENERIC_UNCOOKED_FOOD.get()
                     );
+
+            /*
+             * The Generic Uncooked Food is only a visual preview.
+             *
+             * Make its visible name match the food that this
+             * Crafting Oven recipe will actually produce.
+             *
+             * Example:
+             * Generic Uncooked Food -> "Pepes Telur Kodok"
+             */
+            preparedFood.setHoverName(
+                    finalFood.getHoverName()
+            );
 
             ResourceLocation finalFoodId =
                     BuiltInRegistries.ITEM
@@ -478,6 +608,13 @@ public class CraftingOvenMenu
         this.broadcastChanges();
     }
 
+    public boolean hasSpecialRecipePreview() {
+        return !this.specialResult
+                .getItem(0)
+                .isEmpty();
+
+    }
+
     @Override
     public void removed(
             Player player
@@ -485,13 +622,12 @@ public class CraftingOvenMenu
         super.removed(player);
 
         /*
-         * Behave like a crafting table:
-         * return unused crafting ingredients when the GUI closes.
+         * The 3x3 crafting grid now belongs permanently
+         * to the Crafting Oven block entity.
+         *
+         * Closing the GUI must NOT return these items
+         * to the player.
          */
-        this.clearContainer(
-                player,
-                this.craftSlots
-        );
     }
 
     @Override
@@ -544,91 +680,120 @@ public class CraftingOvenMenu
     ) {
 
         /*
-         * Button 0 = send the prepared Crafting Oven
-         * recipe into the cooking section.
+         * Button 0:
+         * normal click = queue one.
+         *
+         * Button 1:
+         * Shift + right click = queue as many as possible.
          */
-        if (buttonId != 0) {
+        if (buttonId != 0
+                && buttonId != 1) {
+
             return false;
         }
 
         Optional<RecipeHolder<CraftingOvenRecipe>>
                 ovenRecipe =
-                getCraftingOvenRecipe();
+                this.getCraftingOvenRecipe();
 
         /*
-         * The grid must still contain a valid
+         * The crafting grid must contain a valid
          * Crafting Oven recipe.
          */
         if (ovenRecipe.isEmpty()) {
             return false;
         }
 
-        ItemStack preparedFood =
-                this.specialResult.getItem(0);
+        CraftingOvenRecipe recipe =
+                ovenRecipe.get().value();
 
-        if (preparedFood.isEmpty()) {
+        ItemStack finalResult =
+                recipe.getFinalResult();
+
+        if (finalResult.isEmpty()) {
             return false;
         }
 
         /*
-         * For now we retain your existing behavior:
-         * wait until the smoker input is free.
+         * Do not reserve and lock the crafting grid if
+         * the cooked-food output cannot accept this recipe.
          */
-        ItemStack smokerInput =
-                this.blockEntity
-                        .getItemHandler()
-                        .getStackInSlot(
-                                CraftingOvenBlockEntity
-                                        .SMOKER_INPUT_SLOT
-                        );
+        if (!this.blockEntity
+                .canQueueCraftingRecipeResult(
+                        finalResult
+                )) {
 
-        if (!smokerInput.isEmpty()) {
             return false;
         }
 
         /*
-         * Move a COPY of the special prepared food into
-         * the real persistent smoker input.
+         * ------------------------------------------------
+         * BUTTON 0
+         * ------------------------------------------------
          *
-         * copy() preserves all of its result/time/XP data.
+         * Queue exactly one additional craft.
          */
-        this.blockEntity
-                .getItemHandler()
-                .setStackInSlot(
-                        CraftingOvenBlockEntity
-                                .SMOKER_INPUT_SLOT,
-                        preparedFood.copy()
-                );
+        if (buttonId == 0) {
 
-        /*
-         * Because this first Crafting Oven recipe type is
-         * shapeless and matches one ingredient per occupied
-         * grid slot, consume one item from every occupied
-         * crafting slot.
-         */
-        for (int slot = 0;
-             slot < this.craftSlots.getContainerSize();
-             slot++) {
+            boolean queued =
+                    this.blockEntity
+                            .queueCraftingRecipe(
+                                    finalResult,
+                                    recipe.getCookingTime(),
+                                    recipe.getExperience()
+                            );
 
-            ItemStack stack =
-                    this.craftSlots.getItem(slot);
-
-            if (!stack.isEmpty()) {
-                stack.shrink(1);
+            if (!queued) {
+                return false;
             }
+
+            this.broadcastChanges();
+
+            return true;
         }
 
         /*
-         * Recalculate the preview/result after consuming
-         * the ingredients.
+         * ------------------------------------------------
+         * BUTTON 1
+         * ------------------------------------------------
+         *
+         * Shift + right click:
+         * queue as many as the current ingredients allow,
+         * up to the hard limit of 64.
          */
-        this.slotsChanged(
-                this.craftSlots
-        );
+        boolean queuedAnything = false;
 
-        this.broadcastChanges();
+        while (this.blockEntity
+                .getQueuedCraftingCount()
+                < CraftingOvenBlockEntity.MAX_QUEUED_CRAFTS) {
 
-        return true;
+            boolean queued =
+                    this.blockEntity
+                            .queueCraftingRecipe(
+                                    finalResult,
+                                    recipe.getCookingTime(),
+                                    recipe.getExperience()
+                            );
+
+            /*
+             * queueCraftingRecipe() returns false when:
+             *
+             * - there aren't enough ingredients for another craft;
+             * - the queue has reached 64;
+             * - the result does not match the queued recipe.
+             */
+            if (!queued) {
+                break;
+            }
+
+            queuedAnything = true;
+        }
+
+        if (queuedAnything) {
+            this.broadcastChanges();
+        }
+
+        return queuedAnything;
     }
 
     @Override
@@ -642,8 +807,6 @@ public class CraftingOvenMenu
          * MENU SLOT NUMBERS
          * ------------------------------------------------
          *
-         * Because of the order our slots are added:
-         *
          * 0      = crafting result
          * 1-9    = crafting grid
          *
@@ -654,8 +817,11 @@ public class CraftingOvenMenu
          * 13-39  = player's main inventory
          * 40-48  = player's hotbar
          *
-         * moveItemStackTo uses the END number as exclusive,
-         * meaning "stop before this number".
+         * 49     = special Crafting Oven preview
+         *
+         * 50-76  = attached chest, when present
+         *
+         * moveItemStackTo() uses an EXCLUSIVE end index.
          */
 
         final int CRAFT_RESULT_SLOT = 0;
@@ -673,8 +839,19 @@ public class CraftingOvenMenu
         final int HOTBAR_START = 40;
         final int HOTBAR_END = 49;
 
-        ItemStack returnStack =
-                ItemStack.EMPTY;
+        final int SPECIAL_PREVIEW_SLOT = 49;
+
+        final int CHEST_START = 50;
+        final int CHEST_END = 77;
+
+        /*
+         * Safety check.
+         */
+        if (index < 0
+                || index >= this.slots.size()) {
+
+            return ItemStack.EMPTY;
+        }
 
         Slot clickedSlot =
                 this.slots.get(index);
@@ -686,7 +863,7 @@ public class CraftingOvenMenu
         ItemStack clickedStack =
                 clickedSlot.getItem();
 
-        returnStack =
+        ItemStack returnStack =
                 clickedStack.copy();
 
         /*
@@ -705,10 +882,6 @@ public class CraftingOvenMenu
                 return ItemStack.EMPTY;
             }
 
-            /*
-             * Needed for output-slot behavior such as
-             * awarding cooking experience.
-             */
             clickedSlot.onQuickCraft(
                     clickedStack,
                     returnStack
@@ -719,10 +892,6 @@ public class CraftingOvenMenu
          * ------------------------------------------------
          * CRAFTING RESULT -> PLAYER
          * ------------------------------------------------
-         *
-         * Keep normal crafting-result shift-click behavior.
-         *
-         * We are NOT auto-filling the crafting grid.
          */
         else if (index == CRAFT_RESULT_SLOT) {
 
@@ -763,11 +932,6 @@ public class CraftingOvenMenu
          * ------------------------------------------------
          * CRAFTING GRID -> PLAYER
          * ------------------------------------------------
-         *
-         * Shift-clicking something OUT of the crafting
-         * grid is allowed.
-         *
-         * We simply never automatically put things INTO it.
          */
         else if (index >= CRAFT_GRID_START
                 && index < CRAFT_GRID_END) {
@@ -784,83 +948,156 @@ public class CraftingOvenMenu
 
         /*
          * ------------------------------------------------
-         * PLAYER INVENTORY / HOTBAR -> OVEN
+         * ATTACHED CHEST -> PLAYER
+         * ------------------------------------------------
+         *
+         * Mimic vanilla chest shift-click behavior:
+         * search the player's inventory in reverse order,
+         * which tends to fill the hotbar from the right side first.
+         */
+        else if (this.hasAttachedChest
+                && index >= CHEST_START
+                && index < CHEST_END) {
+
+            if (!this.moveItemStackTo(
+                    clickedStack,
+                    PLAYER_INVENTORY_START,
+                    HOTBAR_END,
+                    true
+            )) {
+                return ItemStack.EMPTY;
+            }
+        }
+
+        /*
+         * ------------------------------------------------
+         * PLAYER INVENTORY / HOTBAR
          * ------------------------------------------------
          */
         else if (index >= PLAYER_INVENTORY_START
                 && index < HOTBAR_END) {
 
             /*
-             * First priority:
-             * If this item has a smoking recipe,
-             * send it to the smoker input.
-             */
-            if (canSmoke(clickedStack)) {
-
-                if (!this.moveItemStackTo(
-                        clickedStack,
-                        SMOKER_INPUT_SLOT,
-                        SMOKER_INPUT_SLOT + 1,
-                        false
-                )) {
-                    return ItemStack.EMPTY;
-                }
-            }
-
-            /*
-             * Second priority:
-             * Valid furnace/smoker fuel goes to fuel.
-             */
-            else if (ForgeHooks.getBurnTime(
-                    clickedStack,
-                    RecipeType.SMOKING
-            ) > 0) {
-
-                if (!this.moveItemStackTo(
-                        clickedStack,
-                        FUEL_SLOT,
-                        FUEL_SLOT + 1,
-                        false
-                )) {
-                    return ItemStack.EMPTY;
-                }
-            }
-
-            /*
-             * Not cookable and not fuel.
+             * ------------------------------------------------
+             * CHEST MODE
+             * ------------------------------------------------
              *
-             * Move between main inventory and hotbar,
-             * exactly like vanilla menus generally do.
+             * When a chest is attached, shift-click becomes
+             * storage-oriented.
+             *
+             * Do NOT automatically send food to smoker input
+             * or fuel to the fuel slot.
+             *
+             * Everything goes into the attached chest instead.
              */
-            else if (index >= PLAYER_INVENTORY_START
-                    && index < PLAYER_INVENTORY_END) {
+            if (this.hasAttachedChest) {
 
                 if (!this.moveItemStackTo(
                         clickedStack,
-                        HOTBAR_START,
-                        HOTBAR_END,
+                        CHEST_START,
+                        CHEST_END,
                         false
                 )) {
                     return ItemStack.EMPTY;
                 }
             }
 
-            else if (index >= HOTBAR_START
-                    && index < HOTBAR_END) {
+            /*
+             * ------------------------------------------------
+             * NORMAL OVEN MODE
+             * ------------------------------------------------
+             *
+             * No chest attached:
+             * retain the old convenient smoker shift-clicking.
+             */
+            else {
 
-                if (!this.moveItemStackTo(
+                /*
+                 * First priority:
+                 * cookable item -> smoker input.
+                 */
+                if (canSmoke(clickedStack)) {
+
+                    if (!this.moveItemStackTo(
+                            clickedStack,
+                            SMOKER_INPUT_SLOT,
+                            SMOKER_INPUT_SLOT + 1,
+                            false
+                    )) {
+                        return ItemStack.EMPTY;
+                    }
+                }
+
+                /*
+                 * Second priority:
+                 * valid fuel -> fuel slot.
+                 */
+                else if (ForgeHooks.getBurnTime(
                         clickedStack,
-                        PLAYER_INVENTORY_START,
-                        PLAYER_INVENTORY_END,
-                        false
-                )) {
-                    return ItemStack.EMPTY;
+                        RecipeType.SMOKING
+                ) > 0) {
+
+                    if (!this.moveItemStackTo(
+                            clickedStack,
+                            FUEL_SLOT,
+                            FUEL_SLOT + 1,
+                            false
+                    )) {
+                        return ItemStack.EMPTY;
+                    }
+                }
+
+                /*
+                 * Otherwise move between player inventory
+                 * and hotbar like before.
+                 */
+                else if (index >= PLAYER_INVENTORY_START
+                        && index < PLAYER_INVENTORY_END) {
+
+                    if (!this.moveItemStackTo(
+                            clickedStack,
+                            HOTBAR_START,
+                            HOTBAR_END,
+                            false
+                    )) {
+                        return ItemStack.EMPTY;
+                    }
+                }
+
+                else if (index >= HOTBAR_START
+                        && index < HOTBAR_END) {
+
+                    if (!this.moveItemStackTo(
+                            clickedStack,
+                            PLAYER_INVENTORY_START,
+                            PLAYER_INVENTORY_END,
+                            false
+                    )) {
+                        return ItemStack.EMPTY;
+                    }
                 }
             }
         }
 
         /*
-         * Update or clear the source slot after movement.
+         * ------------------------------------------------
+         * SPECIAL PREVIEW
+         * ------------------------------------------------
+         *
+         * Slot 49 cannot be picked up anyway.
+         */
+        else if (index == SPECIAL_PREVIEW_SLOT) {
+            return ItemStack.EMPTY;
+        }
+
+        else {
+            return ItemStack.EMPTY;
+        }
+
+        /*
+         * ------------------------------------------------
+         * UPDATE SOURCE SLOT
+         * ------------------------------------------------
          */
         if (clickedStack.isEmpty()) {
 
@@ -882,19 +1119,32 @@ public class CraftingOvenMenu
             return ItemStack.EMPTY;
         }
 
-        /*
-         * Important:
-         * lets special slots react when their item
-         * has been taken.
-         *
-         * Your smoker output uses this for XP.
-         */
         clickedSlot.onTake(
                 player,
                 clickedStack
         );
 
         return returnStack;
+    }
+
+    public boolean hasFuelForCooking() {
+
+        /*
+         * Fuel is already actively burning.
+         */
+        if (this.ovenData.get(0) > 0) {
+            return true;
+        }
+
+        /*
+         * Or there is fuel waiting in the oven's fuel slot.
+         */
+        return !this.blockEntity
+                .getItemHandler()
+                .getStackInSlot(
+                        CraftingOvenBlockEntity.FUEL_SLOT
+                )
+                .isEmpty();
     }
 
     private void addPlayerInventory(
@@ -905,7 +1155,9 @@ public class CraftingOvenMenu
          * The player's normal 3 x 9 inventory.
          */
         int startX = 18;
-        int startY = 108;
+        int startY =
+                108
+                        + getOvenYOffset();
 
         for (int row = 0; row < 3; row++) {
 
@@ -927,7 +1179,9 @@ public class CraftingOvenMenu
             Inventory playerInventory
     ) {
         int startX = 18;
-        int y = 166;
+        int y =
+                166
+                        + getOvenYOffset();
 
         for (int column = 0; column < 9; column++) {
             this.addSlot(
@@ -1001,12 +1255,7 @@ public class CraftingOvenMenu
 
     @Override
     public RecipeBookType getRecipeBookType() {
-
-        /*
-         * Use exactly the same recipe-book category
-         * as a normal crafting table.
-         */
-        return RecipeBookType.CRAFTING;
+        return ModRecipeBookTypes.CRAFTING_OVEN;
     }
 
     @Override
@@ -1056,6 +1305,43 @@ public class CraftingOvenMenu
 
     public int getCookProgress() {
 
+        /*
+         * The existing right-facing arrow belongs only
+         * to normal smoker cooking.
+         *
+         * Special Crafting Oven recipes will use their
+         * own new left-facing arrow.
+         */
+        if (this.isCookingCraftingOvenRecipe()) {
+            return 0;
+        }
+
+        int progress =
+                this.ovenData.get(2);
+
+        int total =
+                this.ovenData.get(3);
+
+        if (total <= 0 || progress <= 0) {
+            return 0;
+        }
+
+        return (int) Math.ceil(
+                (double) progress * 22.0D
+                        / (double) total
+        );
+    }
+
+    public int getCraftingOvenCookProgress() {
+
+        /*
+         * The new left-facing arrow belongs only to
+         * queued Crafting Oven recipes.
+         */
+        if (!this.isCookingCraftingOvenRecipe()) {
+            return 0;
+        }
+
         int progress =
                 this.ovenData.get(2);
 
@@ -1067,14 +1353,223 @@ public class CraftingOvenMenu
         }
 
         /*
-         * The arrow is 22 pixels wide.
-         *
-         * Math.ceil rounds upward so the final part of
-         * the cooking cycle does not lose the last pixel.
+         * The complete arrow is 22 pixels wide.
          */
         return (int) Math.ceil(
                 (double) progress * 22.0D
                         / (double) total
         );
+    }
+
+    public boolean isCookingCraftingOvenRecipe() {
+        return this.ovenData.get(4) == 1;
+    }
+
+    private static final class PersistentCraftingContainer
+            implements CraftingContainer {
+
+        private final CraftingOvenMenu menu;
+        private final CraftingOvenBlockEntity blockEntity;
+
+        private PersistentCraftingContainer(
+                CraftingOvenMenu menu,
+                CraftingOvenBlockEntity blockEntity
+        ) {
+            this.menu = menu;
+            this.blockEntity = blockEntity;
+        }
+
+        private int toHandlerSlot(int craftingSlot) {
+            return CraftingOvenBlockEntity.CRAFTING_SLOT_START
+                    + craftingSlot;
+        }
+
+        @Override
+        public int getContainerSize() {
+            return CraftingOvenBlockEntity.CRAFTING_SLOT_COUNT;
+        }
+
+        @Override
+        public boolean isEmpty() {
+            for (int slot = 0;
+                 slot < this.getContainerSize();
+                 slot++) {
+
+                if (!this.getItem(slot).isEmpty()) {
+                    return false;
+                }
+            }
+
+            return true;
+        }
+
+        @Override
+        public ItemStack getItem(int slot) {
+            return this.blockEntity
+                    .getItemHandler()
+                    .getStackInSlot(
+                            this.toHandlerSlot(slot)
+                    );
+        }
+
+        @Override
+        public ItemStack removeItem(
+                int slot,
+                int amount
+        ) {
+
+            /*
+             * Altering any reserved ingredient cancels
+             * the entire custom cooking batch.
+             */
+            if (this.blockEntity
+                    .hasQueuedCraftingRecipe()) {
+
+                this.blockEntity
+                        .cancelQueuedCraftingRecipe();
+            }
+
+            ItemStack removed =
+                    this.blockEntity
+                            .getItemHandler()
+                            .extractItem(
+                                    this.toHandlerSlot(slot),
+                                    amount,
+                                    false
+                            );
+
+            if (!removed.isEmpty()) {
+                this.setChanged();
+            }
+
+            return removed;
+        }
+
+        @Override
+        public ItemStack removeItemNoUpdate(
+                int slot
+        ) {
+
+            if (this.blockEntity
+                    .hasQueuedCraftingRecipe()) {
+
+                this.blockEntity
+                        .cancelQueuedCraftingRecipe();
+            }
+
+            ItemStack current =
+                    this.getItem(slot);
+
+            if (current.isEmpty()) {
+                return ItemStack.EMPTY;
+            }
+
+            return this.blockEntity
+                    .getItemHandler()
+                    .extractItem(
+                            this.toHandlerSlot(slot),
+                            current.getCount(),
+                            false
+                    );
+        }
+
+        @Override
+        public void setItem(
+                int slot,
+                ItemStack stack
+        ) {
+
+            /*
+             * Any manual change to the recipe invalidates
+             * the existing reserved batch.
+             */
+            if (this.blockEntity
+                    .hasQueuedCraftingRecipe()) {
+
+                this.blockEntity
+                        .cancelQueuedCraftingRecipe();
+            }
+
+            this.blockEntity
+                    .getItemHandler()
+                    .setStackInSlot(
+                            this.toHandlerSlot(slot),
+                            stack
+                    );
+
+            this.setChanged();
+        }
+
+        @Override
+        public void setChanged() {
+            this.blockEntity.setChanged();
+
+            this.menu.slotsChanged(this);
+        }
+
+        @Override
+        public boolean stillValid(Player player) {
+            return this.menu.stillValid(player);
+        }
+
+        @Override
+        public void clearContent() {
+            for (int slot = 0;
+                 slot < this.getContainerSize();
+                 slot++) {
+
+                this.blockEntity
+                        .getItemHandler()
+                        .setStackInSlot(
+                                this.toHandlerSlot(slot),
+                                ItemStack.EMPTY
+                        );
+            }
+
+            this.setChanged();
+        }
+
+        @Override
+        public int getWidth() {
+            return 3;
+        }
+
+        @Override
+        public int getHeight() {
+            return 3;
+        }
+
+        @Override
+        public List<ItemStack> getItems() {
+            List<ItemStack> items =
+                    new ArrayList<>(
+                            this.getContainerSize()
+                    );
+
+            for (int slot = 0;
+                 slot < this.getContainerSize();
+                 slot++) {
+
+                items.add(
+                        this.getItem(slot)
+                );
+            }
+
+            return items;
+        }
+
+        @Override
+        public void fillStackedContents(
+                StackedContents stackedContents
+        ) {
+            for (int slot = 0;
+                 slot < this.getContainerSize();
+                 slot++) {
+
+                stackedContents.accountStack(
+                        this.getItem(slot)
+                );
+            }
+        }
     }
 }

@@ -23,7 +23,7 @@ public class CraftingOvenItem
         return new GenericGeoBlockItemRenderer<>(
                 new ResourceLocation(
                         SemppisMythicalLegendsMod.MOD_ID,
-                        "geo/crafting_oven.geo.json"
+                        "geo/crafting_oven_item.geo.json"
                 ),
                 new ResourceLocation(
                         SemppisMythicalLegendsMod.MOD_ID,
